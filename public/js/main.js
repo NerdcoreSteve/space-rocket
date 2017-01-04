@@ -2,15 +2,33 @@
 'use strict';
 
 var R = require('ramda'),
-    Rx = require('rx');
+    Rx = require('rx'),
+    context = document.getElementById("gameScreen").getContext("2d");
 
-var c = document.getElementById("gameScreen");
-var ctx = c.getContext("2d");
-ctx.moveTo(0, 0);
-ctx.lineTo(200, 100);
-ctx.stroke();
+context.canvas.width = window.innerWidth * .9;
+context.canvas.height = window.innerHeight * .6;
+var box = {
+    x: 0,
+    y: 0,
+    width: context.canvas.width / 10,
+    height: context.canvas.height / 10
+};
+context.fillRect(box.x, box.y, box.x + box.width, box.y + box.height);
 
-Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length)).subscribe(console.log);
+//TODO make more functional!!
+//     use scan and stuff
+Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length)).subscribe(function (arrow) {
+    switch (arrow) {
+        case 'ArrowUp':
+            box.y--;
+            break;
+        case 'ArrowDown':
+            box.y++;
+            break;
+    }
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.fillRect(box.x, box.y, box.width, box.height);
+});
 
 },{"ramda":2,"rx":311}],2:[function(require,module,exports){
 module.exports = {
