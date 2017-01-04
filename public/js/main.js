@@ -1,31 +1,37 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
 var R = require('ramda'),
     Rx = require('rx'),
     context = document.getElementById("gameScreen").getContext("2d");
 
-context.canvas.width = window.innerWidth * .9;
-context.canvas.height = window.innerHeight * .6;
+context.canvas.width = window.innerWidth * .95;
+context.canvas.height = window.innerWidth * .6;
+
 var box = {
     x: 0,
     y: 0,
     width: context.canvas.width / 10,
     height: context.canvas.height / 10
-};
-context.fillRect(box.x, box.y, box.x + box.width, box.y + box.height);
-
-//TODO make more functional!!
-//     use scan and stuff
-Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length)).subscribe(function (arrow) {
+},
+    game = function game(box, arrow) {
     switch (arrow) {
         case 'ArrowUp':
-            box.y--;
-            break;
+            return _extends({}, box, {
+                y: box.y - 1
+            });
         case 'ArrowDown':
-            box.y++;
-            break;
+            return _extends({}, box, {
+                y: box.y + 1
+            });
+        default:
+            return box;
     }
+};
+
+Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length)).startWith('').scan(game, box).subscribe(function (box) {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.fillRect(box.x, box.y, box.width, box.height);
 });
