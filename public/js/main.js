@@ -11,8 +11,26 @@ context.canvas.width = window.innerWidth * .95;
 context.canvas.height = window.innerWidth * .6;
 
 //Todo
-//     request animation frame
-//     draw rocket image and replace box
+//     rename series to let's make a game
+//     draw rocket image
+//     draw rocket fire images
+//     draw star field image
+//     draw asteroid image
+//     draw collision image
+//     replace rocket rect with rocket image
+//     make rocket appear vertically centered at first, and not exactly at the side
+//     make rocket move faster (hard-code speed in a const?)
+//     add rocket fire animation
+//     make star field move
+//     add single asteroid move towards you from right side
+//     make asteroid appear randomly
+//     make array of asteroids
+//     collision detection
+//     show collision image and then reset game
+//     What else before I call it done?
+//     put up on heroku and porfolio
+//     make sequel: space rocket 2
+
 var gameState = {
     rocket: {
         x: 0,
