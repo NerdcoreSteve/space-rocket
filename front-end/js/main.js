@@ -6,27 +6,37 @@ const
 context.canvas.width = window.innerWidth * .95
 context.canvas.height = window.innerWidth * .6
 
+//Todo
+//     draw rocket image and replace box
 const
-    box = {
-        x: 0,
-        y: 0,
-        width: context.canvas.width / 10,
-        height: context.canvas.height / 10
+    gameState = {
+        rocket: {
+            x: 0,
+            y: 0,
+            width: context.canvas.width / 10,
+            height: context.canvas.height / 10
+        }
     },
-    game = (box, arrow) => {
-        switch(arrow) {
+    game = (gameState, input) => {
+        switch(input) {
             case 'ArrowUp':
                 return {
-                    ...box,
-                    y: box.y - 1
+                    ...gameState,
+                    rocket: {
+                        ...gameState.rocket,
+                        y: gameState.rocket.y - 1
+                    }
                 }
             case 'ArrowDown':
                 return {
-                    ...box,
-                    y: box.y + 1
+                    ...gameState,
+                    rocket: {
+                        ...gameState.rocket,
+                        y: gameState.rocket.y + 1
+                    }
                 }
             default:
-                return box
+                return gameState
         }
     }
 
@@ -34,8 +44,14 @@ Rx.Observable.fromEvent(document, 'keydown')
     .map(R.prop('key'))
     .filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length))
     .startWith('')
-    .scan(game, box)
-    .subscribe(box => {
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height)
-        context.fillRect(box.x, box.y, box.width, box.height)
+    .scan(game, gameState)
+    .subscribe(gameState => {
+        window.requestAnimationFrame(() => {
+            context.clearRect(0, 0, context.canvas.width, context.canvas.height)
+            context.fillRect(
+                gameState.rocket.x,
+                gameState.rocket.y,
+                gameState.rocket.width,
+                gameState.rocket.height)
+        })
     })
