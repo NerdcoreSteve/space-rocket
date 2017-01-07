@@ -8,12 +8,12 @@ context.canvas.height = window.innerWidth * .6
 
 //Todo
 //     rename series to let's make a game
-//     draw rocket image
-//     draw rocket fire images
+//     Fix bug: Why doesn't rocket appear until I press a button?
+//     replace rocket rect with rocket image
+//     add fire (need to add time)
 //     draw star field image
 //     draw asteroid image
 //     draw collision image
-//     replace rocket rect with rocket image
 //     make rocket appear vertically centered at first, and not exactly at the side
 //     make rocket move faster (hard-code speed in a const?)
 //     add rocket fire animation
@@ -57,6 +57,11 @@ const
             default:
                 return gameState
         }
+    },
+    image = (url) => {
+        var imageObject = new Image()
+        imageObject.src = url
+        return imageObject
     }
 
 Rx.Observable.fromEvent(document, 'keydown')
@@ -67,10 +72,9 @@ Rx.Observable.fromEvent(document, 'keydown')
     .subscribe(gameState => {
         window.requestAnimationFrame(() => {
             context.clearRect(0, 0, context.canvas.width, context.canvas.height)
-            context.fillRect(
+            context.drawImage(
+                image('/images/rocket.png'),
                 gameState.rocket.x,
-                gameState.rocket.y,
-                gameState.rocket.width,
-                gameState.rocket.height)
+                gameState.rocket.y)
         })
     })
