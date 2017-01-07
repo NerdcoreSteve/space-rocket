@@ -9,6 +9,8 @@ context.canvas.height = window.innerWidth * .6
 //Todo
 //     rename series to let's make a game
 //     Fix bug: Why doesn't rocket appear until I press a button?
+//     Why is there a delay when I press down?
+//     Need to animate rather than just jump from one spot to the next
 //     replace rocket rect with rocket image
 //     add fire (need to add time)
 //     draw star field image
@@ -33,7 +35,8 @@ const
             x: 0,
             y: 0,
             width: context.canvas.width / 10,
-            height: context.canvas.height / 10
+            height: context.canvas.height / 10,
+            speed: 90
         }
     },
     game = (gameState, input) => {
@@ -43,7 +46,7 @@ const
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
-                        y: gameState.rocket.y - 1
+                        y: gameState.rocket.y - gameState.rocket.speed
                     }
                 }
             case 'ArrowDown':
@@ -51,7 +54,7 @@ const
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
-                        y: gameState.rocket.y + 1
+                        y: gameState.rocket.y + gameState.rocket.speed
                     }
                 }
             default:
