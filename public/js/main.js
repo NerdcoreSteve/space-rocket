@@ -12,11 +12,9 @@ context.canvas.height = window.innerWidth * .6;
 
 //Todo
 //     rename series to let's make a game
-//     Fix bug: Why doesn't rocket appear until I press a button?
-//     Why is there a delay when I press down?
 //     Need to animate rather than just jump from one spot to the next
-//     replace rocket rect with rocket image
-//     add fire (need to add time)
+//     Why is there a delay when I press down?
+//     add fire
 //     draw star field image
 //     draw asteroid image
 //     draw collision image
@@ -39,18 +37,19 @@ var gameState = {
         y: 0,
         width: context.canvas.width / 10,
         height: context.canvas.height / 10,
-        speed: 90
+        speed: 90,
+        image: '/images/rocket.png'
     }
 },
     game = function game(gameState, input) {
     switch (input) {
-        case 'ArrowUp':
+        case 'ArrowUpkeydown':
             return _extends({}, gameState, {
                 rocket: _extends({}, gameState.rocket, {
                     y: gameState.rocket.y - gameState.rocket.speed
                 })
             });
-        case 'ArrowDown':
+        case 'ArrowDownkeydown':
             return _extends({}, gameState, {
                 rocket: _extends({}, gameState.rocket, {
                     y: gameState.rocket.y + gameState.rocket.speed
@@ -66,10 +65,17 @@ var gameState = {
     return imageObject;
 };
 
-Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.pipe(R.match(/^ArrowUp|ArrowDown$/), R.length)).startWith('').scan(game, gameState).subscribe(function (gameState) {
+//16.67ms gives me 60 frames per second
+var clock = Rx.Observable.interval(16.67).map(function () {
+    return 'tick';
+});
+
+Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
+    return e.key + e.type;
+}).filter(R.pipe(R.match(/^(ArrowUp|ArrowDown).*$/), R.length)).merge(clock).startWith('').scan(game, gameState).subscribe(function (gameState) {
     window.requestAnimationFrame(function () {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-        context.drawImage(image('/images/rocket.png'), gameState.rocket.x, gameState.rocket.y);
+        context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y);
     });
 });
 
