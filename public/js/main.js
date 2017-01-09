@@ -11,9 +11,9 @@ context.canvas.width = window.innerWidth * .95;
 context.canvas.height = window.innerWidth * .6;
 
 //Todo
+//     explain what's been done since the last video
 //     rename series to let's make a game
-//     Need to animate rather than just jump from one spot to the next
-//     Why is there a delay when I press down?
+//     Can't do any more recordings until you've uploaded the ones you've made
 //     add fire
 //     draw star field image
 //     draw asteroid image
@@ -33,11 +33,12 @@ context.canvas.height = window.innerWidth * .6;
 
 var gameState = {
     rocket: {
-        x: 0,
+        x: 30,
         y: 0,
         width: context.canvas.width / 10,
         height: context.canvas.height / 10,
-        speed: 90,
+        direction: 0,
+        speed: 5,
         image: '/images/rocket.png'
     }
 },
@@ -46,13 +47,25 @@ var gameState = {
         case 'ArrowUpkeydown':
             return _extends({}, gameState, {
                 rocket: _extends({}, gameState.rocket, {
-                    y: gameState.rocket.y - gameState.rocket.speed
+                    direction: -1
                 })
             });
         case 'ArrowDownkeydown':
             return _extends({}, gameState, {
                 rocket: _extends({}, gameState.rocket, {
-                    y: gameState.rocket.y + gameState.rocket.speed
+                    direction: 1
+                })
+            });
+        case 'keyup':
+            return _extends({}, gameState, {
+                rocket: _extends({}, gameState.rocket, {
+                    direction: 0
+                })
+            });
+        case 'tick':
+            return _extends({}, gameState, {
+                rocket: _extends({}, gameState.rocket, {
+                    y: gameState.rocket.y + gameState.rocket.speed * gameState.rocket.direction
                 })
             });
         default:
@@ -71,8 +84,8 @@ var clock = Rx.Observable.interval(16.67).map(function () {
 });
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
-    return e.key + e.type;
-}).filter(R.pipe(R.match(/^(ArrowUp|ArrowDown).*$/), R.length)).merge(clock).startWith('').scan(game, gameState).subscribe(function (gameState) {
+    return e.type === 'keyup' ? e.type : e.key + e.type;
+}).filter(R.pipe(R.match(/^(keyup|ArrowUp|ArrowDown).*$/), R.length)).merge(clock).startWith('').scan(game, gameState).subscribe(function (gameState) {
     window.requestAnimationFrame(function () {
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
         context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y);
