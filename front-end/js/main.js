@@ -7,6 +7,10 @@ context.canvas.width = window.innerWidth * .95
 context.canvas.height = window.innerWidth * .6
 
 //Todo
+//     only one downarrowdown instead of many, same with uparrowdown,
+//         other signals are uparrowup and downarrowup.
+//     use downarrowdown and uparrowdown flags in game state
+//     remember conversation with my partner
 //     explain what's been done since the last video
 //     rename series to let's make a game
 //     Can't do any more recordings until you've uploaded the ones you've made
@@ -34,7 +38,9 @@ const
             y: 0,
             width: context.canvas.width / 10,
             height: context.canvas.height / 10,
+            keyUpDown: false,
             direction: 0,
+            keyDownDown: false,
             speed: 5,
             image: '/images/rocket.png'
         }
@@ -46,6 +52,7 @@ const
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
+                        keyUpDown: true,
                         direction: -1
                     }
                 }
@@ -54,15 +61,26 @@ const
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
+                        keyDownDown: true,
                         direction: 1
                     }
                 }
-            case 'keyup':
+            case 'ArrowUpkeyup':
                 return {
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
-                        direction: 0
+                        keyUpDown: false,
+                        direction: gameState.rocket.keyDownDown ? 1 : 0
+                    }
+                }
+            case 'ArrowDownkeyup':
+                return {
+                    ...gameState,
+                    rocket: {
+                        ...gameState.rocket,
+                        keyDownDown: false,
+                        direction: gameState.rocket.keyUpDown ? -1 : 0
                     }
                 }
             case 'tick':
@@ -81,16 +99,16 @@ const
         var imageObject = new Image()
         imageObject.src = url
         return imageObject
-    }
-
-//16.67ms gives me 60 frames per second
-const clock = Rx.Observable.interval(16.67)
-    .map(() => 'tick')
+    },
+    clock = Rx.Observable.interval(16.67).map(() => 'tick'), // 60 fps
+    boolMatch = regex => R.pipe(R.match(regex), R.length)
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
-    .map(e => e.type === 'keyup' ? e.type : e.key + e.type)
-    .filter(R.pipe(R.match(/^(keyup|ArrowUp|ArrowDown).*$/), R.length))
+    .map(e => e.key + e.type)
+    .filter(boolMatch(/^(ArrowUp|ArrowDown).*$/))
+    .scan((acc, el) => acc.match(el) ? 'remove' + el : el)
+    .filter(R.pipe(boolMatch(/^(remove).*$/), R.not))
     .merge(clock)
     .startWith('')
     .scan(game, gameState)
