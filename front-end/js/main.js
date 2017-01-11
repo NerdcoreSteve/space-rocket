@@ -7,15 +7,12 @@ context.canvas.width = window.innerWidth * .95
 context.canvas.height = window.innerWidth * .6
 
 //Todo
-//     only one downarrowdown instead of many, same with uparrowdown,
-//         other signals are uparrowup and downarrowup.
-//     use downarrowdown and uparrowdown flags in game state
-//     remember conversation with my partner
+//     draw star field image
+//     make star field image move
+//     add fire
 //     explain what's been done since the last video
 //     rename series to let's make a game
 //     Can't do any more recordings until you've uploaded the ones you've made
-//     add fire
-//     draw star field image
 //     draw asteroid image
 //     draw collision image
 //     make rocket appear vertically centered at first, and not exactly at the side
