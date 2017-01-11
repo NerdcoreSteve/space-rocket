@@ -92,7 +92,7 @@ const
                 return gameState
         }
     },
-    image = (url) => {
+    image = url => {
         var imageObject = new Image()
         imageObject.src = url
         return imageObject
