@@ -5,41 +5,40 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var R = require('ramda'),
     Rx = require('rx'),
-    context = document.getElementById("gameScreen").getContext("2d");
+    context = document.getElementById("gameScreen").getContext("2d"),
+    screenShrinkFactor = .6;
 
-context.canvas.width = window.innerWidth * .95;
-context.canvas.height = window.innerWidth * .6;
+context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
+context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 //Todo
-//     make star field image move
-//     add fire
-//     explain what's been done since the last video
-//     rename series to let's make a game
 //     Can't do any more recordings until you've uploaded the ones you've made
+//     explain what's been done since the last video
+//     prevent ship from going out of screen
+//     make star field image move
+//     add fire animation
 //     draw asteroid image
-//     draw collision image
-//     make rocket appear vertically centered at first, and not exactly at the side
-//     make rocket move faster (hard-code speed in a const?)
-//     add rocket fire animation
-//     make star field move
 //     add single asteroid move towards you from right side
-//     make asteroid appear randomly
-//     make array of asteroids
+//     draw collision image
 //     collision detection
 //     show collision image and then reset game
+//     make asteroid appear randomly
+//     make array of asteroids that appear randomly and at random speeds and sizes
+//     make a pause screen that shows game instructions and player stats
 //     What else before I call it done?
 //     put up on heroku and porfolio
 //     make sequel: space rocket 2
 
-var gameState = {
+var rocketLength = context.canvas.width / 10,
+    gameState = {
     starField: {
         image: '/images/starfield.png'
     },
     rocket: {
-        x: 30,
-        y: 0,
-        width: context.canvas.width / 10,
-        height: context.canvas.height / 10,
+        x: context.canvas.width / 25,
+        y: context.canvas.height / 3,
+        width: rocketLength,
+        height: rocketLength * (48 / 122), // divide by image dimensions
         keyUpDown: false,
         direction: 0,
         keyDownDown: false,
@@ -98,18 +97,17 @@ var gameState = {
     // 60 fps
 boolMatch = function boolMatch(regex) {
     return R.pipe(R.match(regex), R.length);
+},
+    render = function render(gameState) {
+    window.requestAnimationFrame(function () {
+        context.drawImage(image(gameState.starField.image), 0, 0, context.canvas.width, context.canvas.height);
+        context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
+    });
 };
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
     return e.key + e.type;
-}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).scan(function (acc, el) {
-    return acc.match(el) ? 'remove' + el : el;
-}).filter(R.pipe(boolMatch(/^(remove).*$/), R.not)).merge(clock).startWith('').scan(game, gameState).subscribe(function (gameState) {
-    window.requestAnimationFrame(function () {
-        context.drawImage(image(gameState.starField.image), 0, 0, context.canvas.width, context.canvas.height);
-        context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y);
-    });
-});
+}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(clock).scan(game, gameState).subscribe(render);
 
 },{"ramda":2,"rx":311}],2:[function(require,module,exports){
 module.exports = {
