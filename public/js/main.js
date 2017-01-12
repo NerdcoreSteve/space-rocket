@@ -42,7 +42,7 @@ var rocketLength = context.canvas.width / 10,
         keyUpDown: false,
         direction: 0,
         keyDownDown: false,
-        speed: 5,
+        speed: context.canvas.height / 90,
         image: '/images/rocket.png'
     }
 },
