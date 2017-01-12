@@ -11,15 +11,11 @@ context.canvas.width = window.innerWidth * .95;
 context.canvas.height = window.innerWidth * .6;
 
 //Todo
-//     only one downarrowdown instead of many, same with uparrowdown,
-//         other signals are uparrowup and downarrowup.
-//     use downarrowdown and uparrowdown flags in game state
-//     remember conversation with my partner
+//     make star field image move
+//     add fire
 //     explain what's been done since the last video
 //     rename series to let's make a game
 //     Can't do any more recordings until you've uploaded the ones you've made
-//     add fire
-//     draw star field image
 //     draw asteroid image
 //     draw collision image
 //     make rocket appear vertically centered at first, and not exactly at the side
@@ -36,6 +32,9 @@ context.canvas.height = window.innerWidth * .6;
 //     make sequel: space rocket 2
 
 var gameState = {
+    starField: {
+        image: '/images/starfield.png'
+    },
     rocket: {
         x: 30,
         y: 0,
@@ -107,7 +106,7 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return acc.match(el) ? 'remove' + el : el;
 }).filter(R.pipe(boolMatch(/^(remove).*$/), R.not)).merge(clock).startWith('').scan(game, gameState).subscribe(function (gameState) {
     window.requestAnimationFrame(function () {
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        context.drawImage(image(gameState.starField.image), 0, 0, context.canvas.width, context.canvas.height);
         context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y);
     });
 });

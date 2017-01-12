@@ -7,7 +7,6 @@ context.canvas.width = window.innerWidth * .95
 context.canvas.height = window.innerWidth * .6
 
 //Todo
-//     draw star field image
 //     make star field image move
 //     add fire
 //     explain what's been done since the last video
@@ -30,6 +29,9 @@ context.canvas.height = window.innerWidth * .6
 
 const
     gameState = {
+        starField: {
+            image: '/images/starfield.png'
+        },
         rocket: {
             x: 30,
             y: 0,
@@ -111,7 +113,12 @@ Rx.Observable.fromEvent(document, 'keydown')
     .scan(game, gameState)
     .subscribe(gameState => {
         window.requestAnimationFrame(() => {
-            context.clearRect(0, 0, context.canvas.width, context.canvas.height)
+            context.drawImage(
+                image(gameState.starField.image),
+                0,
+                0,
+                context.canvas.width,
+                context.canvas.height)
             context.drawImage(
                 image(gameState.rocket.image),
                 gameState.rocket.x,
