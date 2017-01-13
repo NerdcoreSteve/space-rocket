@@ -10,7 +10,6 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 //Todo
 //     Can't do any more recordings until you've uploaded the ones you've made
 //     explain what's been done since the last video
-//     prevent ship from going out of screen
 //     make star field image move
 //     add fire animation
 //     draw asteroid image
@@ -27,6 +26,14 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 
 const
     rocketLength = context.canvas.width / 10,
+    rocketDy = rocket => {
+        const rocketVector = rocket.speed * rocket.direction
+        return rocket.y >=0
+            ? rocket.y + rocket.height <= context.canvas.height
+                ? rocketVector
+                : rocket.direction === 1 ? 0 : rocket.direction
+            : rocket.direction === -1 ? 0 : rocket.direction
+    },
     gameState = {
         starField: {
             image: '/images/starfield.png'
@@ -86,7 +93,7 @@ const
                     ...gameState,
                     rocket: {
                         ...gameState.rocket,
-                        y: gameState.rocket.y + gameState.rocket.speed * gameState.rocket.direction
+                        y: gameState.rocket.y + rocketDy(gameState.rocket)
                     }
                 }
             default:
