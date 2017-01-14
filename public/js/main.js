@@ -8,13 +8,21 @@ var R = require('ramda'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6;
 
+/*
+Todo later:
+make a function that takes gamestate, canvas height and width,
+and modifies game state dimensions appropriately
+use it on initial state,
+in subscribe: use it to modify state and canvas when window resizes
+No functions will be able to rever to context.canvas, instead gamestate will
+keep a record of canvas width and height
+*/
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 //Todo
 //     Can't do any more recordings until you've uploaded the ones you've made
 //     explain what's been done since the last video
-//     make star field image move
 //     add fire animation
 //     draw asteroid image
 //     add single asteroid move towards you from right side
@@ -33,9 +41,15 @@ var rocketLength = context.canvas.width / 10,
     var rocketVector = rocket.speed * rocket.direction;
     return rocket.y >= 0 ? rocket.y + rocket.height <= context.canvas.height ? rocketVector : rocket.direction === 1 ? 0 : rocket.direction : rocket.direction === -1 ? 0 : rocket.direction;
 },
+    starFieldDy = function starFieldDy(starField) {
+    return (starField.x1 - starField.speed) % context.canvas.width;
+},
     gameState = {
     starField: {
-        image: '/images/starfield.png'
+        image: '/images/starfield.png',
+        x1: 0,
+        x2: context.canvas.width,
+        speed: context.canvas.width / 470
     },
     rocket: {
         x: context.canvas.width / 25,
@@ -81,6 +95,10 @@ var rocketLength = context.canvas.width / 10,
             });
         case 'tick':
             return _extends({}, gameState, {
+                starField: _extends({}, gameState.starField, {
+                    x1: starFieldDy(gameState.starField),
+                    x2: starFieldDy(gameState.starField) + context.canvas.width
+                }),
                 rocket: _extends({}, gameState.rocket, {
                     y: gameState.rocket.y + rocketDy(gameState.rocket)
                 })
@@ -94,7 +112,7 @@ var rocketLength = context.canvas.width / 10,
     imageObject.src = url;
     return imageObject;
 },
-    clock = Rx.Observable.interval(16.67).map(function () {
+    clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
 }),
     // 60 fps
@@ -103,7 +121,10 @@ boolMatch = function boolMatch(regex) {
 },
     render = function render(gameState) {
     window.requestAnimationFrame(function () {
-        context.drawImage(image(gameState.starField.image), 0, 0, context.canvas.width, context.canvas.height);
+        context.drawImage(image(gameState.starField.image), gameState.starField.x1, 0, context.canvas.width, context.canvas.height);
+
+        context.drawImage(image(gameState.starField.image), gameState.starField.x2, 0, context.canvas.width, context.canvas.height);
+
         context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
     });
 };

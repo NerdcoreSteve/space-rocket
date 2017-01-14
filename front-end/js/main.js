@@ -4,13 +4,21 @@ const
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
+/*
+Todo later:
+make a function that takes gamestate, canvas height and width,
+and modifies game state dimensions appropriately
+use it on initial state,
+in subscribe: use it to modify state and canvas when window resizes
+No functions will be able to rever to context.canvas, instead gamestate will
+keep a record of canvas width and height
+*/
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 //Todo
 //     Can't do any more recordings until you've uploaded the ones you've made
 //     explain what's been done since the last video
-//     make star field image move
 //     add fire animation
 //     draw asteroid image
 //     add single asteroid move towards you from right side
@@ -34,9 +42,13 @@ const
                 : rocket.direction === 1 ? 0 : rocket.direction
             : rocket.direction === -1 ? 0 : rocket.direction
     },
+    starFieldDy = starField => (starField.x1 - starField.speed) % context.canvas.width,
     gameState = {
         starField: {
-            image: '/images/starfield.png'
+            image: '/images/starfield.png',
+            x1: 0,
+            x2: context.canvas.width,
+            speed: context.canvas.width / 470
         },
         rocket: {
             x: context.canvas.width / 25,
@@ -91,6 +103,11 @@ const
             case 'tick':
                 return {
                     ...gameState,
+                    starField: {
+                        ...gameState.starField,
+                        x1: starFieldDy(gameState.starField),
+                        x2: starFieldDy(gameState.starField) + context.canvas.width,
+                    },
                     rocket: {
                         ...gameState.rocket,
                         y: gameState.rocket.y + rocketDy(gameState.rocket)
@@ -105,16 +122,24 @@ const
         imageObject.src = url
         return imageObject
     },
-    clock = Rx.Observable.interval(16.67).map(() => 'tick'), // 60 fps
+    clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     boolMatch = regex => R.pipe(R.match(regex), R.length),
     render = gameState => {
         window.requestAnimationFrame(() => {
             context.drawImage(
                 image(gameState.starField.image),
-                0,
+                gameState.starField.x1,
                 0,
                 context.canvas.width,
                 context.canvas.height)
+
+            context.drawImage(
+                image(gameState.starField.image),
+                gameState.starField.x2,
+                0,
+                context.canvas.width,
+                context.canvas.height)
+
             context.drawImage(
                 image(gameState.rocket.image),
                 gameState.rocket.x,
