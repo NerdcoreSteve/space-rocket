@@ -20,13 +20,14 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 //     Can't do any more recordings until you've uploaded the ones you've made
 //     explain what's been done since the last video
 //     add fire animation
+//         fire added but no animation yet
 //     draw asteroid image
 //     add single asteroid move towards you from right side
 //     draw collision image
 //     collision detection
 //     show collision image and then reset game
 //     make asteroid appear randomly
-//     make array of asteroids that appear randomly and at random speeds and sizes
+//     make stream of asteroids that appear randomly
 //     make a pause screen that shows game instructions and player stats
 //     What else before I call it done?
 //     put up on heroku and porfolio
@@ -34,6 +35,7 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 
 const
     rocketLength = context.canvas.width / 10,
+    rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
     rocketDy = rocket => {
         const rocketVector = rocket.speed * rocket.direction
         return rocket.y >=0
@@ -54,12 +56,20 @@ const
             x: context.canvas.width / 25,
             y: context.canvas.height / 3,
             width: rocketLength,
-            height: rocketLength * (48 / 122), // divide by image dimensions
+            height: rocketWidth,
             keyUpDown: false,
             direction: 0,
             keyDownDown: false,
             speed: context.canvas.height / 90,
-            image: '/images/rocket.png'
+            image: '/images/rocket.png',
+            fire: {
+                x: context.canvas.width / 90,
+                y: context.canvas.height / 3,
+                width: rocketWidth,
+                height: rocketWidth * .8,
+                image: '/images/rocketFire1.png',
+                images: ['/images/rocketFire1.png', '/images/rocketFire2.png']
+            },
         }
     },
     game = (gameState, input) => {
@@ -110,7 +120,11 @@ const
                     },
                     rocket: {
                         ...gameState.rocket,
-                        y: gameState.rocket.y + rocketDy(gameState.rocket)
+                        y: gameState.rocket.y + rocketDy(gameState.rocket),
+                        fire: {
+                            ...gameState.rocket.fire,
+                            y: gameState.rocket.fire.y + rocketDy(gameState.rocket)
+                        }
                     }
                 }
             default:
@@ -139,6 +153,13 @@ const
                 0,
                 context.canvas.width,
                 context.canvas.height)
+
+            context.drawImage(
+                image(gameState.rocket.fire.image),
+                gameState.rocket.fire.x,
+                gameState.rocket.fire.y,
+                gameState.rocket.fire.width,
+                gameState.rocket.fire.height)
 
             context.drawImage(
                 image(gameState.rocket.image),
