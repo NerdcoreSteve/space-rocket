@@ -17,7 +17,6 @@ context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 //Todo
-//     Can't do any more recordings until you've uploaded the ones you've made
 //     explain what's been done since the last video
 //     add fire animation
 //         fire added but no animation yet
@@ -63,12 +62,15 @@ const
             speed: context.canvas.height / 90,
             image: '/images/rocket.png',
             fire: {
-                x: context.canvas.width / 90,
+                x: context.canvas.width / 40,
                 y: context.canvas.height / 3,
-                width: rocketWidth,
+                width: rocketWidth * .6,
                 height: rocketWidth * .8,
                 image: '/images/rocketFire1.png',
-                images: ['/images/rocketFire1.png', '/images/rocketFire2.png']
+                imageIndex: 0,
+                images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
+                frameHolds: 5,
+                holdCounter: 5,
             },
         }
     },
@@ -123,7 +125,18 @@ const
                         y: gameState.rocket.y + rocketDy(gameState.rocket),
                         fire: {
                             ...gameState.rocket.fire,
-                            y: gameState.rocket.fire.y + rocketDy(gameState.rocket)
+                            y: gameState.rocket.fire.y + rocketDy(gameState.rocket),
+                            holdCounter: (gameState.rocket.fire.holdCounter + 1)
+                                % gameState.rocket.fire.frameHolds,
+                            image: gameState.rocket.fire.holdCounter === 0
+                                ? gameState.rocket.fire.images[
+                                    (gameState.rocket.fire.imageIndex + 1)
+                                        % gameState.rocket.fire.images.length]
+                                : gameState.rocket.fire.images[gameState.rocket.fire.imageIndex],
+                            imageIndex: gameState.rocket.fire.holdCounter === 0
+                                ? (gameState.rocket.fire.imageIndex + 1)
+                                    % gameState.rocket.fire.images.length
+                                : gameState.rocket.fire.imageIndex
                         }
                     }
                 }
