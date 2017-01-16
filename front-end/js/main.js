@@ -44,6 +44,8 @@ const
             : rocket.direction === -1 ? 0 : rocket.direction
     },
     starFieldDy = starField => (starField.x1 - starField.speed) % context.canvas.width,
+    nextImageIndex = animateable =>
+        (animateable.imageIndex + 1) % animateable.images.length,
     gameState = {
         starField: {
             image: '/images/starfield.png',
@@ -129,13 +131,10 @@ const
                             holdCounter: (gameState.rocket.fire.holdCounter + 1)
                                 % gameState.rocket.fire.frameHolds,
                             image: gameState.rocket.fire.holdCounter === 0
-                                ? gameState.rocket.fire.images[
-                                    (gameState.rocket.fire.imageIndex + 1)
-                                        % gameState.rocket.fire.images.length]
+                                ? gameState.rocket.fire.images[nextImageIndex(gameState.rocket.fire)]
                                 : gameState.rocket.fire.images[gameState.rocket.fire.imageIndex],
                             imageIndex: gameState.rocket.fire.holdCounter === 0
-                                ? (gameState.rocket.fire.imageIndex + 1)
-                                    % gameState.rocket.fire.images.length
+                                ? nextImageIndex(gameState.rocket.fire)
                                 : gameState.rocket.fire.imageIndex
                         }
                     }
