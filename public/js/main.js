@@ -22,8 +22,6 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 //Todo
 //     explain what's been done since the last video
-//     add fire animation
-//         fire added but no animation yet
 //     draw asteroid image
 //     add single asteroid move towards you from right side
 //     draw collision image
@@ -31,6 +29,8 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 //     show collision image and then reset game
 //     make asteroid appear randomly
 //     make stream of asteroids that appear randomly
+//     make a set of asteroid images so they don't all look the same
+//     make the asteroids have random sizes within a range
 //     make a pause screen that shows game instructions and player stats
 //     What else before I call it done?
 //     put up on heroku and porfolio
