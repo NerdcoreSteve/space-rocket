@@ -27,19 +27,36 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 //     draw collision image
 //     collision detection
 //     show collision image and then reset game
-//     make asteroid appear randomly
-//     make stream of asteroids that appear randomly
-//     make a set of asteroid images so they don't all look the same
-//     make the asteroids have random sizes within a range
 //     make a pause screen that shows game instructions and player stats
+//     refactor to use more redux-like pattern of streamed values
+//         each value in the stream will be an object with a type and it will have other
+//             attributes
+//     make asteroid appear randomly
+//         make a callback stream that puts a set of random numbers (and what the are for)
+//             into the input stream,
+//             call that callback from subscribe callback
+//             this is like the elm effects model
+//     make stream of asteroids that appear randomly
+//         garbage collect them when they go off screen
+//         is it ok for them to overlap?
+//     make the asteroids have random sizes within a range
+//     asteroids move at different speeds
+//     tweak with frequency of new asteroid appearance
+//         should not be fixed. Should also be random
+//     rotate asteroids at different rates
+//         http://stackoverflow.com/questions/17411991/html5-canvas-rotate-image
+//         make rotate image function that takes an image and context
+//     make a set of asteroid images so they don't all look the same
 //     What else before I call it done?
 //     put up on heroku and porfolio
-//     make sequel: space rocket 2
+//     keep improving, iterating, etc until people play it.
 
 var rocketLength = context.canvas.width / 10,
     rocketWidth = rocketLength * (48 / 122),
     // divide by image dimensions
-rocketDy = function rocketDy(rocket) {
+asteroidWidth = context.canvas.width / 20,
+    asteroidHeight = asteroidWidth * (87 / 95),
+    rocketDy = function rocketDy(rocket) {
     var rocketVector = rocket.speed * rocket.direction;
     return rocket.y >= 0 ? rocket.y + rocket.height <= context.canvas.height ? rocketVector : rocket.direction === 1 ? 0 : rocket.direction : rocket.direction === -1 ? 0 : rocket.direction;
 },
@@ -55,6 +72,13 @@ rocketDy = function rocketDy(rocket) {
         x1: 0,
         x2: context.canvas.width,
         speed: context.canvas.width / 470
+    },
+    asteroid: {
+        x: 0,
+        y: 0,
+        width: asteroidWidth,
+        height: asteroidHeight,
+        image: '/images/asteroid.png'
     },
     rocket: {
         x: context.canvas.width / 25,
@@ -150,6 +174,8 @@ boolMatch = function boolMatch(regex) {
         context.drawImage(image(gameState.rocket.fire.image), gameState.rocket.fire.x, gameState.rocket.fire.y, gameState.rocket.fire.width, gameState.rocket.fire.height);
 
         context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
+
+        context.drawImage(image(gameState.asteroid.image), gameState.asteroid.x, gameState.asteroid.y, gameState.asteroid.width, gameState.asteroid.height);
     });
 };
 
