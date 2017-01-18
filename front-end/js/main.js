@@ -18,8 +18,6 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 
 //Todo
 //     explain what's been done since the last video
-//     draw asteroid image
-//     add single asteroid move towards you from right side
 //     draw collision image
 //     collision detection
 //     show collision image and then reset game
@@ -71,10 +69,11 @@ const
             speed: context.canvas.width / 470
         },
         asteroid: {
-            x: 0,
-            y: 0,
+            x: context.canvas.height * 2,
+            y: context.canvas.height / 3,
             width: asteroidWidth,
             height: asteroidHeight,
+            speed: context.canvas.height / 90,
             image: '/images/asteroid.png'
         },
         rocket: {
@@ -145,6 +144,10 @@ const
                         ...gameState.starField,
                         x1: starFieldDy(gameState.starField),
                         x2: starFieldDy(gameState.starField) + context.canvas.width,
+                    },
+                    asteroid: {
+                        ...gameState.asteroid,
+                        x: gameState.asteroid.x - gameState.asteroid.speed
                     },
                     rocket: {
                         ...gameState.rocket,
