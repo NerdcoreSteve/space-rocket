@@ -22,10 +22,7 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 //Todo
 //     explain what's been done since the last video
-//     draw collision image
-//     collision detection
-//     show collision image and then reset game
-//     make a pause screen that shows game instructions and player stats
+//     when collision happens show collision image and then reset game
 //     refactor to use more redux-like pattern of streamed values
 //         each value in the stream will be an object with a type and it will have other
 //             attributes
@@ -37,6 +34,11 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 //     make stream of asteroids that appear randomly
 //         garbage collect them when they go off screen
 //         is it ok for them to overlap?
+//     make a pause screen that shows game instructions and player stats
+//     Do I have a full game now?
+//         as soon as I do, I need to release it on heroku
+//             put up on digital ocean instead with a doman, make a trailer, publicize, etc?
+//     make a "let's make" video about what I've done?
 //     make the asteroids have random sizes within a range
 //     asteroids move at different speeds
 //     tweak with frequency of new asteroid appearance
@@ -64,7 +66,7 @@ asteroidWidth = context.canvas.width / 20,
     nextImageIndex = function nextImageIndex(animateable) {
     return (animateable.imageIndex + 1) % animateable.images.length;
 },
-    gameState = {
+    initialGameState = {
     starField: {
         image: '/images/starfield.png',
         x1: 0,
@@ -103,6 +105,15 @@ asteroidWidth = context.canvas.width / 20,
     }
 },
     game = function game(gameState, input) {
+    return collisionCheck(flying(gameState, input));
+},
+    collided = function collided(rect1, rect2) {
+    return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
+},
+    collisionCheck = function collisionCheck(gameState) {
+    return collided(gameState.rocket, gameState.asteroid) ? initialGameState : gameState;
+},
+    flying = function flying(gameState, input) {
     switch (input) {
         case 'ArrowUpkeydown':
             return _extends({}, gameState, {
@@ -183,7 +194,7 @@ boolMatch = function boolMatch(regex) {
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
     return e.key + e.type;
-}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(clock).scan(game, gameState).subscribe(render);
+}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(clock).scan(game, initialGameState).subscribe(render);
 
 },{"ramda":2,"rx":311}],2:[function(require,module,exports){
 module.exports = {
