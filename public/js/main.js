@@ -67,6 +67,11 @@ asteroidWidth = context.canvas.width / 20,
     return (animateable.imageIndex + 1) % animateable.images.length;
 },
     initialGameState = {
+    collision: {
+        collided: false,
+        frameHolds: 10,
+        holdCounter: 10
+    },
     starField: {
         image: '/images/starfield.png',
         x1: 0,
@@ -105,13 +110,45 @@ asteroidWidth = context.canvas.width / 20,
     }
 },
     game = function game(gameState, input) {
-    return collisionCheck(flying(gameState, input));
+    return collision(flying(gameState, input));
 },
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
-    collisionCheck = function collisionCheck(gameState) {
-    return collided(gameState.rocket, gameState.asteroid) ? initialGameState : gameState;
+    collision = function collision(gameState) {
+    return (
+        /*
+        R.cond(
+            [
+                gameState => gameState.collision.collided && gameState.collision.holdCounter > 0,
+                gameState => {
+                    //TODO unexpected token?
+                    ...gameState,
+                    collision {
+                        ...gameState.collision,
+                        holdCounter = gameState.collision.holdCounter - 1
+                    }
+                }
+            ],
+            [
+                gameState => gameState.collision.collided && gameState.collision.holdCounter === 0,
+                initialGameState
+            ],
+            [
+                gameState => collided(gameState.rocket, gameState.asteroid),
+                gameState => {
+                    ...gameState,
+                    collision {
+                        ...gameState.collision,
+                        collided: true,
+                        holdCounter: gameState.collision.frameHolds
+                    }
+                }
+            ],
+            [R.T, gameState])
+        */
+        collided(gameState.rocket, gameState.asteroid) ? initialGameState : gameState
+    );
 },
     flying = function flying(gameState, input) {
     switch (input) {
