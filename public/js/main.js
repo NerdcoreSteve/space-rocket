@@ -23,6 +23,9 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 //Todo
 //     explain what's been done since the last video
 //     when collision happens show collision image and then reset game
+//     Don't just reset game, show a screen saying "You crashed!"
+//     Suggested that I add a "relaunch in 3, 2, 1..." screen
+//     maybe put a mode flag in gameData? flying, crashed, etc..
 //     refactor to use more redux-like pattern of streamed values
 //         each value in the stream will be an object with a type and it will have other
 //             attributes
