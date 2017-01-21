@@ -16,6 +16,7 @@ No functions will be able to rever to context.canvas, instead gamestate will
 keep a record of canvas width and height
 */
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
+//http://stackoverflow.com/questions/5633264/javascript-get-image-dimensions
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 //Todo
