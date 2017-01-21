@@ -1,5 +1,10 @@
 Todo
      restart mode says "You crashed!, press up or down arrow to start again!"
+        acutally, just draw over the game, no need for a new screen
+            still want to have switch case or ifelse for render
+                return undefined for every case
+            keep the collision graphic
+            Just draw "You crashed!", also draw "relaunch in ", "3...", "2...", "1...", "Launch!"
          add a "relaunch in 3, 2, 1..." screen
          instead of filtering out all keys should I just map most keys to "any key" value?
              that way I can do "any key"
