@@ -1,6 +1,7 @@
 const
     R = require('ramda'),
     Rx = require('rx'),
+    flyingMode = require('./flyingMode.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -55,18 +56,11 @@ const
     rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
     asteroidWidth = context.canvas.width / 20,
     asteroidHeight = asteroidWidth * (87/95),
-    rocketDy = rocket => {
-        const rocketVector = rocket.speed * rocket.direction
-        return rocket.y >=0
-            ? rocket.y + rocket.height <= context.canvas.height
-                ? rocketVector
-                : rocket.direction === 1 ? 0 : rocket.direction
-            : rocket.direction === -1 ? 0 : rocket.direction
-    },
-    starFieldDy = starField => (starField.x1 - starField.speed) % context.canvas.width,
-    nextImageIndex = animateable =>
-        (animateable.imageIndex + 1) % animateable.images.length,
     initialGameState = {
+        screen: {
+            width: context.canvas.width,
+            height: context.canvas.height
+        },
         mode: 'flying',
         collision: {
             collided: false,
@@ -113,93 +107,9 @@ const
     game = (gameState, input) => {
         switch(gameState.mode) {
             case 'flying':
-                return flying(gameState, input)
+                return flyingMode(gameState, input)
             case 'crashed':
                 return gameState
-            default:
-                return gameState
-        }
-    },
-    flying = (gameState, input) => collision(flyingLogic(gameState, input)),
-    collided = (rect1, rect2) =>
-        rect1.x < rect2.x + rect2.width
-            && rect1.x + rect1.width > rect2.x
-            && rect1.y < rect2.y + rect2.height
-            && rect1.height + rect1.y > rect2.y,
-    collision = gameState =>
-        collided(gameState.rocket, gameState.asteroid)
-            ? {
-                ...gameState,
-                mode: 'crashed'
-            }
-            : gameState,
-    flyingLogic = (gameState, input) => {
-        switch(input) {
-            case 'ArrowUpkeydown':
-                return {
-                    ...gameState,
-                    rocket: {
-                        ...gameState.rocket,
-                        keyUpDown: true,
-                        direction: -1
-                    }
-                }
-            case 'ArrowDownkeydown':
-                return {
-                    ...gameState,
-                    rocket: {
-                        ...gameState.rocket,
-                        keyDownDown: true,
-                        direction: 1
-                    }
-                }
-            case 'ArrowUpkeyup':
-                return {
-                    ...gameState,
-                    rocket: {
-                        ...gameState.rocket,
-                        keyUpDown: false,
-                        direction: gameState.rocket.keyDownDown ? 1 : 0
-                    }
-                }
-            case 'ArrowDownkeyup':
-                return {
-                    ...gameState,
-                    rocket: {
-                        ...gameState.rocket,
-                        keyDownDown: false,
-                        direction: gameState.rocket.keyUpDown ? -1 : 0
-                    }
-                }
-            case 'tick':
-                return {
-                    ...gameState,
-                    starField: {
-                        ...gameState.starField,
-                        x1: starFieldDy(gameState.starField),
-                        x2: starFieldDy(gameState.starField) + context.canvas.width,
-                    },
-                    asteroid: {
-                        ...gameState.asteroid,
-                        x: gameState.asteroid.x - gameState.asteroid.speed
-                    },
-                    rocket: {
-                        ...gameState.rocket,
-                        y: gameState.rocket.y + rocketDy(gameState.rocket),
-                        fire: {
-                            ...gameState.rocket.fire,
-                            y: gameState.rocket.fire.y + rocketDy(gameState.rocket),
-                            holdCounter: (gameState.rocket.fire.holdCounter + 1)
-                                % gameState.rocket.fire.frameHolds,
-                            image: gameState.rocket.fire.holdCounter === 0
-                                ? gameState.rocket.fire.images[nextImageIndex(gameState.rocket.fire)]
-                                : gameState.rocket.fire.images[gameState.rocket.fire.imageIndex],
-                            imageIndex: gameState.rocket.fire.holdCounter === 0
-                                ? nextImageIndex(gameState.rocket.fire)
-                                : gameState.rocket.fire.imageIndex
-                        }
-                    }
-                }
             default:
                 return gameState
         }
