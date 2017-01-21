@@ -6,59 +6,15 @@ const
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
-/*
-Todo later:
-make a function that takes gamestate, canvas height and width,
-and modifies game state dimensions appropriately
-use it on initial state,
-in subscribe: use it to modify state and canvas when window resizes
-No functions will be able to rever to context.canvas, instead gamestate will
-keep a record of canvas width and height
-*/
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
-//http://stackoverflow.com/questions/5633264/javascript-get-image-dimensions
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
-
-//Todo
-//     explain what's been done since the last video
-//     when collision happens show collision image and then reset game
-//     Don't just reset game, show a screen saying "You crashed!"
-//     Suggested that I add a "relaunch in 3, 2, 1..." screen
-//     maybe put a mode flag in gameData? flying, crashed, etc..
-//     refactor to use more redux-like pattern of streamed values
-//         each value in the stream will be an object with a type and it will have other
-//             attributes
-//     make asteroid appear randomly
-//         make a callback stream that puts a set of random numbers (and what the are for)
-//             into the input stream,
-//             call that callback from subscribe callback
-//             this is like the elm effects model
-//     make stream of asteroids that appear randomly
-//         garbage collect them when they go off screen
-//         is it ok for them to overlap?
-//     make a pause screen that shows game instructions and player stats
-//     Do I have a full game now?
-//         as soon as I do, I need to release it on heroku
-//             put up on digital ocean instead with a doman, make a trailer, publicize, etc?
-//     make a "let's make" video about what I've done?
-//     make the asteroids have random sizes within a range
-//     asteroids move at different speeds
-//     tweak with frequency of new asteroid appearance
-//         should not be fixed. Should also be random
-//     rotate asteroids at different rates
-//         http://stackoverflow.com/questions/17411991/html5-canvas-rotate-image
-//         make rotate image function that takes an image and context
-//     make a set of asteroid images so they don't all look the same
-//     What else before I call it done?
-//     put up on heroku and porfolio
-//     keep improving, iterating, etc until people play it.
 
 const
     rocketLength = context.canvas.width / 10,
     rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
     asteroidWidth = context.canvas.width / 20,
     asteroidHeight = asteroidWidth * (87/95),
-    collisionWidth = context.canvas.width / 25,
+    collisionWidth = context.canvas.width / 15,
     collisionHeight = collisionWidth * (136/168),
     initialGameState = {
         screen: {
@@ -127,7 +83,6 @@ const
     },
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     boolMatch = regex => R.pipe(R.match(regex), R.length),
-    //TODO should render also be a switch based on mode?
     render = gameState => {
         window.requestAnimationFrame(() => {
             context.drawImage(

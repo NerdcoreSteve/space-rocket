@@ -27,9 +27,13 @@ const
             x: x - (rect.width / 2),
             y: y - (rect.height / 2)
         }),
+    rectsMidpoint = (rect1, rect2) => ({
+            x: (rect1.x + rect2.x)/2,
+            y: (rect1.y + rect2.y)/2
+        }),
     repositionCollision = (rocket, asteroid, collision) => {
-        const rocketMidpoint = rectMidpoint(rocket)
-        return repositionByMidpoint(rocketMidpoint.x, rocketMidpoint.y, collision)
+        const collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid))
+        return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
     },
     collision = gameState =>
         collided(gameState.rocket, gameState.asteroid)
