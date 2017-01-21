@@ -1,8 +1,28 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-"use strict";
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var crashedModeLogic = function crashedModeLogic(gameState, input) {
+    switch (input) {
+        case 'tick':
+            return _extends({}, gameState, {
+                collision: _extends({}, gameState.collision, {
+                    modeHoldCounter: gameState.collision.modeHoldCounter - 1
+                })
+            });
+        default:
+            return gameState;
+    }
+},
+    countCheck = function countCheck(gameState) {
+    return gameState.collision.modeHoldCounter === 0 ? _extends({}, gameState, {
+        mode: 'restart'
+    }) : gameState;
+};
 
 module.exports = function (gameState, input) {
-    return gameState;
+    return countCheck(crashedModeLogic(gameState, input));
 };
 
 },{}],2:[function(require,module,exports){
@@ -52,7 +72,9 @@ var R = require('ramda'),
     collision = function collision(gameState) {
     return collided(gameState.rocket, gameState.asteroid) ? _extends({}, gameState, {
         mode: 'crashed',
-        collision: repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision)
+        collision: _extends({}, repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision), {
+            modeHoldCounter: gameState.collision.modeHold
+        })
     }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
@@ -118,6 +140,8 @@ var R = require('ramda'),
     Rx = require('rx'),
     flyingMode = require('./flyingMode.js'),
     crashedMode = require('./crashedMode.js'),
+    restartMode = require('./restartMode.js'),
+    render = require('./render.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6;
 
@@ -142,7 +166,9 @@ asteroidWidth = context.canvas.width / 20,
         y: 0,
         width: collisionWidth,
         height: collisionHeight,
-        image: '/images/collision.png'
+        image: '/images/collision.png',
+        modeHold: 120,
+        modeHoldCounter: 0
     },
     starField: {
         image: '/images/starfield.png',
@@ -187,14 +213,11 @@ asteroidWidth = context.canvas.width / 20,
             return flyingMode(gameState, input);
         case 'crashed':
             return crashedMode(gameState, input);
+        case 'restart':
+            return restartMode(gameState, input);
         default:
             return gameState;
     }
-},
-    image = function image(url) {
-    var imageObject = new Image();
-    imageObject.src = url;
-    return imageObject;
 },
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
@@ -202,30 +225,13 @@ asteroidWidth = context.canvas.width / 20,
     // 60 fps
 boolMatch = function boolMatch(regex) {
     return R.pipe(R.match(regex), R.length);
-},
-    render = function render(gameState) {
-    window.requestAnimationFrame(function () {
-        context.drawImage(image(gameState.starField.image), gameState.starField.x1, 0, context.canvas.width, context.canvas.height);
-
-        context.drawImage(image(gameState.starField.image), gameState.starField.x2, 0, context.canvas.width, context.canvas.height);
-
-        context.drawImage(image(gameState.rocket.fire.image), gameState.rocket.fire.x, gameState.rocket.fire.y, gameState.rocket.fire.width, gameState.rocket.fire.height);
-
-        context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
-
-        context.drawImage(image(gameState.asteroid.image), gameState.asteroid.x, gameState.asteroid.y, gameState.asteroid.width, gameState.asteroid.height);
-
-        if (gameState.mode === 'crashed') {
-            context.drawImage(image(gameState.collision.image), gameState.collision.x, gameState.collision.y, gameState.collision.width, gameState.collision.height);
-        }
-    });
 };
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
     return e.key + e.type;
-}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(clock).scan(game, initialGameState).subscribe(render);
+}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(clock).scan(game, initialGameState).subscribe(render(context));
 
-},{"./crashedMode.js":1,"./flyingMode.js":2,"ramda":4,"rx":313}],4:[function(require,module,exports){
+},{"./crashedMode.js":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
   F: require('./src/F'),
   T: require('./src/T'),
@@ -22959,7 +22965,43 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":314}],314:[function(require,module,exports){
+},{"_process":316}],314:[function(require,module,exports){
+'use strict';
+
+var image = function image(url) {
+    var imageObject = new Image();
+    imageObject.src = url;
+    return imageObject;
+};
+
+module.exports = function (context) {
+    return function (gameState) {
+        window.requestAnimationFrame(function () {
+            context.drawImage(image(gameState.starField.image), gameState.starField.x1, 0, context.canvas.width, context.canvas.height);
+
+            context.drawImage(image(gameState.starField.image), gameState.starField.x2, 0, context.canvas.width, context.canvas.height);
+
+            context.drawImage(image(gameState.rocket.fire.image), gameState.rocket.fire.x, gameState.rocket.fire.y, gameState.rocket.fire.width, gameState.rocket.fire.height);
+
+            context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
+
+            context.drawImage(image(gameState.asteroid.image), gameState.asteroid.x, gameState.asteroid.y, gameState.asteroid.width, gameState.asteroid.height);
+
+            if (gameState.mode === 'crashed') {
+                context.drawImage(image(gameState.collision.image), gameState.collision.x, gameState.collision.y, gameState.collision.width, gameState.collision.height);
+            }
+        });
+    };
+};
+
+},{}],315:[function(require,module,exports){
+"use strict";
+
+module.exports = function (gameState, input) {
+    return gameState;
+};
+
+},{}],316:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

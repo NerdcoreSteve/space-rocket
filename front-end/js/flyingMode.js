@@ -40,7 +40,10 @@ const
             ? {
                 ...gameState,
                 mode: 'crashed',
-                collision: repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision)
+                collision: {
+                    ...repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision),
+                    modeHoldCounter: gameState.collision.modeHold
+                }
             }
             : gameState,
     flyingLogic = (gameState, input) => {

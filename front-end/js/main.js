@@ -3,6 +3,8 @@ const
     Rx = require('rx'),
     flyingMode = require('./flyingMode.js'),
     crashedMode = require('./crashedMode.js'),
+    restartMode = require('./restartMode.js'),
+    render = require('./render.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -27,7 +29,9 @@ const
             y: 0,
             width: collisionWidth,
             height: collisionHeight,
-            image: '/images/collision.png'
+            image: '/images/collision.png',
+            modeHold: 120,
+            modeHoldCounter: 0,
         },
         starField: {
             image: '/images/starfield.png',
@@ -72,64 +76,14 @@ const
                 return flyingMode(gameState, input)
             case 'crashed':
                 return crashedMode(gameState, input)
+            case 'restart':
+                return restartMode(gameState, input)
             default:
                 return gameState
         }
     },
-    image = url => {
-        var imageObject = new Image()
-        imageObject.src = url
-        return imageObject
-    },
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
-    boolMatch = regex => R.pipe(R.match(regex), R.length),
-    render = gameState => {
-        window.requestAnimationFrame(() => {
-            context.drawImage(
-                image(gameState.starField.image),
-                gameState.starField.x1,
-                0,
-                context.canvas.width,
-                context.canvas.height)
-
-            context.drawImage(
-                image(gameState.starField.image),
-                gameState.starField.x2,
-                0,
-                context.canvas.width,
-                context.canvas.height)
-
-            context.drawImage(
-                image(gameState.rocket.fire.image),
-                gameState.rocket.fire.x,
-                gameState.rocket.fire.y,
-                gameState.rocket.fire.width,
-                gameState.rocket.fire.height)
-
-            context.drawImage(
-                image(gameState.rocket.image),
-                gameState.rocket.x,
-                gameState.rocket.y,
-                gameState.rocket.width,
-                gameState.rocket.height)
-
-            context.drawImage(
-                image(gameState.asteroid.image),
-                gameState.asteroid.x,
-                gameState.asteroid.y,
-                gameState.asteroid.width,
-                gameState.asteroid.height)
-
-            if(gameState.mode === 'crashed') {
-                context.drawImage(
-                    image(gameState.collision.image),
-                    gameState.collision.x,
-                    gameState.collision.y,
-                    gameState.collision.width,
-                    gameState.collision.height)
-            }
-        })
-    }
+    boolMatch = regex => R.pipe(R.match(regex), R.length)
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
@@ -138,4 +92,4 @@ Rx.Observable.fromEvent(document, 'keydown')
     .distinctUntilChanged()
     .merge(clock)
     .scan(game, initialGameState)
-    .subscribe(render)
+    .subscribe(render(context))
