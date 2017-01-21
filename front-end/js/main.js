@@ -2,6 +2,7 @@ const
     R = require('ramda'),
     Rx = require('rx'),
     flyingMode = require('./flyingMode.js'),
+    crashedMode = require('./crashedMode.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -56,6 +57,8 @@ const
     rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
     asteroidWidth = context.canvas.width / 20,
     asteroidHeight = asteroidWidth * (87/95),
+    collisionWidth = context.canvas.width / 25,
+    collisionHeight = collisionWidth * (136/168),
     initialGameState = {
         screen: {
             width: context.canvas.width,
@@ -63,9 +66,11 @@ const
         },
         mode: 'flying',
         collision: {
-            collided: false,
-            frameHolds: 10,
-            holdCounter: 10,
+            x: 0,
+            y: 0,
+            width: collisionWidth,
+            height: collisionHeight,
+            image: '/images/collision.png'
         },
         starField: {
             image: '/images/starfield.png',
@@ -109,7 +114,7 @@ const
             case 'flying':
                 return flyingMode(gameState, input)
             case 'crashed':
-                return gameState
+                return crashedMode(gameState, input)
             default:
                 return gameState
         }
@@ -121,6 +126,7 @@ const
     },
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     boolMatch = regex => R.pipe(R.match(regex), R.length),
+    //TODO should render also be a switch based on mode?
     render = gameState => {
         window.requestAnimationFrame(() => {
             context.drawImage(
@@ -157,6 +163,15 @@ const
                 gameState.asteroid.y,
                 gameState.asteroid.width,
                 gameState.asteroid.height)
+
+            if(gameState.mode === 'crashed') {
+                context.drawImage(
+                    image(gameState.collision.image),
+                    gameState.collision.x,
+                    gameState.collision.y,
+                    gameState.collision.width,
+                    gameState.collision.height)
+            }
         })
     }
 
