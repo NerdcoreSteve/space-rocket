@@ -10,7 +10,8 @@ module.exports = function (gameState, input) {
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
-var flying = function flying(gameState, input) {
+var R = require('ramda'),
+    flying = function flying(gameState, input) {
     return collision(flyingLogic(gameState, input));
 },
     starFieldDy = function starFieldDy(gameState) {
@@ -26,9 +27,26 @@ var flying = function flying(gameState, input) {
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
+    rectMidpoint = function rectMidpoint(rect) {
+    return {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2
+    };
+},
+    repositionByMidpoint = function repositionByMidpoint(x, y, rect) {
+    return _extends({}, rect, {
+        x: x - rect.width / 2,
+        y: y - rect.height / 2
+    });
+},
+    repositionCollision = function repositionCollision(rocket, asteroid, collision) {
+    var rocketMidpoint = rectMidpoint(rocket);
+    return repositionByMidpoint(rocketMidpoint.x, rocketMidpoint.y, collision);
+},
     collision = function collision(gameState) {
     return collided(gameState.rocket, gameState.asteroid) ? _extends({}, gameState, {
-        mode: 'crashed'
+        mode: 'crashed',
+        collision: repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision)
     }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
@@ -87,7 +105,7 @@ var flying = function flying(gameState, input) {
 
 module.exports = flying;
 
-},{}],3:[function(require,module,exports){
+},{"ramda":4}],3:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
@@ -107,6 +125,7 @@ No functions will be able to rever to context.canvas, instead gamestate will
 keep a record of canvas width and height
 */
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
+//http://stackoverflow.com/questions/5633264/javascript-get-image-dimensions
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 //Todo

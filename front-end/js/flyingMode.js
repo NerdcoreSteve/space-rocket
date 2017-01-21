@@ -1,4 +1,5 @@
 const
+    R = require('ramda'),
     flying = (gameState, input) => collision(flyingLogic(gameState, input)),
     starFieldDy = gameState =>
         (gameState.starField.x1 - gameState.starField.speed) % gameState.screen.width,
@@ -17,11 +18,25 @@ const
             && rect1.x + rect1.width > rect2.x
             && rect1.y < rect2.y + rect2.height
             && rect1.height + rect1.y > rect2.y,
+    rectMidpoint = rect => ({
+            x: rect.x + (rect.width / 2),
+            y: rect.y + (rect.height / 2),
+        }),
+    repositionByMidpoint = (x, y, rect) => ({
+            ...rect,
+            x: x - (rect.width / 2),
+            y: y - (rect.height / 2)
+        }),
+    repositionCollision = (rocket, asteroid, collision) => {
+        const rocketMidpoint = rectMidpoint(rocket)
+        return repositionByMidpoint(rocketMidpoint.x, rocketMidpoint.y, collision)
+    },
     collision = gameState =>
         collided(gameState.rocket, gameState.asteroid)
             ? {
                 ...gameState,
-                mode: 'crashed'
+                mode: 'crashed',
+                collision: repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision)
             }
             : gameState,
     flyingLogic = (gameState, input) => {
