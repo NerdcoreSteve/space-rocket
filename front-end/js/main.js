@@ -2,7 +2,6 @@ const
     R = require('ramda'),
     Rx = require('rx'),
     flyingMode = require('./flyingMode.js'),
-    crashedMode = require('./crashedMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
@@ -30,8 +29,6 @@ const
             width: collisionWidth,
             height: collisionHeight,
             image: '/images/collision.png',
-            modeHold: 120,
-            modeHoldCounter: 0,
         },
         starField: {
             image: '/images/starfield.png',
@@ -74,8 +71,6 @@ const
         switch(gameState.mode) {
             case 'flying':
                 return flyingMode(gameState, input)
-            case 'crashed':
-                return crashedMode(gameState, input)
             case 'restart':
                 return restartMode(gameState, input)
             default:

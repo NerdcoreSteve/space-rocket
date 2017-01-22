@@ -39,10 +39,9 @@ const
         collided(gameState.rocket, gameState.asteroid)
             ? {
                 ...gameState,
-                mode: 'crashed',
+                mode: 'restart',
                 collision: {
                     ...repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision),
-                    modeHoldCounter: gameState.collision.modeHold
                 }
             }
             : gameState,

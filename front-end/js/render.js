@@ -42,7 +42,7 @@ module.exports = context => gameState => {
             gameState.asteroid.width,
             gameState.asteroid.height)
 
-        if(gameState.mode === 'crashed') {
+        if(gameState.mode === 'restart') {
             context.drawImage(
                 image(gameState.collision.image),
                 gameState.collision.x,
