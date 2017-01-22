@@ -1,6 +1,6 @@
 https://github.com/shakiba/fastcontext
 Todo
-    draw "You crashed!", also draw "relaunch in ", "3...", "2...", "1...", "Launch!"
+    draw "relaunch in ", "3...", "2...", "1...", "Launch!"
         restart mode will need to have access to initialGameState
      restart mode says "You crashed!, press up or down arrow to start again!"
         acutally, just draw over the game, no need for a new screen
