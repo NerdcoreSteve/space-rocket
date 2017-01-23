@@ -23,12 +23,14 @@ const
             height: context.canvas.height
         },
         mode: 'flying',
-        collision: {
-            x: 0,
-            y: 0,
-            width: collisionWidth,
-            height: collisionHeight,
-            image: '/images/collision.png',
+        restart: {
+            collision: {
+                x: 0,
+                y: 0,
+                width: collisionWidth,
+                height: collisionHeight,
+                image: '/images/collision.png',
+            },
         },
         starField: {
             image: '/images/starfield.png',

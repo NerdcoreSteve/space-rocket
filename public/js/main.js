@@ -20,33 +20,8 @@ var R = require('ramda'),
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
-    rectMidpoint = function rectMidpoint(rect) {
-    return {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2
-    };
-},
-    repositionByMidpoint = function repositionByMidpoint(x, y, rect) {
-    return _extends({}, rect, {
-        x: x - rect.width / 2,
-        y: y - rect.height / 2
-    });
-},
-    rectsMidpoint = function rectsMidpoint(rect1, rect2) {
-    return {
-        x: (rect1.x + rect2.x) / 2,
-        y: (rect1.y + rect2.y) / 2
-    };
-},
-    repositionCollision = function repositionCollision(rocket, asteroid, collision) {
-    var collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid));
-    return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
-},
     collision = function collision(gameState) {
-    return collided(gameState.rocket, gameState.asteroid) ? _extends({}, gameState, {
-        mode: 'restart',
-        collision: _extends({}, repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision))
-    }) : gameState;
+    return collided(gameState.rocket, gameState.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input) {
@@ -131,12 +106,14 @@ asteroidWidth = context.canvas.width / 20,
         height: context.canvas.height
     },
     mode: 'flying',
-    collision: {
-        x: 0,
-        y: 0,
-        width: collisionWidth,
-        height: collisionHeight,
-        image: '/images/collision.png'
+    restart: {
+        collision: {
+            x: 0,
+            y: 0,
+            width: collisionWidth,
+            height: collisionHeight,
+            image: '/images/collision.png'
+        }
     },
     starField: {
         image: '/images/starfield.png',
@@ -22954,7 +22931,7 @@ module.exports = function (context) {
             context.drawImage(image(gameState.asteroid.image), gameState.asteroid.x, gameState.asteroid.y, gameState.asteroid.width, gameState.asteroid.height);
 
             if (gameState.mode === 'restart') {
-                context.drawImage(image(gameState.collision.image), gameState.collision.x, gameState.collision.y, gameState.collision.width, gameState.collision.height);
+                context.drawImage(image(gameState.restart.collision.image), gameState.restart.collision.x, gameState.restart.collision.y, gameState.restart.collision.width, gameState.restart.collision.height);
             }
         });
     };
@@ -22963,8 +22940,37 @@ module.exports = function (context) {
 },{}],314:[function(require,module,exports){
 "use strict";
 
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var rectMidpoint = function rectMidpoint(rect) {
+    return {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2
+    };
+},
+    repositionByMidpoint = function repositionByMidpoint(x, y, rect) {
+    return _extends({}, rect, {
+        x: x - rect.width / 2,
+        y: y - rect.height / 2
+    });
+},
+    rectsMidpoint = function rectsMidpoint(rect1, rect2) {
+    return {
+        x: (rect1.x + rect2.x) / 2,
+        y: (rect1.y + rect2.y) / 2
+    };
+},
+    repositionCollision = function repositionCollision(rocket, asteroid, collision) {
+    var collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid));
+    return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
+};
+
 module.exports = function (gameState, input) {
-    return gameState;
+    return _extends({}, gameState, {
+        restart: _extends({}, gameState.restart, {
+            collision: _extends({}, repositionCollision(gameState.rocket, gameState.asteroid, gameState.restart.collision))
+        })
+    });
 };
 
 },{}],315:[function(require,module,exports){

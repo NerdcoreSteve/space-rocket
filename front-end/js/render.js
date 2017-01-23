@@ -44,11 +44,11 @@ module.exports = context => gameState => {
 
         if(gameState.mode === 'restart') {
             context.drawImage(
-                image(gameState.collision.image),
-                gameState.collision.x,
-                gameState.collision.y,
-                gameState.collision.width,
-                gameState.collision.height)
+                image(gameState.restart.collision.image),
+                gameState.restart.collision.x,
+                gameState.restart.collision.y,
+                gameState.restart.collision.width,
+                gameState.restart.collision.height)
         }
     })
 }

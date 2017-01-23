@@ -18,33 +18,8 @@ const
             && rect1.x + rect1.width > rect2.x
             && rect1.y < rect2.y + rect2.height
             && rect1.height + rect1.y > rect2.y,
-    rectMidpoint = rect => ({
-            x: rect.x + (rect.width / 2),
-            y: rect.y + (rect.height / 2),
-        }),
-    repositionByMidpoint = (x, y, rect) => ({
-            ...rect,
-            x: x - (rect.width / 2),
-            y: y - (rect.height / 2)
-        }),
-    rectsMidpoint = (rect1, rect2) => ({
-            x: (rect1.x + rect2.x)/2,
-            y: (rect1.y + rect2.y)/2
-        }),
-    repositionCollision = (rocket, asteroid, collision) => {
-        const collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid))
-        return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
-    },
     collision = gameState =>
-        collided(gameState.rocket, gameState.asteroid)
-            ? {
-                ...gameState,
-                mode: 'restart',
-                collision: {
-                    ...repositionCollision(gameState.rocket, gameState.asteroid, gameState.collision),
-                }
-            }
-            : gameState,
+        collided(gameState.rocket, gameState.asteroid) ? {...gameState, mode: 'restart'} : gameState,
     flyingLogic = (gameState, input) => {
         switch(input) {
             case 'ArrowUpkeydown':
