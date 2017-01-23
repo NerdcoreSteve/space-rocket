@@ -1,16 +1,14 @@
 https://github.com/shakiba/fastcontext
 Todo
-    draw "relaunch in ", "3...", "2...", "1...", "Launch!"
-        restart mode will need to have access to initialGameState
-     restart mode says "You crashed!, press up or down arrow to start again!"
-        acutally, just draw over the game, no need for a new screen
-            still want to have switch case or ifelse for render
-                return undefined for every case
-            keep the collision graphic
-         add a "relaunch in 3, 2, 1..." screen
-         instead of filtering out all keys should I just map most keys to "any key" value?
-             that way I can do "any key"
-     maybe put a mode flag in gameData? flying, crashed, etc..
+    if my test player still doesn't like the "star jump"
+        remove the stars from restartMode
+        just draw a black background
+    Draw "Press any key to continue"
+    Destroyed mode should be changed to any-key mode
+        it should say "Destroyed!" on one line, then "press any key" on the next
+        Resize and reposition "Destroyed!" and "press any key..."
+        have main.js provide an "any key" stream. Don't use filter any more.
+        do stuff with the any key input value in restartMode
      refactor to use more redux-like pattern of streamed values
          each value in the stream will be an object with a type and it will have other
              attributes
@@ -26,6 +24,7 @@ Todo
      Do I have a full game now?
          as soon as I do, I need to release it on heroku
              put up on digital ocean instead with a doman, make a trailer, publicize, etc?
+    You can make the game more full screen if you remove the canvas css margin
      make a "let's make" video about what I've done?
      in-game tutorial bits that tell you to press up and down
      should have a registry of images and only start game when onload has completed for all

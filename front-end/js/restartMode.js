@@ -1,4 +1,5 @@
 const
+    tap = require('./tap.js'),
     rectMidpoint = rect => ({
             x: rect.x + (rect.width / 2),
             y: rect.y + (rect.height / 2),
@@ -18,14 +19,40 @@ const
     }
 
 module.exports = (gameState, input) => {
-    return {
-        ...gameState,
-        restart: {
-            ...gameState.restart,
-            collision: {
-                ...repositionCollision(
-                    gameState.rocket, gameState.asteroid, gameState.restart.collision),
+    switch(gameState.restart.mode) {
+        case 'begin':
+            return {
+                ...gameState,
+                restart: {
+                    ...gameState.restart,
+                    collision: {
+                        ...repositionCollision(
+                            gameState.rocket, gameState.asteroid, gameState.restart.collision),
+                    },
+                    holdCounter: gameState.restart.crashedHold,
+                    mode: 'crashed'
+                }
             }
-        }
+        case 'crashed':
+            return gameState.restart.holdCounter !== 0
+                ? {
+                    ...gameState,
+                    restart: {
+                        ...gameState.restart,
+                        holdCounter: gameState.restart.holdCounter - 1
+                    }
+                }
+                : {
+                    ...gameState,
+                    restart: {
+                        ...gameState.restart,
+                        mode: 'destroyed',
+                        holdCounter: gameState.restart.destroyedHold
+                    }
+                }
+        case 'destroyed':
+            return gameState
+        default:
+            return gameState
     }
 }

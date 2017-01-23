@@ -24,13 +24,24 @@ const
         },
         mode: 'flying',
         restart: {
+            mode: 'begin',
+            crashedHold: 40,
+            destroyedHold: 10,
+            holdCounter: 0,
+            destroyed: {
+                x: 0,
+                y: 0,
+                width: collisionWidth,
+                height: collisionHeight,
+                image: '/images/destroyed.png',
+            },
             collision: {
                 x: 0,
                 y: 0,
                 width: collisionWidth,
                 height: collisionHeight,
                 image: '/images/collision.png',
-            },
+            }
         },
         starField: {
             image: '/images/starfield.png',

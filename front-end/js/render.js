@@ -49,6 +49,14 @@ module.exports = context => gameState => {
                 gameState.restart.collision.y,
                 gameState.restart.collision.width,
                 gameState.restart.collision.height)
+            if(gameState.restart.mode === 'destroyed') {
+                context.drawImage(
+                    image(gameState.restart.destroyed.image),
+                    gameState.restart.destroyed.x,
+                    gameState.restart.destroyed.y,
+                    gameState.restart.destroyed.width,
+                    gameState.restart.destroyed.height)
+            }
         }
     })
 }

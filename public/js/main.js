@@ -107,6 +107,17 @@ asteroidWidth = context.canvas.width / 20,
     },
     mode: 'flying',
     restart: {
+        mode: 'begin',
+        crashedHold: 40,
+        destroyedHold: 10,
+        holdCounter: 0,
+        destroyed: {
+            x: 0,
+            y: 0,
+            width: collisionWidth,
+            height: collisionHeight,
+            image: '/images/destroyed.png'
+        },
         collision: {
             x: 0,
             y: 0,
@@ -22908,7 +22919,7 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":315}],313:[function(require,module,exports){
+},{"_process":316}],313:[function(require,module,exports){
 'use strict';
 
 var image = function image(url) {
@@ -22932,17 +22943,21 @@ module.exports = function (context) {
 
             if (gameState.mode === 'restart') {
                 context.drawImage(image(gameState.restart.collision.image), gameState.restart.collision.x, gameState.restart.collision.y, gameState.restart.collision.width, gameState.restart.collision.height);
+                if (gameState.restart.mode === 'destroyed') {
+                    context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
+                }
             }
         });
     };
 };
 
 },{}],314:[function(require,module,exports){
-"use strict";
+'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
-var rectMidpoint = function rectMidpoint(rect) {
+var tap = require('./tap.js'),
+    rectMidpoint = function rectMidpoint(rect) {
     return {
         x: rect.x + rect.width / 2,
         y: rect.y + rect.height / 2
@@ -22966,14 +22981,41 @@ var rectMidpoint = function rectMidpoint(rect) {
 };
 
 module.exports = function (gameState, input) {
-    return _extends({}, gameState, {
-        restart: _extends({}, gameState.restart, {
-            collision: _extends({}, repositionCollision(gameState.rocket, gameState.asteroid, gameState.restart.collision))
-        })
-    });
+    switch (gameState.restart.mode) {
+        case 'begin':
+            return _extends({}, gameState, {
+                restart: _extends({}, gameState.restart, {
+                    collision: _extends({}, repositionCollision(gameState.rocket, gameState.asteroid, gameState.restart.collision)),
+                    holdCounter: gameState.restart.crashedHold,
+                    mode: 'crashed'
+                })
+            });
+        case 'crashed':
+            return gameState.restart.holdCounter !== 0 ? _extends({}, gameState, {
+                restart: _extends({}, gameState.restart, {
+                    holdCounter: gameState.restart.holdCounter - 1
+                })
+            }) : _extends({}, gameState, {
+                restart: _extends({}, gameState.restart, {
+                    mode: 'destroyed',
+                    holdCounter: gameState.restart.destroyedHold
+                })
+            });
+        case 'destroyed':
+            return gameState;
+        default:
+            return gameState;
+    }
 };
 
-},{}],315:[function(require,module,exports){
+},{"./tap.js":315}],315:[function(require,module,exports){
+"use strict";
+
+module.exports = function (x) {
+  console.log(x);return x;
+};
+
+},{}],316:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
