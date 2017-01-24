@@ -111,6 +111,13 @@ asteroidWidth = context.canvas.width / 20,
         crashedHold: 40,
         destroyedHold: 10,
         holdCounter: 0,
+        pressAnyKey: {
+            x: context.canvas.width * .2,
+            y: 0,
+            width: context.canvas.width * .6,
+            height: context.canvas.width * .6 * (90 / 623),
+            image: '/images/pressAnyKey.png'
+        },
         destroyed: {
             x: 0,
             y: 0,
@@ -22943,8 +22950,11 @@ module.exports = function (context) {
 
             if (gameState.mode === 'restart') {
                 context.drawImage(image(gameState.restart.collision.image), gameState.restart.collision.x, gameState.restart.collision.y, gameState.restart.collision.width, gameState.restart.collision.height);
+
                 if (gameState.restart.mode === 'destroyed') {
                     context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
+
+                    context.drawImage(image(gameState.restart.pressAnyKey.image), gameState.restart.pressAnyKey.x, gameState.restart.pressAnyKey.y, gameState.restart.pressAnyKey.width, gameState.restart.pressAnyKey.height);
                 }
             }
         });

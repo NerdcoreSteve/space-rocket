@@ -49,6 +49,7 @@ module.exports = context => gameState => {
                 gameState.restart.collision.y,
                 gameState.restart.collision.width,
                 gameState.restart.collision.height)
+
             if(gameState.restart.mode === 'destroyed') {
                 context.drawImage(
                     image(gameState.restart.destroyed.image),
@@ -56,6 +57,13 @@ module.exports = context => gameState => {
                     gameState.restart.destroyed.y,
                     gameState.restart.destroyed.width,
                     gameState.restart.destroyed.height)
+
+                context.drawImage(
+                    image(gameState.restart.pressAnyKey.image),
+                    gameState.restart.pressAnyKey.x,
+                    gameState.restart.pressAnyKey.y,
+                    gameState.restart.pressAnyKey.width,
+                    gameState.restart.pressAnyKey.height)
             }
         }
     })

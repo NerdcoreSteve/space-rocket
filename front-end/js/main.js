@@ -28,6 +28,13 @@ const
             crashedHold: 40,
             destroyedHold: 10,
             holdCounter: 0,
+            pressAnyKey: {
+                x: context.canvas.width * .2,
+                y: 0,
+                width: context.canvas.width * .6,
+                height: context.canvas.width * .6 * (90/623),
+                image: '/images/pressAnyKey.png',
+            },
             destroyed: {
                 x: 0,
                 y: 0,
