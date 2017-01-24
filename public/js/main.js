@@ -119,7 +119,7 @@ asteroidWidth = context.canvas.width / 20,
     restart: {
         mode: 'begin',
         crashedHold: 40,
-        destroyedHold: 10,
+        destroyedHold: 50,
         holdCounter: 0,
         pressAnyKey: {
             x: context.canvas.width * .2,
@@ -22961,6 +22961,8 @@ module.exports = function (context) {
 
                 if (gameState.restart.mode === 'destroyed') {
                     context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
+                } else if (gameState.restart.mode === 'anykey') {
+                    context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
 
                     context.drawImage(image(gameState.restart.pressAnyKey.image), gameState.restart.pressAnyKey.x, gameState.restart.pressAnyKey.y, gameState.restart.pressAnyKey.width, gameState.restart.pressAnyKey.height);
                 }
@@ -23000,6 +23002,7 @@ var tap = require('./tap.js'),
 };
 
 module.exports = function (gameState, input) {
+    //if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) short circuit and return initial game state
     switch (gameState.restart.mode) {
         case 'begin':
             return _extends({}, gameState, {
@@ -23021,7 +23024,15 @@ module.exports = function (gameState, input) {
                 })
             });
         case 'destroyed':
-            return boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input) ? tap(gameState) : gameState;
+            return gameState.restart.holdCounter !== 0 ? _extends({}, gameState, {
+                restart: _extends({}, gameState.restart, {
+                    holdCounter: gameState.restart.holdCounter - 1
+                })
+            }) : _extends({}, gameState, {
+                restart: _extends({}, gameState.restart, {
+                    mode: 'anykey'
+                })
+            });
         default:
             return gameState;
     }

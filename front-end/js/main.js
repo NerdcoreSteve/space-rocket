@@ -28,7 +28,7 @@ const
         restart: {
             mode: 'begin',
             crashedHold: 40,
-            destroyedHold: 10,
+            destroyedHold: 50,
             holdCounter: 0,
             pressAnyKey: {
                 x: context.canvas.width * .2,

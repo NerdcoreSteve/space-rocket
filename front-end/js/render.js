@@ -57,6 +57,13 @@ module.exports = context => gameState => {
                     gameState.restart.destroyed.y,
                     gameState.restart.destroyed.width,
                     gameState.restart.destroyed.height)
+            } else if(gameState.restart.mode === 'anykey') {
+                context.drawImage(
+                    image(gameState.restart.destroyed.image),
+                    gameState.restart.destroyed.x,
+                    gameState.restart.destroyed.y,
+                    gameState.restart.destroyed.width,
+                    gameState.restart.destroyed.height)
 
                 context.drawImage(
                     image(gameState.restart.pressAnyKey.image),

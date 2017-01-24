@@ -3,30 +3,27 @@ Todo
     if my test player still doesn't like the "star jump"
         remove the stars from restartMode
         just draw a black background
-    Draw "Press any key to continue"
-    Destroyed mode should be changed to any-key mode
-        it should say "Destroyed!" on one line, then "press any key" on the next
-        Resize and reposition "Destroyed!" and "press any key..."
-        have main.js provide an "any key" stream. Don't use filter any more.
-        do stuff with the any key input value in restartMode
-     refactor to use more redux-like pattern of streamed values
-         each value in the stream will be an object with a type and it will have other
-             attributes
-     make asteroid appear randomly
+    extract initial state into a function that takes a width and returns initial state
+        use canvas.width to start
+        restartMode uses gameState width to reset game when it gets up, down, or anykey
+     make asteroid appear randomly, then make a stream of random asteroids
+         refactor to use more redux-like pattern of streamed values
+             each value in the stream will be an object with a type and it will have other
+                 attributes
          make a callback stream that puts a set of random numbers (and what the are for)
              into the input stream,
              call that callback from subscribe callback
              this is like the elm effects model
-     make stream of asteroids that appear randomly
          garbage collect them when they go off screen
          is it ok for them to overlap?
      make a pause screen that shows game instructions and player stats
      Do I have a full game now?
-         as soon as I do, I need to release it on heroku
-             put up on digital ocean instead with a doman, make a trailer, publicize, etc?
+         as soon as I do, I need to release it on digital ocean instead with a doman,
+            make a trailer, publicize, etc
+            make a "let's make" video about what I've done
     You can make the game more full screen if you remove the canvas css margin
-     make a "let's make" video about what I've done?
-     in-game tutorial bits that tell you to press up and down
+    in-game tutorial bits that tell you to press up and down?
+        when you get the ability to shoot, tutorial should tell you to press space
      should have a registry of images and only start game when onload has completed for all
      make the asteroids have random sizes within a range
      asteroids move at different speeds

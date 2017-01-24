@@ -20,6 +20,7 @@ const
     }
 
 module.exports = (gameState, input) => {
+    //if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) short circuit and return initial game state
     switch(gameState.restart.mode) {
         case 'begin':
             return {
@@ -52,7 +53,21 @@ module.exports = (gameState, input) => {
                     }
                 }
         case 'destroyed':
-            return boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input) ? tap(gameState) : gameState
+            return gameState.restart.holdCounter !== 0
+                ? {
+                    ...gameState,
+                    restart: {
+                        ...gameState.restart,
+                        holdCounter: gameState.restart.holdCounter - 1
+                    }
+                }
+                : {
+                    ...gameState,
+                    restart: {
+                        ...gameState.restart,
+                        mode: 'anykey'
+                    }
+                }
         default:
             return gameState
     }
