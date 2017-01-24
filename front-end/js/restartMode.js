@@ -1,5 +1,6 @@
 const
     tap = require('./tap.js'),
+    boolMatch = require('./boolMatch'),
     rectMidpoint = rect => ({
             x: rect.x + (rect.width / 2),
             y: rect.y + (rect.height / 2),
@@ -51,7 +52,7 @@ module.exports = (gameState, input) => {
                     }
                 }
         case 'destroyed':
-            return gameState
+            return boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input) ? tap(gameState) : gameState
         default:
             return gameState
     }

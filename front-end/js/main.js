@@ -4,6 +4,8 @@ const
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
+    tap = require('./tap.js'),
+    boolMatch = require('./boolMatch'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -30,16 +32,16 @@ const
             holdCounter: 0,
             pressAnyKey: {
                 x: context.canvas.width * .2,
-                y: 0,
+                y: context.canvas.height * .5,
                 width: context.canvas.width * .6,
                 height: context.canvas.width * .6 * (90/623),
                 image: '/images/pressAnyKey.png',
             },
             destroyed: {
                 x: 0,
-                y: 0,
-                width: collisionWidth,
-                height: collisionHeight,
+                y: context.canvas.height * .1,
+                width: context.canvas.width,
+                height: context.canvas.width * (160/786),
                 image: '/images/destroyed.png',
             },
             collision: {
@@ -97,13 +99,12 @@ const
                 return gameState
         }
     },
-    clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
-    boolMatch = regex => R.pipe(R.match(regex), R.length)
+    clock = Rx.Observable.interval(1000/60).map(() => 'tick') // 60 fps
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
     .map(e => e.key + e.type)
-    .filter(boolMatch(/^(ArrowUp|ArrowDown).*$/))
+    .map(e => boolMatch(/^(ArrowUp|ArrowDown).*$/, e) ? e : 'anykey')
     .distinctUntilChanged()
     .merge(clock)
     .scan(game, initialGameState)
