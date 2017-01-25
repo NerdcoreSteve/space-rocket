@@ -1,6 +1,7 @@
 const
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
+    startingGameState = require('./startingGameState.js'),
     rectMidpoint = rect => ({
             x: rect.x + (rect.width / 2),
             y: rect.y + (rect.height / 2),
@@ -21,6 +22,9 @@ const
 
 module.exports = (gameState, input) => {
     //if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) short circuit and return initial game state
+    if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) {
+        console.log(input)
+    }
     switch(gameState.restart.mode) {
         case 'begin':
             return {
