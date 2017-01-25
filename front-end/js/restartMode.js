@@ -18,13 +18,13 @@ const
     repositionCollision = (rocket, asteroid, collision) => {
         const collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid))
         return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
-    }
+    },
+    anyKeyCheck = (input, gameState) =>
+        boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input)
+            ? startingGameState(gameState.screen.width, gameState.screen.height)
+            : gameState
 
 module.exports = (gameState, input) => {
-    //if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) short circuit and return initial game state
-    if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) {
-        console.log(input)
-    }
     switch(gameState.restart.mode) {
         case 'begin':
             return {
@@ -72,6 +72,8 @@ module.exports = (gameState, input) => {
                         mode: 'anykey'
                     }
                 }
+        case 'anykey':
+            return anyKeyCheck(input, gameState)
         default:
             return gameState
     }

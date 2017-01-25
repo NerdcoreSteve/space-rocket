@@ -22902,6 +22902,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
+    startingGameState = require('./startingGameState.js'),
     rectMidpoint = function rectMidpoint(rect) {
     return {
         x: rect.x + rect.width / 2,
@@ -22923,10 +22924,12 @@ var tap = require('./tap.js'),
     repositionCollision = function repositionCollision(rocket, asteroid, collision) {
     var collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid));
     return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
+},
+    anyKeyCheck = function anyKeyCheck(input, gameState) {
+    return boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
 };
 
 module.exports = function (gameState, input) {
-    //if(boolMatch(/^((ArrowUp|ArrowDown).*)|anykey$/, input)) short circuit and return initial game state
     switch (gameState.restart.mode) {
         case 'begin':
             return _extends({}, gameState, {
@@ -22957,12 +22960,14 @@ module.exports = function (gameState, input) {
                     mode: 'anykey'
                 })
             });
+        case 'anykey':
+            return anyKeyCheck(input, gameState);
         default:
             return gameState;
     }
 };
 
-},{"./boolMatch":1,"./tap.js":317}],316:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":316,"./tap.js":317}],316:[function(require,module,exports){
 'use strict';
 
 module.exports = function (width, height) {
