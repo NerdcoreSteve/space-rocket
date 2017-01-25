@@ -97,90 +97,14 @@ var R = require('ramda'),
     render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
+    startingGameState = require('./startingGameState.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6;
 
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
-var rocketLength = context.canvas.width / 10,
-    rocketWidth = rocketLength * (48 / 122),
-    // divide by image dimensions
-asteroidWidth = context.canvas.width / 20,
-    asteroidHeight = asteroidWidth * (87 / 95),
-    collisionWidth = context.canvas.width / 15,
-    collisionHeight = collisionWidth * (136 / 168),
-    initialGameState = {
-    screen: {
-        width: context.canvas.width,
-        height: context.canvas.height
-    },
-    mode: 'flying',
-    restart: {
-        mode: 'begin',
-        crashedHold: 40,
-        destroyedHold: 50,
-        holdCounter: 0,
-        pressAnyKey: {
-            x: context.canvas.width * .2,
-            y: context.canvas.height * .5,
-            width: context.canvas.width * .6,
-            height: context.canvas.width * .6 * (90 / 623),
-            image: '/images/pressAnyKey.png'
-        },
-        destroyed: {
-            x: 0,
-            y: context.canvas.height * .1,
-            width: context.canvas.width,
-            height: context.canvas.width * (160 / 786),
-            image: '/images/destroyed.png'
-        },
-        collision: {
-            x: 0,
-            y: 0,
-            width: collisionWidth,
-            height: collisionHeight,
-            image: '/images/collision.png'
-        }
-    },
-    starField: {
-        image: '/images/starfield.png',
-        x1: 0,
-        x2: context.canvas.width,
-        speed: context.canvas.width / 470
-    },
-    asteroid: {
-        x: context.canvas.height * 2,
-        y: context.canvas.height / 3,
-        width: asteroidWidth,
-        height: asteroidHeight,
-        speed: context.canvas.height / 90,
-        image: '/images/asteroid.png'
-    },
-    rocket: {
-        x: context.canvas.width / 25,
-        y: context.canvas.height / 3,
-        width: rocketLength,
-        height: rocketWidth,
-        keyUpDown: false,
-        direction: 0,
-        keyDownDown: false,
-        speed: context.canvas.height / 90,
-        image: '/images/rocket.png',
-        fire: {
-            x: context.canvas.width / 40,
-            y: context.canvas.height / 3,
-            width: rocketWidth * .6,
-            height: rocketWidth * .8,
-            image: '/images/rocketFire1.png',
-            imageIndex: 0,
-            images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
-            frameHolds: 5,
-            holdCounter: 5
-        }
-    }
-},
-    game = function game(gameState, input) {
+var game = function game(gameState, input) {
     switch (gameState.mode) {
         case 'flying':
             return flyingMode(gameState, input);
@@ -198,9 +122,9 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return e.key + e.type;
 }).map(function (e) {
     return boolMatch(/^(ArrowUp|ArrowDown).*$/, e) ? e : 'anykey';
-}).distinctUntilChanged().merge(clock).scan(game, initialGameState).subscribe(render(context));
+}).distinctUntilChanged().merge(clock).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
-},{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./tap.js":316,"ramda":4,"rx":313}],4:[function(require,module,exports){
+},{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
   F: require('./src/F'),
   T: require('./src/T'),
@@ -22934,7 +22858,7 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":317}],314:[function(require,module,exports){
+},{"_process":318}],314:[function(require,module,exports){
 'use strict';
 
 var image = function image(url) {
@@ -23038,14 +22962,97 @@ module.exports = function (gameState, input) {
     }
 };
 
-},{"./boolMatch":1,"./tap.js":316}],316:[function(require,module,exports){
+},{"./boolMatch":1,"./tap.js":317}],316:[function(require,module,exports){
+'use strict';
+
+module.exports = function (width, height) {
+    var rocketLength = width / 10,
+        rocketWidth = rocketLength * (48 / 122),
+        // divide by image dimensions
+    asteroidWidth = width / 20,
+        asteroidHeight = asteroidWidth * (87 / 95),
+        collisionWidth = width / 15,
+        collisionHeight = collisionWidth * (136 / 168);
+    return {
+        screen: {
+            width: width,
+            height: height
+        },
+        mode: 'flying',
+        restart: {
+            mode: 'begin',
+            crashedHold: 40,
+            destroyedHold: 50,
+            holdCounter: 0,
+            pressAnyKey: {
+                x: width * .2,
+                y: height * .5,
+                width: width * .6,
+                height: width * .6 * (90 / 623),
+                image: '/images/pressAnyKey.png'
+            },
+            destroyed: {
+                x: 0,
+                y: height * .1,
+                width: width,
+                height: width * (160 / 786),
+                image: '/images/destroyed.png'
+            },
+            collision: {
+                x: 0,
+                y: 0,
+                width: collisionWidth,
+                height: collisionHeight,
+                image: '/images/collision.png'
+            }
+        },
+        starField: {
+            image: '/images/starfield.png',
+            x1: 0,
+            x2: width,
+            speed: width / 470
+        },
+        asteroid: {
+            x: height * 2,
+            y: height / 3,
+            width: asteroidWidth,
+            height: asteroidHeight,
+            speed: height / 90,
+            image: '/images/asteroid.png'
+        },
+        rocket: {
+            x: width / 25,
+            y: height / 3,
+            width: rocketLength,
+            height: rocketWidth,
+            keyUpDown: false,
+            direction: 0,
+            keyDownDown: false,
+            speed: height / 90,
+            image: '/images/rocket.png',
+            fire: {
+                x: width / 40,
+                y: height / 3,
+                width: rocketWidth * .6,
+                height: rocketWidth * .8,
+                image: '/images/rocketFire1.png',
+                imageIndex: 0,
+                images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
+                frameHolds: 5,
+                holdCounter: 5
+            }
+        }
+    };
+};
+
+},{}],317:[function(require,module,exports){
 "use strict";
 
 module.exports = function (x) {
   console.log(x);return x;
 };
 
-},{}],317:[function(require,module,exports){
+},{}],318:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

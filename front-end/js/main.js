@@ -6,6 +6,7 @@ const
     render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
+    startingGameState = require('./startingGameState.js'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -13,82 +14,6 @@ context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 const
-    rocketLength = context.canvas.width / 10,
-    rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
-    asteroidWidth = context.canvas.width / 20,
-    asteroidHeight = asteroidWidth * (87/95),
-    collisionWidth = context.canvas.width / 15,
-    collisionHeight = collisionWidth * (136/168),
-    initialGameState = {
-        screen: {
-            width: context.canvas.width,
-            height: context.canvas.height
-        },
-        mode: 'flying',
-        restart: {
-            mode: 'begin',
-            crashedHold: 40,
-            destroyedHold: 50,
-            holdCounter: 0,
-            pressAnyKey: {
-                x: context.canvas.width * .2,
-                y: context.canvas.height * .5,
-                width: context.canvas.width * .6,
-                height: context.canvas.width * .6 * (90/623),
-                image: '/images/pressAnyKey.png',
-            },
-            destroyed: {
-                x: 0,
-                y: context.canvas.height * .1,
-                width: context.canvas.width,
-                height: context.canvas.width * (160/786),
-                image: '/images/destroyed.png',
-            },
-            collision: {
-                x: 0,
-                y: 0,
-                width: collisionWidth,
-                height: collisionHeight,
-                image: '/images/collision.png',
-            }
-        },
-        starField: {
-            image: '/images/starfield.png',
-            x1: 0,
-            x2: context.canvas.width,
-            speed: context.canvas.width / 470
-        },
-        asteroid: {
-            x: context.canvas.height * 2,
-            y: context.canvas.height / 3,
-            width: asteroidWidth,
-            height: asteroidHeight,
-            speed: context.canvas.height / 90,
-            image: '/images/asteroid.png'
-        },
-        rocket: {
-            x: context.canvas.width / 25,
-            y: context.canvas.height / 3,
-            width: rocketLength,
-            height: rocketWidth,
-            keyUpDown: false,
-            direction: 0,
-            keyDownDown: false,
-            speed: context.canvas.height / 90,
-            image: '/images/rocket.png',
-            fire: {
-                x: context.canvas.width / 40,
-                y: context.canvas.height / 3,
-                width: rocketWidth * .6,
-                height: rocketWidth * .8,
-                image: '/images/rocketFire1.png',
-                imageIndex: 0,
-                images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
-                frameHolds: 5,
-                holdCounter: 5,
-            },
-        }
-    },
     game = (gameState, input) => {
         switch(gameState.mode) {
             case 'flying':
@@ -107,5 +32,5 @@ Rx.Observable.fromEvent(document, 'keydown')
     .map(e => boolMatch(/^(ArrowUp|ArrowDown).*$/, e) ? e : 'anykey')
     .distinctUntilChanged()
     .merge(clock)
-    .scan(game, initialGameState)
+    .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))
