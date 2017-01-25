@@ -32,7 +32,7 @@ var R = require('ramda'),
     return collided(gameState.rocket, gameState.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
-    switch (input) {
+    switch (input.type) {
         case 'ArrowUpkeydown':
             return _extends({}, gameState, {
                 rocket: _extends({}, gameState.rocket, {
@@ -118,11 +118,13 @@ var game = function game(gameState, input) {
     return 'tick';
 }); // 60 fps
 
-Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (e) {
-    return e.key + e.type;
-}).map(function (e) {
-    return boolMatch(/^(ArrowUp|ArrowDown).*$/, e) ? e : 'anykey';
-}).distinctUntilChanged().merge(clock).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
+Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (input) {
+    return input.key + input.type;
+}).map(function (input) {
+    return boolMatch(/^(ArrowUp|ArrowDown).*$/, input) ? input : 'anykey';
+}).distinctUntilChanged().merge(clock).map(function (input) {
+    return { type: input };
+}).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
@@ -22926,7 +22928,7 @@ var tap = require('./tap.js'),
     return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
 },
     anyKeyCheck = function anyKeyCheck(input, gameState) {
-    return boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
+    return boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
 };
 
 module.exports = function (gameState, input) {

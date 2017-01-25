@@ -21,7 +21,7 @@ const
     collision = gameState =>
         collided(gameState.rocket, gameState.asteroid) ? {...gameState, mode: 'restart'} : gameState,
     flyingLogic = (gameState, input) => {
-        switch(input) {
+        switch(input.type) {
             case 'ArrowUpkeydown':
                 return {
                     ...gameState,

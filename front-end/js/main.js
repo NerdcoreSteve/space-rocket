@@ -28,9 +28,10 @@ const
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
-    .map(e => e.key + e.type)
-    .map(e => boolMatch(/^(ArrowUp|ArrowDown).*$/, e) ? e : 'anykey')
+    .map(input => input.key + input.type)
+    .map(input => boolMatch(/^(ArrowUp|ArrowDown).*$/, input) ? input : 'anykey')
     .distinctUntilChanged()
     .merge(clock)
+    .map(input => ({type: input}))
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))

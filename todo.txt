@@ -3,18 +3,14 @@ Todo
     if my test player still doesn't like the "star jump"
         remove the stars from restartMode
         just draw a black background
-    extract initial state into a function that takes a width and returns initial state
-        use canvas.width to start
-        restartMode uses gameState width to reset game when it gets up, down, or anykey
      make asteroid appear randomly, then make a stream of random asteroids
-         refactor to use more redux-like pattern of streamed values
-             each value in the stream will be an object with a type and it will have other
-                 attributes
-         make a callback stream that puts a set of random numbers (and what the are for)
-             into the input stream,
-             call that callback from subscribe callback
+        create a messages array in gameState
+        create a function called effects that takes gameState, processes those messages and returns
+            gamestate
+            effects calls a callback that puts an input type of random with an associated set of
+                random numbers
              this is like the elm effects model
-         garbage collect them when they go off screen
+         garbage collect asteroids when they go off screen
          is it ok for them to overlap?
      make a pause screen that shows game instructions and player stats
      Do I have a full game now?

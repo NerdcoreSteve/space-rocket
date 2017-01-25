@@ -20,7 +20,7 @@ const
         return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
     },
     anyKeyCheck = (input, gameState) =>
-        boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input)
+        boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input.type)
             ? startingGameState(gameState.screen.width, gameState.screen.height)
             : gameState
 
