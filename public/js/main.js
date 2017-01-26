@@ -120,9 +120,9 @@ var game = function game(gameState, input) {
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (input) {
     return input.key + input.type;
-}).map(function (input) {
-    return boolMatch(/^(ArrowUp|ArrowDown).*$/, input) ? input : 'anykey';
-}).distinctUntilChanged().merge(clock).map(function (input) {
+}).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(Rx.Observable.fromEvent(document, 'keypress').map(function () {
+    return 'anykey';
+})).merge(clock).map(function (input) {
     return { type: input };
 }).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
@@ -22928,10 +22928,9 @@ var tap = require('./tap.js'),
     return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
 },
     anyKeyCheck = function anyKeyCheck(input, gameState) {
-    return boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
-};
-
-module.exports = function (gameState, input) {
+    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
+},
+    restartLogic = function restartLogic(gameState) {
     switch (gameState.restart.mode) {
         case 'begin':
             return _extends({}, gameState, {
@@ -22962,11 +22961,12 @@ module.exports = function (gameState, input) {
                     mode: 'anykey'
                 })
             });
-        case 'anykey':
-            return anyKeyCheck(input, gameState);
         default:
             return gameState;
     }
+};
+module.exports = function (gameState, input) {
+    return anyKeyCheck(input, restartLogic(gameState));
 };
 
 },{"./boolMatch":1,"./startingGameState.js":316,"./tap.js":317}],316:[function(require,module,exports){

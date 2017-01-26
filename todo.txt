@@ -4,14 +4,16 @@ Todo
         remove the stars from restartMode
         just draw a black background
      make asteroid appear randomly, then make a stream of random asteroids
-        create a messages array in gameState
-        create a function called effects that takes gameState, processes those messages and returns
-            gamestate
-            effects calls a callback that puts an input type of random with an associated set of
-                random numbers
-             this is like the elm effects model
-         garbage collect asteroids when they go off screen
-         is it ok for them to overlap?
+        bit by bit, put rocket, asteroid, etc in a field sub-object (like restart)
+        then put asteroid in an asteroidField object
+        asteroidField will hold the array of asteroids, appearanceFreq, and appearanceCounter
+        create commands and effects arrays in gameState
+        create a function called effects that takes gameState, processes those commands
+            adds to the effects array and returns gamestate
+        issue command to get a random y value for an asteroid appearance
+        this is like the elm effects model
+        garbage collect asteroids when they go off screen
+        is it ok for them to overlap?
      make a pause screen that shows game instructions and player stats
      Do I have a full game now?
          as soon as I do, I need to release it on digital ocean instead with a doman,

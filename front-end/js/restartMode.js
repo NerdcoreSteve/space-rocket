@@ -20,61 +20,59 @@ const
         return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
     },
     anyKeyCheck = (input, gameState) =>
-        boolMatch(/^(ArrowUp|ArrowDown|anykey).*$/, input.type)
+        boolMatch(/^(.*?keydown|anykey)$/, input.type)
             ? startingGameState(gameState.screen.width, gameState.screen.height)
-            : gameState
-
-module.exports = (gameState, input) => {
-    switch(gameState.restart.mode) {
-        case 'begin':
-            return {
-                ...gameState,
-                restart: {
-                    ...gameState.restart,
-                    collision: {
-                        ...repositionCollision(
-                            gameState.rocket, gameState.asteroid, gameState.restart.collision),
-                    },
-                    holdCounter: gameState.restart.crashedHold,
-                    mode: 'crashed'
-                }
-            }
-        case 'crashed':
-            return gameState.restart.holdCounter !== 0
-                ? {
+            : gameState,
+    restartLogic = (gameState) => {
+        switch(gameState.restart.mode) {
+            case 'begin':
+                return {
                     ...gameState,
                     restart: {
                         ...gameState.restart,
-                        holdCounter: gameState.restart.holdCounter - 1
+                        collision: {
+                            ...repositionCollision(
+                                gameState.rocket, gameState.asteroid, gameState.restart.collision),
+                        },
+                        holdCounter: gameState.restart.crashedHold,
+                        mode: 'crashed'
                     }
                 }
-                : {
-                    ...gameState,
-                    restart: {
-                        ...gameState.restart,
-                        mode: 'destroyed',
-                        holdCounter: gameState.restart.destroyedHold
+            case 'crashed':
+                return gameState.restart.holdCounter !== 0
+                    ? {
+                        ...gameState,
+                        restart: {
+                            ...gameState.restart,
+                            holdCounter: gameState.restart.holdCounter - 1
+                        }
                     }
-                }
-        case 'destroyed':
-            return gameState.restart.holdCounter !== 0
-                ? {
-                    ...gameState,
-                    restart: {
-                        ...gameState.restart,
-                        holdCounter: gameState.restart.holdCounter - 1
+                    : {
+                        ...gameState,
+                        restart: {
+                            ...gameState.restart,
+                            mode: 'destroyed',
+                            holdCounter: gameState.restart.destroyedHold
+                        }
                     }
-                }
-                : {
-                    ...gameState,
-                    restart: {
-                        ...gameState.restart,
-                        mode: 'anykey'
+            case 'destroyed':
+                return gameState.restart.holdCounter !== 0
+                    ? {
+                        ...gameState,
+                        restart: {
+                            ...gameState.restart,
+                            holdCounter: gameState.restart.holdCounter - 1
+                        }
                     }
-                }
-        case 'anykey':
-            return anyKeyCheck(input, gameState)
-        default:
-            return gameState
+                    : {
+                        ...gameState,
+                        restart: {
+                            ...gameState.restart,
+                            mode: 'anykey'
+                        }
+                    }
+            default:
+                return gameState
+        }
     }
-}
+module.exports = (gameState, input) => anyKeyCheck(input, restartLogic(gameState))
