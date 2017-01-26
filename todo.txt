@@ -5,6 +5,7 @@ Todo
         just draw a black background
      make asteroid appear randomly, then make a stream of random asteroids
         bit by bit, put rocket, asteroid, etc in a field sub-object (like restart)
+            just need to move rocket now
         then put asteroid in an asteroidField object
         asteroidField will hold the array of asteroids, appearanceFreq, and appearanceCounter
         create commands and effects arrays in gameState

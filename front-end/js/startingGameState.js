@@ -39,19 +39,21 @@ module.exports = (width, height) => {
                 image: '/images/collision.png',
             }
         },
-        starField: {
-            image: '/images/starfield.png',
-            x1: 0,
-            x2: width,
-            speed: width / 470
-        },
-        asteroid: {
-            x: height * 2,
-            y: height / 3,
-            width: asteroidWidth,
-            height: asteroidHeight,
-            speed: height / 90,
-            image: '/images/asteroid.png'
+        field: {
+            starField: {
+                image: '/images/starfield.png',
+                x1: 0,
+                x2: width,
+                speed: width / 470
+            },
+            asteroid: {
+                x: height * 2,
+                y: height / 3,
+                width: asteroidWidth,
+                height: asteroidHeight,
+                speed: height / 90,
+                image: '/images/asteroid.png'
+            }
         },
         rocket: {
             x: width / 25,

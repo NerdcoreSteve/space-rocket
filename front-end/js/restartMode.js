@@ -32,7 +32,9 @@ const
                         ...gameState.restart,
                         collision: {
                             ...repositionCollision(
-                                gameState.rocket, gameState.asteroid, gameState.restart.collision),
+                                gameState.rocket,
+                                gameState.field.asteroid,
+                                gameState.restart.collision),
                         },
                         holdCounter: gameState.restart.crashedHold,
                         mode: 'crashed'

@@ -8,15 +8,15 @@ const
 module.exports = context => gameState => {
     window.requestAnimationFrame(() => {
         context.drawImage(
-            image(gameState.starField.image),
-            gameState.starField.x1,
+            image(gameState.field.starField.image),
+            gameState.field.starField.x1,
             0,
             context.canvas.width,
             context.canvas.height)
 
         context.drawImage(
-            image(gameState.starField.image),
-            gameState.starField.x2,
+            image(gameState.field.starField.image),
+            gameState.field.starField.x2,
             0,
             context.canvas.width,
             context.canvas.height)
@@ -36,11 +36,11 @@ module.exports = context => gameState => {
             gameState.rocket.height)
 
         context.drawImage(
-            image(gameState.asteroid.image),
-            gameState.asteroid.x,
-            gameState.asteroid.y,
-            gameState.asteroid.width,
-            gameState.asteroid.height)
+            image(gameState.field.asteroid.image),
+            gameState.field.asteroid.x,
+            gameState.field.asteroid.y,
+            gameState.field.asteroid.width,
+            gameState.field.asteroid.height)
 
         if(gameState.mode === 'restart') {
             context.drawImage(

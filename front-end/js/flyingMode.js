@@ -2,7 +2,7 @@ const
     R = require('ramda'),
     flying = (gameState, input) => collision(flyingLogic(gameState, input)),
     starFieldDy = gameState =>
-        (gameState.starField.x1 - gameState.starField.speed) % gameState.screen.width,
+        (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
     nextImageIndex = animateable =>
         (animateable.imageIndex + 1) % animateable.images.length,
     rocketDy = gameState => {
@@ -19,7 +19,9 @@ const
             && rect1.y < rect2.y + rect2.height
             && rect1.height + rect1.y > rect2.y,
     collision = gameState =>
-        collided(gameState.rocket, gameState.asteroid) ? {...gameState, mode: 'restart'} : gameState,
+        collided(gameState.rocket, gameState.field.asteroid)
+            ? {...gameState, mode: 'restart'}
+            : gameState,
     flyingLogic = (gameState, input) => {
         switch(input.type) {
             case 'ArrowUpkeydown':
@@ -61,14 +63,17 @@ const
             case 'tick':
                 return {
                     ...gameState,
-                    starField: {
-                        ...gameState.starField,
-                        x1: starFieldDy(gameState),
-                        x2: starFieldDy(gameState) + gameState.screen.width,
-                    },
-                    asteroid: {
-                        ...gameState.asteroid,
-                        x: gameState.asteroid.x - gameState.asteroid.speed
+                    field: {
+                        ...gameState.field,
+                        starField: {
+                            ...gameState.field.starField,
+                            x1: starFieldDy(gameState),
+                            x2: starFieldDy(gameState) + gameState.screen.width,
+                        },
+                        asteroid: {
+                            ...gameState.field.asteroid,
+                            x: gameState.field.asteroid.x - gameState.field.asteroid.speed
+                        }
                     },
                     rocket: {
                         ...gameState.rocket,
