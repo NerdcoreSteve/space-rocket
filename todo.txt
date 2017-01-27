@@ -20,10 +20,20 @@ Todo
          as soon as I do, I need to release it on digital ocean instead with a doman,
             make a trailer, publicize, etc
             make a "let's make" video about what I've done
+    write tests for everything
+        https://github.com/jhnns/rewire
+            should allow you to test private module functions
+        Do I need to test my little RxJs chain?
+        How would I test render?
+    Soundtrack and sound effects
     You can make the game more full screen if you remove the canvas css margin
+    could combine lenses with object spread to get rid of object spread nesting
+        write post about it
     in-game tutorial bits that tell you to press up and down?
         when you get the ability to shoot, tutorial should tell you to press space
      should have a registry of images and only start game when onload has completed for all
+        maybe
+        I should test the site in incognito mode. I want to make sure the game
      make the asteroids have random sizes within a range
      asteroids move at different speeds
      tweak with frequency of new asteroid appearance

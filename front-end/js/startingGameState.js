@@ -53,29 +53,29 @@ module.exports = (width, height) => {
                 height: asteroidHeight,
                 speed: height / 90,
                 image: '/images/asteroid.png'
-            }
-        },
-        rocket: {
-            x: width / 25,
-            y: height / 3,
-            width: rocketLength,
-            height: rocketWidth,
-            keyUpDown: false,
-            direction: 0,
-            keyDownDown: false,
-            speed: height / 90,
-            image: '/images/rocket.png',
-            fire: {
-                x: width / 40,
-                y: height / 3,
-                width: rocketWidth * .6,
-                height: rocketWidth * .8,
-                image: '/images/rocketFire1.png',
-                imageIndex: 0,
-                images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
-                frameHolds: 5,
-                holdCounter: 5,
             },
+            rocket: {
+                x: width / 25,
+                y: height / 3,
+                width: rocketLength,
+                height: rocketWidth,
+                keyUpDown: false,
+                direction: 0,
+                keyDownDown: false,
+                speed: height / 90,
+                image: '/images/rocket.png',
+                fire: {
+                    x: width / 40,
+                    y: height / 3,
+                    width: rocketWidth * .6,
+                    height: rocketWidth * .8,
+                    image: '/images/rocketFire1.png',
+                    imageIndex: 0,
+                    images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
+                    frameHolds: 5,
+                    holdCounter: 5,
+                }
+            }
         }
     }
 }

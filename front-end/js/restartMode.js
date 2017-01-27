@@ -32,7 +32,7 @@ const
                         ...gameState.restart,
                         collision: {
                             ...repositionCollision(
-                                gameState.rocket,
+                                gameState.field.rocket,
                                 gameState.field.asteroid,
                                 gameState.restart.collision),
                         },

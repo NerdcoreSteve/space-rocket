@@ -22,18 +22,18 @@ module.exports = context => gameState => {
             context.canvas.height)
 
         context.drawImage(
-            image(gameState.rocket.fire.image),
-            gameState.rocket.fire.x,
-            gameState.rocket.fire.y,
-            gameState.rocket.fire.width,
-            gameState.rocket.fire.height)
+            image(gameState.field.rocket.fire.image),
+            gameState.field.rocket.fire.x,
+            gameState.field.rocket.fire.y,
+            gameState.field.rocket.fire.width,
+            gameState.field.rocket.fire.height)
 
         context.drawImage(
-            image(gameState.rocket.image),
-            gameState.rocket.x,
-            gameState.rocket.y,
-            gameState.rocket.width,
-            gameState.rocket.height)
+            image(gameState.field.rocket.image),
+            gameState.field.rocket.x,
+            gameState.field.rocket.y,
+            gameState.field.rocket.width,
+            gameState.field.rocket.height)
 
         context.drawImage(
             image(gameState.field.asteroid.image),

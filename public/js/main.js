@@ -12,6 +12,7 @@ module.exports = R.curry(function (regex, string) {
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
+    tap = require('./tap.js'),
     flying = function flying(gameState, input) {
     return collision(flyingLogic(gameState, input));
 },
@@ -22,43 +23,51 @@ var R = require('ramda'),
     return (animateable.imageIndex + 1) % animateable.images.length;
 },
     rocketDy = function rocketDy(gameState) {
-    var rocketVector = gameState.rocket.speed * gameState.rocket.direction;
-    return gameState.rocket.y >= 0 ? gameState.rocket.y + gameState.rocket.height <= gameState.screen.height ? rocketVector : gameState.rocket.direction === 1 ? 0 : gameState.rocket.direction : gameState.rocket.direction === -1 ? 0 : gameState.rocket.direction;
+    var rocketVector = gameState.field.rocket.speed * gameState.field.rocket.direction;
+    return gameState.field.rocket.y >= 0 ? gameState.field.rocket.y + gameState.field.rocket.height <= gameState.screen.height ? rocketVector : gameState.field.rocket.direction === 1 ? 0 : gameState.field.rocket.direction : gameState.field.rocket.direction === -1 ? 0 : gameState.field.rocket.direction;
 },
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
     collision = function collision(gameState) {
-    return collided(gameState.rocket, gameState.field.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
+    return collided(gameState.field.rocket, gameState.field.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
         case 'ArrowUpkeydown':
             return _extends({}, gameState, {
-                rocket: _extends({}, gameState.rocket, {
-                    keyUpDown: true,
-                    direction: -1
+                field: _extends({}, gameState.field, {
+                    rocket: _extends({}, gameState.field.rocket, {
+                        keyUpDown: true,
+                        direction: -1
+                    })
                 })
             });
         case 'ArrowDownkeydown':
             return _extends({}, gameState, {
-                rocket: _extends({}, gameState.rocket, {
-                    keyDownDown: true,
-                    direction: 1
+                field: _extends({}, gameState.field, {
+                    rocket: _extends({}, gameState.field.rocket, {
+                        keyDownDown: true,
+                        direction: 1
+                    })
                 })
             });
         case 'ArrowUpkeyup':
             return _extends({}, gameState, {
-                rocket: _extends({}, gameState.rocket, {
-                    keyUpDown: false,
-                    direction: gameState.rocket.keyDownDown ? 1 : 0
+                field: _extends({}, gameState.field, {
+                    rocket: _extends({}, gameState.field.rocket, {
+                        keyUpDown: false,
+                        direction: gameState.field.rocket.keyDownDown ? 1 : 0
+                    })
                 })
             });
         case 'ArrowDownkeyup':
             return _extends({}, gameState, {
-                rocket: _extends({}, gameState.rocket, {
-                    keyDownDown: false,
-                    direction: gameState.rocket.keyUpDown ? -1 : 0
+                field: _extends({}, gameState.field, {
+                    rocket: _extends({}, gameState.field.rocket, {
+                        keyDownDown: false,
+                        direction: gameState.field.rocket.keyUpDown ? -1 : 0
+                    })
                 })
             });
         case 'tick':
@@ -70,15 +79,15 @@ var R = require('ramda'),
                     }),
                     asteroid: _extends({}, gameState.field.asteroid, {
                         x: gameState.field.asteroid.x - gameState.field.asteroid.speed
-                    })
-                }),
-                rocket: _extends({}, gameState.rocket, {
-                    y: gameState.rocket.y + rocketDy(gameState),
-                    fire: _extends({}, gameState.rocket.fire, {
-                        y: gameState.rocket.fire.y + rocketDy(gameState),
-                        holdCounter: (gameState.rocket.fire.holdCounter + 1) % gameState.rocket.fire.frameHolds,
-                        image: gameState.rocket.fire.holdCounter === 0 ? gameState.rocket.fire.images[nextImageIndex(gameState.rocket.fire)] : gameState.rocket.fire.images[gameState.rocket.fire.imageIndex],
-                        imageIndex: gameState.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.rocket.fire) : gameState.rocket.fire.imageIndex
+                    }),
+                    rocket: _extends({}, gameState.field.rocket, {
+                        y: gameState.field.rocket.y + rocketDy(gameState),
+                        fire: _extends({}, gameState.field.rocket.fire, {
+                            y: gameState.field.rocket.fire.y + rocketDy(gameState),
+                            holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
+                            image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
+                            imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
+                        })
                     })
                 })
             });
@@ -89,7 +98,7 @@ var R = require('ramda'),
 
 module.exports = flying;
 
-},{"ramda":4}],3:[function(require,module,exports){
+},{"./tap.js":317,"ramda":4}],3:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
@@ -22878,9 +22887,9 @@ module.exports = function (context) {
 
             context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
 
-            context.drawImage(image(gameState.rocket.fire.image), gameState.rocket.fire.x, gameState.rocket.fire.y, gameState.rocket.fire.width, gameState.rocket.fire.height);
+            context.drawImage(image(gameState.field.rocket.fire.image), gameState.field.rocket.fire.x, gameState.field.rocket.fire.y, gameState.field.rocket.fire.width, gameState.field.rocket.fire.height);
 
-            context.drawImage(image(gameState.rocket.image), gameState.rocket.x, gameState.rocket.y, gameState.rocket.width, gameState.rocket.height);
+            context.drawImage(image(gameState.field.rocket.image), gameState.field.rocket.x, gameState.field.rocket.y, gameState.field.rocket.width, gameState.field.rocket.height);
 
             context.drawImage(image(gameState.field.asteroid.image), gameState.field.asteroid.x, gameState.field.asteroid.y, gameState.field.asteroid.width, gameState.field.asteroid.height);
 
@@ -22937,7 +22946,7 @@ var tap = require('./tap.js'),
         case 'begin':
             return _extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
-                    collision: _extends({}, repositionCollision(gameState.rocket, gameState.field.asteroid, gameState.restart.collision)),
+                    collision: _extends({}, repositionCollision(gameState.field.rocket, gameState.field.asteroid, gameState.restart.collision)),
                     holdCounter: gameState.restart.crashedHold,
                     mode: 'crashed'
                 })
@@ -23029,28 +23038,28 @@ module.exports = function (width, height) {
                 height: asteroidHeight,
                 speed: height / 90,
                 image: '/images/asteroid.png'
-            }
-        },
-        rocket: {
-            x: width / 25,
-            y: height / 3,
-            width: rocketLength,
-            height: rocketWidth,
-            keyUpDown: false,
-            direction: 0,
-            keyDownDown: false,
-            speed: height / 90,
-            image: '/images/rocket.png',
-            fire: {
-                x: width / 40,
+            },
+            rocket: {
+                x: width / 25,
                 y: height / 3,
-                width: rocketWidth * .6,
-                height: rocketWidth * .8,
-                image: '/images/rocketFire1.png',
-                imageIndex: 0,
-                images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
-                frameHolds: 5,
-                holdCounter: 5
+                width: rocketLength,
+                height: rocketWidth,
+                keyUpDown: false,
+                direction: 0,
+                keyDownDown: false,
+                speed: height / 90,
+                image: '/images/rocket.png',
+                fire: {
+                    x: width / 40,
+                    y: height / 3,
+                    width: rocketWidth * .6,
+                    height: rocketWidth * .8,
+                    image: '/images/rocketFire1.png',
+                    imageIndex: 0,
+                    images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
+                    frameHolds: 5,
+                    holdCounter: 5
+                }
             }
         }
     };
