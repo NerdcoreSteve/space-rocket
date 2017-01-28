@@ -4,10 +4,19 @@ Todo
         remove the stars from restartMode
         just draw a black background
     make asteroid appear randomly, then make a stream of random asteroids
-        asteroidField will hold the array of asteroids, appearanceFreq, and appearanceCounter
+        asteroidField will hold the array of asteroids
+            just add an array (no random for now)
+            flying mode's collision function should add to an array of collision objects
+                for every collision in addition to setting mode
+            render should do a foreach on the collision array
+        make a create asteroid function
+        appearanceFreq, and appearanceCounter?
+            I want to tweak how often asteroids show up, but I don't want them showing up
+                at regular intervals
         create commands and effects arrays in gameState
         create a function called effects that takes gameState, processes those commands
             adds to the effects array and returns gamestate
+            a reduce call does each effect until all effects are applied
         issue command to get a random y value for an asteroid appearance
         this is like the elm effects model
         garbage collect asteroids when they go off screen
