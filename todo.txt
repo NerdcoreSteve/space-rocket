@@ -3,8 +3,7 @@ Todo
     if my test player still doesn't like the "star jump"
         remove the stars from restartMode
         just draw a black background
-    collision image doesn't always draw in the right spot
-     make asteroid appear randomly, then make a stream of random asteroids
+    make asteroid appear randomly, then make a stream of random asteroids
         asteroidField will hold the array of asteroids, appearanceFreq, and appearanceCounter
         create commands and effects arrays in gameState
         create a function called effects that takes gameState, processes those commands

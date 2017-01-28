@@ -3,7 +3,28 @@ const
         var imageObject = new Image()
         imageObject.src = url
         return imageObject
-    }
+    },
+    drawCollision = (gameState, context) =>
+        context.drawImage(
+            image(gameState.restart.collision.image),
+            gameState.restart.collision.x,
+            gameState.restart.collision.y,
+            gameState.restart.collision.width,
+            gameState.restart.collision.height),
+    drawDestroyed = (gameState, context) =>
+        context.drawImage(
+            image(gameState.restart.destroyed.image),
+            gameState.restart.destroyed.x,
+            gameState.restart.destroyed.y,
+            gameState.restart.destroyed.width,
+            gameState.restart.destroyed.height),
+    drawAnyKey = (gameState, context) =>
+        context.drawImage(
+            image(gameState.restart.pressAnyKey.image),
+            gameState.restart.pressAnyKey.x,
+            gameState.restart.pressAnyKey.y,
+            gameState.restart.pressAnyKey.width,
+            gameState.restart.pressAnyKey.height)
 
 module.exports = context => gameState => {
     window.requestAnimationFrame(() => {
@@ -43,34 +64,15 @@ module.exports = context => gameState => {
             gameState.field.asteroidField.asteroid.height)
 
         if(gameState.mode === 'restart') {
-            context.drawImage(
-                image(gameState.restart.collision.image),
-                gameState.restart.collision.x,
-                gameState.restart.collision.y,
-                gameState.restart.collision.width,
-                gameState.restart.collision.height)
-
-            if(gameState.restart.mode === 'destroyed') {
-                context.drawImage(
-                    image(gameState.restart.destroyed.image),
-                    gameState.restart.destroyed.x,
-                    gameState.restart.destroyed.y,
-                    gameState.restart.destroyed.width,
-                    gameState.restart.destroyed.height)
+            if(gameState.restart.mode === 'crashed') {
+                drawCollision(gameState, context)
+            } else if(gameState.restart.mode === 'destroyed') {
+                drawCollision(gameState, context)
+                drawDestroyed(gameState, context)
             } else if(gameState.restart.mode === 'anykey') {
-                context.drawImage(
-                    image(gameState.restart.destroyed.image),
-                    gameState.restart.destroyed.x,
-                    gameState.restart.destroyed.y,
-                    gameState.restart.destroyed.width,
-                    gameState.restart.destroyed.height)
-
-                context.drawImage(
-                    image(gameState.restart.pressAnyKey.image),
-                    gameState.restart.pressAnyKey.x,
-                    gameState.restart.pressAnyKey.y,
-                    gameState.restart.pressAnyKey.width,
-                    gameState.restart.pressAnyKey.height)
+                drawCollision(gameState, context)
+                drawDestroyed(gameState, context)
+                drawAnyKey(gameState, context)
             }
         }
     })
