@@ -58,12 +58,14 @@ module.exports = context => gameState => {
             gameState.field.rocket.width,
             gameState.field.rocket.height)
 
-        context.drawImage(
-            image(gameState.field.asteroidField.asteroid.image),
-            gameState.field.asteroidField.asteroid.x,
-            gameState.field.asteroidField.asteroid.y,
-            gameState.field.asteroidField.asteroid.width,
-            gameState.field.asteroidField.asteroid.height)
+        gameState.field.asteroidField.asteroids.forEach(
+            asteroid =>
+                context.drawImage(
+                    image(asteroid.image),
+                    asteroid.x,
+                    asteroid.y,
+                    asteroid.width,
+                    asteroid.height))
 
         if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'crashed') {

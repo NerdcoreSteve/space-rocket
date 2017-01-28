@@ -14,7 +14,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var R = require('ramda'),
     tap = require('./tap.js'),
     flying = function flying(gameState, input) {
-    return collision(flyingLogic(gameState, input));
+    return checkCollisions(flyingLogic(gameState, input));
 },
     starFieldDy = function starFieldDy(gameState) {
     return (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width;
@@ -29,8 +29,48 @@ var R = require('ramda'),
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
-    collision = function collision(gameState) {
-    return collided(gameState.field.rocket, gameState.field.asteroidField.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
+    collision = function collision(screenWidth, screenHeight, x, y) {
+    var width = screenWidth / 15;
+    return {
+        x: x,
+        y: y,
+        width: width,
+        height: width * (136 / 168),
+        image: '/images/collision.png'
+    };
+},
+    rectsMidpoint = function rectsMidpoint(rect1, rect2) {
+    return {
+        x: (rect1.x + rect2.x) / 2,
+        y: (rect1.y + rect2.y) / 2
+    };
+},
+    rectMidpoint = function rectMidpoint(rect) {
+    return {
+        x: rect.x + rect.width / 2,
+        y: rect.y + rect.height / 2
+    };
+},
+    checkCollisions = function checkCollisions(gameState) {
+    return R.pipe(
+    /*
+    R.over(
+        R.lens(
+            R.path(['field', 'asteroidField', 'asteroids']),
+            R.assocPath(['restart', 'collisions'])),
+        tap),
+    */
+    R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['restart', 'collisions'])), R.reduce(function (collisions, asteroid) {
+        if (collided(gameState.field.rocket, asteroid)) {
+            var collisionMidpoint = rectsMidpoint(rectMidpoint(gameState.field.rocket), rectMidpoint(asteroid));
+
+            return collisions.concat(collision(gameState.screen.width, gameState.screen.height, collisionMidpoint.x, collisionMidpoint.y));
+        } else {
+            return collisions;
+        }
+    }, [])), function (gameState) {
+        return gameState.restart.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
+    })(gameState);
 },
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
@@ -78,8 +118,10 @@ var R = require('ramda'),
                         x2: starFieldDy(gameState) + gameState.screen.width
                     }),
                     asteroidField: _extends({}, gameState.field.asteroidField, {
-                        asteroid: _extends({}, gameState.field.asteroidField.asteroid, {
-                            x: gameState.field.asteroidField.asteroid.x - gameState.field.asteroidField.asteroid.speed
+                        asteroids: gameState.field.asteroidField.asteroids.map(function (asteroid) {
+                            return _extends({}, asteroid, {
+                                x: asteroid.x - asteroid.speed
+                            });
                         })
                     }),
                     rocket: _extends({}, gameState.field.rocket, {
@@ -22904,7 +22946,9 @@ module.exports = function (context) {
 
             context.drawImage(image(gameState.field.rocket.image), gameState.field.rocket.x, gameState.field.rocket.y, gameState.field.rocket.width, gameState.field.rocket.height);
 
-            context.drawImage(image(gameState.field.asteroidField.asteroid.image), gameState.field.asteroidField.asteroid.x, gameState.field.asteroidField.asteroid.y, gameState.field.asteroidField.asteroid.width, gameState.field.asteroidField.asteroid.height);
+            gameState.field.asteroidField.asteroids.forEach(function (asteroid) {
+                return context.drawImage(image(asteroid.image), asteroid.x, asteroid.y, asteroid.width, asteroid.height);
+            });
 
             if (gameState.mode === 'restart') {
                 if (gameState.restart.mode === 'crashed') {
@@ -22930,38 +22974,6 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
-    rectMidpoint = function rectMidpoint(rect) {
-    return {
-        x: rect.x + rect.width / 2,
-        y: rect.y + rect.height / 2
-    };
-},
-    repositionByMidpoint = function repositionByMidpoint(x, y, rect) {
-    return _extends({}, rect, {
-        x: x - rect.width / 2,
-        y: y - rect.height / 2
-    });
-},
-    rectsMidpoint = function rectsMidpoint(rect1, rect2) {
-    return {
-        x: (rect1.x + rect2.x) / 2,
-        y: (rect1.y + rect2.y) / 2
-    };
-},
-    addCollisions = function addCollisions(gameState) {
-    var collisionMidpoint = rectsMidpoint(rectMidpoint(gameState.field.rocket), rectMidpoint(gameState.field.asteroidField.asteroid));
-    return [repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision(gameState.screen.width, gameState.screen.height, 0, 0))];
-},
-    collision = function collision(screenWidth, screenHeight, x, y) {
-    var width = screenWidth / 15;
-    return {
-        x: x,
-        y: y,
-        width: width,
-        height: width * (136 / 168),
-        image: '/images/collision.png'
-    };
-},
     anyKeyCheck = function anyKeyCheck(input, gameState) {
     return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
 },
@@ -22970,7 +22982,6 @@ var tap = require('./tap.js'),
         case 'begin':
             return _extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
-                    collisions: addCollisions(gameState),
                     holdCounter: gameState.restart.crashedHold,
                     mode: 'crashed'
                 })
@@ -23048,14 +23059,21 @@ module.exports = function (width, height) {
                 speed: width / 470
             },
             asteroidField: {
-                asteroid: {
+                asteroids: [{
                     x: height * 2,
                     y: height / 3,
                     width: asteroidWidth,
                     height: asteroidHeight,
                     speed: height / 90,
                     image: '/images/asteroid.png'
-                }
+                }, {
+                    x: height * 2,
+                    y: height / 6,
+                    width: asteroidWidth,
+                    height: asteroidHeight,
+                    speed: height / 90,
+                    image: '/images/asteroid.png'
+                }]
             },
             rocket: {
                 x: width / 25,

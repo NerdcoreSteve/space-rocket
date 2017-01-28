@@ -1,7 +1,7 @@
 const
     R = require('ramda'),
     tap = require('./tap.js'),
-    flying = (gameState, input) => collision(flyingLogic(gameState, input)),
+    flying = (gameState, input) => checkCollisions(flyingLogic(gameState, input)),
     starFieldDy = gameState =>
         (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
     nextImageIndex = animateable =>
@@ -19,10 +19,61 @@ const
             && rect1.x + rect1.width > rect2.x
             && rect1.y < rect2.y + rect2.height
             && rect1.height + rect1.y > rect2.y,
-    collision = gameState =>
-        collided(gameState.field.rocket, gameState.field.asteroidField.asteroid)
-            ? {...gameState, mode: 'restart'}
-            : gameState,
+    collision = (screenWidth, screenHeight, x, y) => {
+        const width = screenWidth / 15
+        return {
+            x: x,
+            y: y,
+            width: width,
+            height: width * (136/168),
+            image: '/images/collision.png',
+        }
+    },
+    rectsMidpoint = (rect1, rect2) => ({
+        x: (rect1.x + rect2.x)/2,
+        y: (rect1.y + rect2.y)/2
+    }),
+    rectMidpoint = rect => ({
+        x: rect.x + (rect.width / 2),
+        y: rect.y + (rect.height / 2),
+    }),
+    checkCollisions = gameState =>
+        R.pipe(
+            /*
+            R.over(
+                R.lens(
+                    R.path(['field', 'asteroidField', 'asteroids']),
+                    R.assocPath(['restart', 'collisions'])),
+                tap),
+            */
+            R.over(
+                R.lens(
+                    R.path(['field', 'asteroidField', 'asteroids']),
+                    R.assocPath(['restart', 'collisions'])),
+                R.reduce(
+                    (collisions, asteroid) => {
+                        if(collided(gameState.field.rocket, asteroid)) {
+                            const collisionMidpoint =
+                                rectsMidpoint(
+                                    rectMidpoint(gameState.field.rocket),
+                                    rectMidpoint(asteroid))
+                        
+                            return collisions.concat(
+                                collision(
+                                    gameState.screen.width,
+                                    gameState.screen.height,
+                                    collisionMidpoint.x,
+                                    collisionMidpoint.y))
+                        } else {
+                            return collisions
+                        }
+                    },
+                    [])),
+                gameState =>
+                    gameState.restart.collisions.length
+                        ? {...gameState, mode: 'restart'}
+                        : gameState)
+                    (gameState),
     flyingLogic = (gameState, input) => {
         switch(input.type) {
             case 'ArrowUpkeydown':
@@ -85,11 +136,12 @@ const
                         },
                         asteroidField: {
                             ...gameState.field.asteroidField,
-                            asteroid: {
-                                ...gameState.field.asteroidField.asteroid,
-                                x: gameState.field.asteroidField.asteroid.x
-                                    - gameState.field.asteroidField.asteroid.speed
-                            }
+                            asteroids: gameState.field.asteroidField.asteroids.map(
+                                asteroid =>
+                                    ({
+                                        ...asteroid,
+                                        x: asteroid.x - asteroid.speed
+                                    }))
                         },
                         rocket: {
                             ...gameState.field.rocket,
