@@ -4,6 +4,7 @@ Todo
         remove the stars from restartMode
         just draw a black background
     make asteroid appear randomly, then make a stream of random asteroids
+        fix bug, collision image is offset
         collisions should be in field object
         do I need the begin and crashed modes in restart now that collisions are added in flying mode?
         collision doesn't need screenHeight
