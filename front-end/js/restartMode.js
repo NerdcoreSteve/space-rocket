@@ -15,9 +15,25 @@ const
             x: (rect1.x + rect2.x)/2,
             y: (rect1.y + rect2.y)/2
         }),
-    repositionCollision = (rocket, asteroid, collision) => {
-        const collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid))
-        return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision)
+    addCollisions = (gameState) => {
+        const collisionMidpoint =
+            rectsMidpoint(
+                rectMidpoint(gameState.field.rocket),
+                rectMidpoint(gameState.field.asteroidField.asteroid))
+        return [repositionByMidpoint(
+            collisionMidpoint.x,
+            collisionMidpoint.y,
+            collision(gameState.screen.width, gameState.screen.height, 0, 0))]
+    },
+    collision = (screenWidth, screenHeight, x, y) => {
+        const width = screenWidth / 15
+        return {
+            x: x,
+            y: y,
+            width: width,
+            height: width * (136/168),
+            image: '/images/collision.png',
+        }
     },
     anyKeyCheck = (input, gameState) =>
         boolMatch(/^(.*?keydown|anykey)$/, input.type)
@@ -30,12 +46,7 @@ const
                     ...gameState,
                     restart: {
                         ...gameState.restart,
-                        collision: {
-                            ...repositionCollision(
-                                gameState.field.rocket,
-                                gameState.field.asteroidField.asteroid,
-                                gameState.restart.collision),
-                        },
+                        collisions: addCollisions(gameState),
                         holdCounter: gameState.restart.crashedHold,
                         mode: 'crashed'
                     }

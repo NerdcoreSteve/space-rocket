@@ -22881,8 +22881,10 @@ var image = function image(url) {
     imageObject.src = url;
     return imageObject;
 },
-    drawCollision = function drawCollision(gameState, context) {
-    return context.drawImage(image(gameState.restart.collision.image), gameState.restart.collision.x, gameState.restart.collision.y, gameState.restart.collision.width, gameState.restart.collision.height);
+    drawCollisions = function drawCollisions(gameState, context) {
+    return gameState.restart.collisions.forEach(function (collision) {
+        return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
+    });
 },
     drawDestroyed = function drawDestroyed(gameState, context) {
     return context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
@@ -22906,12 +22908,12 @@ module.exports = function (context) {
 
             if (gameState.mode === 'restart') {
                 if (gameState.restart.mode === 'crashed') {
-                    drawCollision(gameState, context);
+                    drawCollisions(gameState, context);
                 } else if (gameState.restart.mode === 'destroyed') {
-                    drawCollision(gameState, context);
+                    drawCollisions(gameState, context);
                     drawDestroyed(gameState, context);
                 } else if (gameState.restart.mode === 'anykey') {
-                    drawCollision(gameState, context);
+                    drawCollisions(gameState, context);
                     drawDestroyed(gameState, context);
                     drawAnyKey(gameState, context);
                 }
@@ -22946,9 +22948,19 @@ var tap = require('./tap.js'),
         y: (rect1.y + rect2.y) / 2
     };
 },
-    repositionCollision = function repositionCollision(rocket, asteroid, collision) {
-    var collisionMidpoint = rectsMidpoint(rectMidpoint(rocket), rectMidpoint(asteroid));
-    return repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision);
+    addCollisions = function addCollisions(gameState) {
+    var collisionMidpoint = rectsMidpoint(rectMidpoint(gameState.field.rocket), rectMidpoint(gameState.field.asteroidField.asteroid));
+    return [repositionByMidpoint(collisionMidpoint.x, collisionMidpoint.y, collision(gameState.screen.width, gameState.screen.height, 0, 0))];
+},
+    collision = function collision(screenWidth, screenHeight, x, y) {
+    var width = screenWidth / 15;
+    return {
+        x: x,
+        y: y,
+        width: width,
+        height: width * (136 / 168),
+        image: '/images/collision.png'
+    };
 },
     anyKeyCheck = function anyKeyCheck(input, gameState) {
     return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
@@ -22958,7 +22970,7 @@ var tap = require('./tap.js'),
         case 'begin':
             return _extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
-                    collision: _extends({}, repositionCollision(gameState.field.rocket, gameState.field.asteroidField.asteroid, gameState.restart.collision)),
+                    collisions: addCollisions(gameState),
                     holdCounter: gameState.restart.crashedHold,
                     mode: 'crashed'
                 })
@@ -23000,9 +23012,7 @@ module.exports = function (width, height) {
         rocketWidth = rocketLength * (48 / 122),
         // divide by image dimensions
     asteroidWidth = width / 20,
-        asteroidHeight = asteroidWidth * (87 / 95),
-        collisionWidth = width / 15,
-        collisionHeight = collisionWidth * (136 / 168);
+        asteroidHeight = asteroidWidth * (87 / 95);
     return {
         screen: {
             width: width,
@@ -23028,13 +23038,7 @@ module.exports = function (width, height) {
                 height: width * (160 / 786),
                 image: '/images/destroyed.png'
             },
-            collision: {
-                x: 0,
-                y: 0,
-                width: collisionWidth,
-                height: collisionHeight,
-                image: '/images/collision.png'
-            }
+            collisions: []
         },
         field: {
             starField: {

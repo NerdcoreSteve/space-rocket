@@ -3,9 +3,7 @@ module.exports = (width, height) => {
         rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
         asteroidWidth = width / 20,
-        asteroidHeight = asteroidWidth * (87/95),
-        collisionWidth = width / 15,
-        collisionHeight = collisionWidth * (136/168)
+        asteroidHeight = asteroidWidth * (87/95)
     return {
         screen: {
             width: width,
@@ -31,13 +29,7 @@ module.exports = (width, height) => {
                 height: width * (160/786),
                 image: '/images/destroyed.png',
             },
-            collision: {
-                x: 0,
-                y: 0,
-                width: collisionWidth,
-                height: collisionHeight,
-                image: '/images/collision.png',
-            }
+            collisions: []
         },
         field: {
             starField: {

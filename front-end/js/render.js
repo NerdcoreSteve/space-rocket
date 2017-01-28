@@ -4,13 +4,15 @@ const
         imageObject.src = url
         return imageObject
     },
-    drawCollision = (gameState, context) =>
-        context.drawImage(
-            image(gameState.restart.collision.image),
-            gameState.restart.collision.x,
-            gameState.restart.collision.y,
-            gameState.restart.collision.width,
-            gameState.restart.collision.height),
+    drawCollisions = (gameState, context) =>
+        gameState.restart.collisions.forEach(
+            collision =>
+                context.drawImage(
+                    image(collision.image),
+                    collision.x,
+                    collision.y,
+                    collision.width,
+                    collision.height)),
     drawDestroyed = (gameState, context) =>
         context.drawImage(
             image(gameState.restart.destroyed.image),
@@ -65,12 +67,12 @@ module.exports = context => gameState => {
 
         if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'crashed') {
-                drawCollision(gameState, context)
+                drawCollisions(gameState, context)
             } else if(gameState.restart.mode === 'destroyed') {
-                drawCollision(gameState, context)
+                drawCollisions(gameState, context)
                 drawDestroyed(gameState, context)
             } else if(gameState.restart.mode === 'anykey') {
-                drawCollision(gameState, context)
+                drawCollisions(gameState, context)
                 drawDestroyed(gameState, context)
                 drawAnyKey(gameState, context)
             }
