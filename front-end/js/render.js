@@ -36,11 +36,11 @@ module.exports = context => gameState => {
             gameState.field.rocket.height)
 
         context.drawImage(
-            image(gameState.field.asteroid.image),
-            gameState.field.asteroid.x,
-            gameState.field.asteroid.y,
-            gameState.field.asteroid.width,
-            gameState.field.asteroid.height)
+            image(gameState.field.asteroidField.asteroid.image),
+            gameState.field.asteroidField.asteroid.x,
+            gameState.field.asteroidField.asteroid.y,
+            gameState.field.asteroidField.asteroid.width,
+            gameState.field.asteroidField.asteroid.height)
 
         if(gameState.mode === 'restart') {
             context.drawImage(

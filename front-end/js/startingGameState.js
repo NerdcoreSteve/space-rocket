@@ -46,13 +46,15 @@ module.exports = (width, height) => {
                 x2: width,
                 speed: width / 470
             },
-            asteroid: {
-                x: height * 2,
-                y: height / 3,
-                width: asteroidWidth,
-                height: asteroidHeight,
-                speed: height / 90,
-                image: '/images/asteroid.png'
+            asteroidField: {
+                asteroid: {
+                    x: height * 2,
+                    y: height / 3,
+                    width: asteroidWidth,
+                    height: asteroidHeight,
+                    speed: height / 90,
+                    image: '/images/asteroid.png'
+                }
             },
             rocket: {
                 x: width / 25,

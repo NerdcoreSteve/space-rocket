@@ -30,7 +30,7 @@ var R = require('ramda'),
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
     collision = function collision(gameState) {
-    return collided(gameState.field.rocket, gameState.field.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
+    return collided(gameState.field.rocket, gameState.field.asteroidField.asteroid) ? _extends({}, gameState, { mode: 'restart' }) : gameState;
 },
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
@@ -77,8 +77,10 @@ var R = require('ramda'),
                         x1: starFieldDy(gameState),
                         x2: starFieldDy(gameState) + gameState.screen.width
                     }),
-                    asteroid: _extends({}, gameState.field.asteroid, {
-                        x: gameState.field.asteroid.x - gameState.field.asteroid.speed
+                    asteroidField: _extends({}, gameState.field.asteroidField, {
+                        asteroid: _extends({}, gameState.field.asteroidField.asteroid, {
+                            x: gameState.field.asteroidField.asteroid.x - gameState.field.asteroidField.asteroid.speed
+                        })
                     }),
                     rocket: _extends({}, gameState.field.rocket, {
                         y: gameState.field.rocket.y + rocketDy(gameState),
@@ -22891,7 +22893,7 @@ module.exports = function (context) {
 
             context.drawImage(image(gameState.field.rocket.image), gameState.field.rocket.x, gameState.field.rocket.y, gameState.field.rocket.width, gameState.field.rocket.height);
 
-            context.drawImage(image(gameState.field.asteroid.image), gameState.field.asteroid.x, gameState.field.asteroid.y, gameState.field.asteroid.width, gameState.field.asteroid.height);
+            context.drawImage(image(gameState.field.asteroidField.asteroid.image), gameState.field.asteroidField.asteroid.x, gameState.field.asteroidField.asteroid.y, gameState.field.asteroidField.asteroid.width, gameState.field.asteroidField.asteroid.height);
 
             if (gameState.mode === 'restart') {
                 context.drawImage(image(gameState.restart.collision.image), gameState.restart.collision.x, gameState.restart.collision.y, gameState.restart.collision.width, gameState.restart.collision.height);
@@ -22946,7 +22948,7 @@ var tap = require('./tap.js'),
         case 'begin':
             return _extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
-                    collision: _extends({}, repositionCollision(gameState.field.rocket, gameState.field.asteroid, gameState.restart.collision)),
+                    collision: _extends({}, repositionCollision(gameState.field.rocket, gameState.field.asteroidField.asteroid, gameState.restart.collision)),
                     holdCounter: gameState.restart.crashedHold,
                     mode: 'crashed'
                 })
@@ -23031,13 +23033,15 @@ module.exports = function (width, height) {
                 x2: width,
                 speed: width / 470
             },
-            asteroid: {
-                x: height * 2,
-                y: height / 3,
-                width: asteroidWidth,
-                height: asteroidHeight,
-                speed: height / 90,
-                image: '/images/asteroid.png'
+            asteroidField: {
+                asteroid: {
+                    x: height * 2,
+                    y: height / 3,
+                    width: asteroidWidth,
+                    height: asteroidHeight,
+                    speed: height / 90,
+                    image: '/images/asteroid.png'
+                }
             },
             rocket: {
                 x: width / 25,

@@ -20,7 +20,7 @@ const
             && rect1.y < rect2.y + rect2.height
             && rect1.height + rect1.y > rect2.y,
     collision = gameState =>
-        collided(gameState.field.rocket, gameState.field.asteroid)
+        collided(gameState.field.rocket, gameState.field.asteroidField.asteroid)
             ? {...gameState, mode: 'restart'}
             : gameState,
     flyingLogic = (gameState, input) => {
@@ -83,9 +83,13 @@ const
                             x1: starFieldDy(gameState),
                             x2: starFieldDy(gameState) + gameState.screen.width,
                         },
-                        asteroid: {
-                            ...gameState.field.asteroid,
-                            x: gameState.field.asteroid.x - gameState.field.asteroid.speed
+                        asteroidField: {
+                            ...gameState.field.asteroidField,
+                            asteroid: {
+                                ...gameState.field.asteroidField.asteroid,
+                                x: gameState.field.asteroidField.asteroid.x
+                                    - gameState.field.asteroidField.asteroid.speed
+                            }
                         },
                         rocket: {
                             ...gameState.field.rocket,
