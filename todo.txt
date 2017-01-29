@@ -1,16 +1,7 @@
 https://github.com/shakiba/fastcontext
 Todo
-    if my test player still doesn't like the "star jump"
-        remove the stars from restartMode
-        just draw a black background
     make asteroid appear randomly, then make a stream of random asteroids
-        do I need the begin and crashed modes in restart now that collisions are added in flying mode?
-        asteroidField will hold the array of asteroids
-            just add an array (no random for now)
-            flying mode's collision function should add to an array of collision objects
-                for every collision in addition to setting mode
-            render should do a foreach on the collision array
-        make a create asteroid function
+        make a create asteroid function that takes a y
         appearanceFreq, and appearanceCounter?
             I want to tweak how often asteroids show up, but I don't want them showing up
                 at regular intervals
@@ -23,6 +14,7 @@ Todo
         garbage collect asteroids when they go off screen
         is it ok for them to overlap?
      make a pause screen that shows game instructions and player stats
+    use collision rectangles slightly smaller than the image rects
      Do I have a full game now?
          as soon as I do, I need to release it on digital ocean instead with a doman,
             make a trailer, publicize, etc

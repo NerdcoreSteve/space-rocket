@@ -22916,11 +22916,6 @@ var image = function image(url) {
     imageObject.src = url;
     return imageObject;
 },
-    drawCollisions = function drawCollisions(gameState, context) {
-    return gameState.field.collisions.forEach(function (collision) {
-        return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
-    });
-},
     drawDestroyed = function drawDestroyed(gameState, context) {
     return context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
 },
@@ -22943,14 +22938,14 @@ module.exports = function (context) {
                 return context.drawImage(image(asteroid.image), asteroid.x, asteroid.y, asteroid.width, asteroid.height);
             });
 
+            gameState.field.collisions.forEach(function (collision) {
+                return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
+            });
+
             if (gameState.mode === 'restart') {
-                if (gameState.restart.mode === 'crashed') {
-                    drawCollisions(gameState, context);
-                } else if (gameState.restart.mode === 'destroyed') {
-                    drawCollisions(gameState, context);
+                if (gameState.restart.mode === 'destroyed') {
                     drawDestroyed(gameState, context);
                 } else if (gameState.restart.mode === 'anykey') {
-                    drawCollisions(gameState, context);
                     drawDestroyed(gameState, context);
                     drawAnyKey(gameState, context);
                 }

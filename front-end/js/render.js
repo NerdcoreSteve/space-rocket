@@ -4,15 +4,6 @@ const
         imageObject.src = url
         return imageObject
     },
-    drawCollisions = (gameState, context) =>
-        gameState.field.collisions.forEach(
-            collision =>
-                context.drawImage(
-                    image(collision.image),
-                    collision.x,
-                    collision.y,
-                    collision.width,
-                    collision.height)),
     drawDestroyed = (gameState, context) =>
         context.drawImage(
             image(gameState.restart.destroyed.image),
@@ -67,14 +58,19 @@ module.exports = context => gameState => {
                     asteroid.width,
                     asteroid.height))
 
+        gameState.field.collisions.forEach(
+            collision =>
+                context.drawImage(
+                    image(collision.image),
+                    collision.x,
+                    collision.y,
+                    collision.width,
+                    collision.height))
+
         if(gameState.mode === 'restart') {
-            if(gameState.restart.mode === 'crashed') {
-                drawCollisions(gameState, context)
-            } else if(gameState.restart.mode === 'destroyed') {
-                drawCollisions(gameState, context)
+            if(gameState.restart.mode === 'destroyed') {
                 drawDestroyed(gameState, context)
             } else if(gameState.restart.mode === 'anykey') {
-                drawCollisions(gameState, context)
                 drawDestroyed(gameState, context)
                 drawAnyKey(gameState, context)
             }
