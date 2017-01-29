@@ -52,7 +52,7 @@ var R = require('ramda'),
     };
 },
     checkCollisions = function checkCollisions(gameState) {
-    return R.pipe(R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['restart', 'collisions'])), R.reduce(function (collisions, asteroid) {
+    return R.pipe(R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['field', 'collisions'])), R.reduce(function (collisions, asteroid) {
         return collided(gameState.field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
             return collision(gameState.screen.width, gameState.screen.height, collisionMidpoint.x, collisionMidpoint.y);
         }, function (collision) {
@@ -62,7 +62,7 @@ var R = require('ramda'),
             });
         }, R.append(R.__, collisions))(rectMidpoint(gameState.field.rocket), rectMidpoint(asteroid)) : collisions;
     }, [])), function (gameState) {
-        return gameState.restart.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
+        return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
     })(gameState);
 },
     flyingLogic = function flyingLogic(gameState, input) {
@@ -22917,7 +22917,7 @@ var image = function image(url) {
     return imageObject;
 },
     drawCollisions = function drawCollisions(gameState, context) {
-    return gameState.restart.collisions.forEach(function (collision) {
+    return gameState.field.collisions.forEach(function (collision) {
         return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
     });
 },
@@ -23041,8 +23041,7 @@ module.exports = function (width, height) {
                 width: width,
                 height: width * (160 / 786),
                 image: '/images/destroyed.png'
-            },
-            collisions: []
+            }
         },
         field: {
             starField: {
@@ -23089,7 +23088,8 @@ module.exports = function (width, height) {
                     frameHolds: 5,
                     holdCounter: 5
                 }
-            }
+            },
+            collisions: []
         }
     };
 };

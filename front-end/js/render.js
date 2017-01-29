@@ -5,7 +5,7 @@ const
         return imageObject
     },
     drawCollisions = (gameState, context) =>
-        gameState.restart.collisions.forEach(
+        gameState.field.collisions.forEach(
             collision =>
                 context.drawImage(
                     image(collision.image),

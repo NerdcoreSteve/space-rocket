@@ -42,7 +42,7 @@ const
             R.over(
                 R.lens(
                     R.path(['field', 'asteroidField', 'asteroids']),
-                    R.assocPath(['restart', 'collisions'])),
+                    R.assocPath(['field', 'collisions'])),
                 R.reduce(
                     (collisions, asteroid) =>
                         (collided(gameState.field.rocket, asteroid))
@@ -65,7 +65,7 @@ const
                             : collisions,
                     [])),
                 gameState =>
-                    gameState.restart.collisions.length
+                    gameState.field.collisions.length
                         ? {...gameState, mode: 'restart'}
                         : gameState)
                     (gameState),

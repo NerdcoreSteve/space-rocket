@@ -28,8 +28,7 @@ module.exports = (width, height) => {
                 width: width,
                 height: width * (160/786),
                 image: '/images/destroyed.png',
-            },
-            collisions: []
+            }
         },
         field: {
             starField: {
@@ -79,7 +78,8 @@ module.exports = (width, height) => {
                     frameHolds: 5,
                     holdCounter: 5,
                 }
-            }
+            },
+            collisions: []
         }
     }
 }

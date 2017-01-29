@@ -4,9 +4,7 @@ Todo
         remove the stars from restartMode
         just draw a black background
     make asteroid appear randomly, then make a stream of random asteroids
-        collisions should be in field object
         do I need the begin and crashed modes in restart now that collisions are added in flying mode?
-        collision doesn't need screenHeight
         asteroidField will hold the array of asteroids
             just add an array (no random for now)
             flying mode's collision function should add to an array of collision objects
@@ -29,6 +27,7 @@ Todo
          as soon as I do, I need to release it on digital ocean instead with a doman,
             make a trailer, publicize, etc
             make a "let's make" video about what I've done
+    collision doesn't need screenHeight
     write tests for everything
         https://github.com/jhnns/rewire
             should allow you to test private module functions
