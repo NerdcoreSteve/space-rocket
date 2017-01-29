@@ -39,35 +39,30 @@ const
     }),
     checkCollisions = gameState =>
         R.pipe(
-            /*
-            R.over(
-                R.lens(
-                    R.path(['field', 'asteroidField', 'asteroids']),
-                    R.assocPath(['restart', 'collisions'])),
-                tap),
-            */
             R.over(
                 R.lens(
                     R.path(['field', 'asteroidField', 'asteroids']),
                     R.assocPath(['restart', 'collisions'])),
                 R.reduce(
-                    (collisions, asteroid) => {
-                        if(collided(gameState.field.rocket, asteroid)) {
-                            const collisionMidpoint =
-                                rectsMidpoint(
+                    (collisions, asteroid) =>
+                        (collided(gameState.field.rocket, asteroid))
+                            ? R.pipe(
+                                rectsMidpoint,
+                                collisionMidpoint =>
+                                    collision(
+                                        gameState.screen.width,
+                                        gameState.screen.height,
+                                        collisionMidpoint.x,
+                                        collisionMidpoint.y),
+                                collision => ({
+                                    ...collision,
+                                    x: collision.x - collision.width / 2,
+                                    y: collision.y - collision.height / 2
+                                }),
+                                R.append(R.__, collisions))(
                                     rectMidpoint(gameState.field.rocket),
                                     rectMidpoint(asteroid))
-                        
-                            return collisions.concat(
-                                collision(
-                                    gameState.screen.width,
-                                    gameState.screen.height,
-                                    collisionMidpoint.x,
-                                    collisionMidpoint.y))
-                        } else {
-                            return collisions
-                        }
-                    },
+                            : collisions,
                     [])),
                 gameState =>
                     gameState.restart.collisions.length

@@ -52,22 +52,15 @@ var R = require('ramda'),
     };
 },
     checkCollisions = function checkCollisions(gameState) {
-    return R.pipe(
-    /*
-    R.over(
-        R.lens(
-            R.path(['field', 'asteroidField', 'asteroids']),
-            R.assocPath(['restart', 'collisions'])),
-        tap),
-    */
-    R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['restart', 'collisions'])), R.reduce(function (collisions, asteroid) {
-        if (collided(gameState.field.rocket, asteroid)) {
-            var collisionMidpoint = rectsMidpoint(rectMidpoint(gameState.field.rocket), rectMidpoint(asteroid));
-
-            return collisions.concat(collision(gameState.screen.width, gameState.screen.height, collisionMidpoint.x, collisionMidpoint.y));
-        } else {
-            return collisions;
-        }
+    return R.pipe(R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['restart', 'collisions'])), R.reduce(function (collisions, asteroid) {
+        return collided(gameState.field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
+            return collision(gameState.screen.width, gameState.screen.height, collisionMidpoint.x, collisionMidpoint.y);
+        }, function (collision) {
+            return _extends({}, collision, {
+                x: collision.x - collision.width / 2,
+                y: collision.y - collision.height / 2
+            });
+        }, R.append(R.__, collisions))(rectMidpoint(gameState.field.rocket), rectMidpoint(asteroid)) : collisions;
     }, [])), function (gameState) {
         return gameState.restart.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
     })(gameState);
@@ -23061,14 +23054,14 @@ module.exports = function (width, height) {
             asteroidField: {
                 asteroids: [{
                     x: height * 2,
-                    y: height / 3,
+                    y: height / 2,
                     width: asteroidWidth,
                     height: asteroidHeight,
                     speed: height / 90,
                     image: '/images/asteroid.png'
                 }, {
                     x: height * 2,
-                    y: height / 6,
+                    y: height / 7,
                     width: asteroidWidth,
                     height: asteroidHeight,
                     speed: height / 90,

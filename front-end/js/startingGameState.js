@@ -42,7 +42,7 @@ module.exports = (width, height) => {
                 asteroids: [
                     {
                         x: height * 2,
-                        y: height / 3,
+                        y: height / 2,
                         width: asteroidWidth,
                         height: asteroidHeight,
                         speed: height / 90,
@@ -50,7 +50,7 @@ module.exports = (width, height) => {
                     },
                     {
                         x: height * 2,
-                        y: height / 6,
+                        y: height / 7,
                         width: asteroidWidth,
                         height: asteroidHeight,
                         speed: height / 90,
