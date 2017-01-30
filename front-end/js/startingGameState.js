@@ -1,9 +1,7 @@
 module.exports = (width, height) => {
     const
         rocketLength = width / 10,
-        rocketWidth = rocketLength * (48 / 122), // divide by image dimensions
-        asteroidWidth = width / 20,
-        asteroidHeight = asteroidWidth * (87/95)
+        rocketWidth = rocketLength * (48 / 122)
     return {
         screen: {
             width: width,
@@ -38,24 +36,9 @@ module.exports = (width, height) => {
                 speed: width / 470
             },
             asteroidField: {
-                asteroids: [
-                    {
-                        x: height * 2,
-                        y: height / 2,
-                        width: asteroidWidth,
-                        height: asteroidHeight,
-                        speed: height / 90,
-                        image: '/images/asteroid.png'
-                    },
-                    {
-                        x: height * 2,
-                        y: height / 7,
-                        width: asteroidWidth,
-                        height: asteroidHeight,
-                        speed: height / 90,
-                        image: '/images/asteroid.png'
-                    }
-                ]
+                nextCounter: 0,
+                nextDuration: 30,
+                asteroids: []
             },
             rocket: {
                 x: width / 25,

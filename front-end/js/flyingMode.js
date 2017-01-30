@@ -69,6 +69,19 @@ const
                         ? {...gameState, mode: 'restart'}
                         : gameState)
                     (gameState),
+    asteroid = (width, y) => {
+        const
+            asteroidWidth = width / 20,
+            asteroidHeight = asteroidWidth * (87/95)
+        return {
+            x: width * 1.5,
+            y: y,
+            width: asteroidWidth,
+            height: asteroidHeight,
+            speed: width / 130,
+            image: '/images/asteroid.png'
+        }
+    },
     flyingLogic = (gameState, input) => {
         switch(input.type) {
             case 'ArrowUpkeydown':
@@ -131,12 +144,24 @@ const
                         },
                         asteroidField: {
                             ...gameState.field.asteroidField,
-                            asteroids: gameState.field.asteroidField.asteroids.map(
-                                asteroid =>
+                            nextCounter: gameState.field.asteroidField.nextCounter
+                                ? gameState.field.asteroidField.nextCounter - 1
+                                : gameState.field.asteroidField.nextDuration,
+                            asteroids: R.pipe(
+                                R.map(asteroid =>
                                     ({
                                         ...asteroid,
                                         x: asteroid.x - asteroid.speed
-                                    }))
+                                    })),
+                                R.reject(asteroid => asteroid.x + asteroid.width < 0),
+                                asteroids =>
+                                    !gameState.field.asteroidField.nextCounter
+                                        ? asteroids.concat(
+                                            asteroid(
+                                                gameState.screen.width,
+                                                gameState.screen.height / 2))
+                                        : asteroids)
+                                    (gameState.field.asteroidField.asteroids)
                         },
                         rocket: {
                             ...gameState.field.rocket,

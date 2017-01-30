@@ -1,18 +1,13 @@
 https://github.com/shakiba/fastcontext
 Todo
     make asteroid appear randomly, then make a stream of random asteroids
-        make a create asteroid function that takes a y
-        appearanceFreq, and appearanceCounter?
-            I want to tweak how often asteroids show up, but I don't want them showing up
-                at regular intervals
-        create commands and effects arrays in gameState
         create a function called effects that takes gameState, processes those commands
             adds to the effects array and returns gamestate
             a reduce call does each effect until all effects are applied
-        issue command to get a random y value for an asteroid appearance
-        this is like the elm effects model
-        garbage collect asteroids when they go off screen
-        is it ok for them to overlap?
+        issue command to get a random y and nextDuration values for an asteroid appearance
+            what about weighting some numbers so they appear more frequently?
+                maybe do this later
+        is it ok for asteroids to overlap?
      make a pause screen that shows game instructions and player stats
     use collision rectangles slightly smaller than the image rects
      Do I have a full game now?

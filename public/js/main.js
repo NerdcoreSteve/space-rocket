@@ -65,6 +65,18 @@ var R = require('ramda'),
         return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
     })(gameState);
 },
+    asteroid = function asteroid(width, y) {
+    var asteroidWidth = width / 20,
+        asteroidHeight = asteroidWidth * (87 / 95);
+    return {
+        x: width * 1.5,
+        y: y,
+        width: asteroidWidth,
+        height: asteroidHeight,
+        speed: width / 130,
+        image: '/images/asteroid.png'
+    };
+},
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
         case 'ArrowUpkeydown':
@@ -111,11 +123,16 @@ var R = require('ramda'),
                         x2: starFieldDy(gameState) + gameState.screen.width
                     }),
                     asteroidField: _extends({}, gameState.field.asteroidField, {
-                        asteroids: gameState.field.asteroidField.asteroids.map(function (asteroid) {
+                        nextCounter: gameState.field.asteroidField.nextCounter ? gameState.field.asteroidField.nextCounter - 1 : gameState.field.asteroidField.nextDuration,
+                        asteroids: R.pipe(R.map(function (asteroid) {
                             return _extends({}, asteroid, {
                                 x: asteroid.x - asteroid.speed
                             });
-                        })
+                        }), R.reject(function (asteroid) {
+                            return asteroid.x + asteroid.width < 0;
+                        }), function (asteroids) {
+                            return !gameState.field.asteroidField.nextCounter ? asteroids.concat(asteroid(gameState.screen.width, gameState.screen.height / 2)) : asteroids;
+                        })(gameState.field.asteroidField.asteroids)
                     }),
                     rocket: _extends({}, gameState.field.rocket, {
                         y: gameState.field.rocket.y + rocketDy(gameState),
@@ -23008,10 +23025,7 @@ module.exports = function (gameState, input) {
 
 module.exports = function (width, height) {
     var rocketLength = width / 10,
-        rocketWidth = rocketLength * (48 / 122),
-        // divide by image dimensions
-    asteroidWidth = width / 20,
-        asteroidHeight = asteroidWidth * (87 / 95);
+        rocketWidth = rocketLength * (48 / 122);
     return {
         screen: {
             width: width,
@@ -23046,21 +23060,9 @@ module.exports = function (width, height) {
                 speed: width / 470
             },
             asteroidField: {
-                asteroids: [{
-                    x: height * 2,
-                    y: height / 2,
-                    width: asteroidWidth,
-                    height: asteroidHeight,
-                    speed: height / 90,
-                    image: '/images/asteroid.png'
-                }, {
-                    x: height * 2,
-                    y: height / 7,
-                    width: asteroidWidth,
-                    height: asteroidHeight,
-                    speed: height / 90,
-                    image: '/images/asteroid.png'
-                }]
+                nextCounter: 0,
+                nextDuration: 30,
+                asteroids: []
             },
             rocket: {
                 x: width / 25,
