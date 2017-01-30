@@ -1,9 +1,11 @@
 https://github.com/shakiba/fastcontext
 Todo
     make asteroid appear randomly, then make a stream of random asteroids
-        create a function called effects that takes gameState, processes those commands
-            adds to the effects array and returns gamestate
-            a reduce call does each effect until all effects are applied
+        create an action function that can be called from anywhere, but that when called
+            adds a signal to the stream
+            make it work a little like redux-saga, but no need to use generators yet
+        Now create a random case for the action that sends a packet of random values
+            down the stream
         issue command to get a random y and nextDuration values for an asteroid appearance
             what about weighting some numbers so they appear more frequently?
                 maybe do this later
