@@ -8,10 +8,10 @@ Todo
             what about weighting some numbers so they appear more frequently?
                 maybe do this later
         is it ok for asteroids to overlap?
-     make a pause screen that shows game instructions and player stats
+    make a pause screen that shows game instructions and player stats
     use collision rectangles slightly smaller than the image rects
-     Do I have a full game now?
-         as soon as I do, I need to release it on digital ocean instead with a doman,
+    Do I have a full game now?
+        as soon as I do, I need to release it on digital ocean instead with a doman,
             make a trailer, publicize, etc
             make a "let's make" video about what I've done
     collision doesn't need screenHeight
@@ -22,23 +22,21 @@ Todo
         How would I test render?
     Soundtrack and sound effects
     You can make the game more full screen if you remove the canvas css margin
-    could combine lenses with object spread to get rid of object spread nesting
-        write post about it
     in-game tutorial bits that tell you to press up and down?
         when you get the ability to shoot, tutorial should tell you to press space
-     should have a registry of images and only start game when onload has completed for all
+    should have a registry of images and only start game when onload has completed for all
         maybe
         I should test the site in incognito mode. I want to make sure the game
-     make the asteroids have random sizes within a range
-     asteroids move at different speeds
-     tweak with frequency of new asteroid appearance
-         should not be fixed. Should also be random
-     rotate asteroids at different rates
-         http:stackoverflow.com/questions/17411991/html5-canvas-rotate-image
-         make rotate image function that takes an image and context
-     make a set of asteroid images so they don't all look the same
-     What else before I call it done?
-     put up on heroku and porfolio
+    make the asteroids have random sizes within a range
+    asteroids move at different speeds
+    tweak with frequency of new asteroid appearance
+        should not be fixed. Should also be random
+    rotate asteroids at different rates
+        http:stackoverflow.com/questions/17411991/html5-canvas-rotate-image
+        make rotate image function that takes an image and context
+    make a set of asteroid images so they don't all look the same
+    What else before I call it done?
+    put up on heroku and porfolio
 
 Todo later:
 make a function that takes gamestate, canvas height and width,
@@ -47,7 +45,7 @@ use it on initial state,
 in subscribe: use it to modify state and canvas when window resizes
 No functions will be able to rever to context.canvas, instead gamestate will
 keep a record of canvas width and height
-     keep improving, iterating, etc until people play it.
+    keep improving, iterating, etc until people play it.
     TODO should render also be a switch based on mode?
     TODO get image dimensions by javascript
     rocketWidth = rocketLength * (48 / 122),  divide by image dimensions
