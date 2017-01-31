@@ -24,6 +24,7 @@ const
                 return gameState
         }
     },
+    random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     commandObservable = new Rx.Subject(),
     commandStream = commandObservable.filter(x => x.type !== 'no_op'),
@@ -31,7 +32,14 @@ const
         switch(c.type) {
             case 'random_numbers':
                 return commandObservable.onNext({
-                    type: c.returnType
+                    type: c.returnType,
+                    numbers:
+                        R.pipe(
+                            R.prop('numbers'),
+                            R.toPairs,
+                            R.map(pair => [pair[0], random(pair[1][0], pair[1][1])]),
+                            R.fromPairs)
+                                (c)
                 })
             default:
                 return commandObservable.onNext({
@@ -53,6 +61,20 @@ Rx.Observable.fromEvent(document, 'keydown')
 
 
 commandStream.subscribe(console.log)
-command({type: 'random_numbers', returnType: 'new_asteroid'})
-command({type: 'random_numbers', returnType: 'new_car'})
+command({
+    type: 'random_numbers',
+    returnType: 'new_asteroid',
+    numbers: {
+        speed: [5, 10],
+        y: [0, 5]
+    }
+})
+command({
+    type: 'random_numbers',
+    returnType: 'new_asteroid',
+    numbers: {
+        speed: [5, 10],
+        y: [0, 5]
+    }
+})
 command({type: 'shoes', returnType: 'new_car'})

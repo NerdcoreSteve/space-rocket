@@ -179,6 +179,9 @@ var game = function game(gameState, input) {
             return gameState;
     }
 },
+    random = function random(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+},
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
 }),
@@ -191,7 +194,10 @@ commandObservable = new Rx.Subject(),
     switch (c.type) {
         case 'random_numbers':
             return commandObservable.onNext({
-                type: c.returnType
+                type: c.returnType,
+                numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
+                    return [pair[0], random(pair[1][0], pair[1][1])];
+                }), R.fromPairs)(c)
             });
         default:
             return commandObservable.onNext({
@@ -209,8 +215,22 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
 }).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
 commandStream.subscribe(console.log);
-command({ type: 'random_numbers', returnType: 'new_asteroid' });
-command({ type: 'random_numbers', returnType: 'new_car' });
+command({
+    type: 'random_numbers',
+    returnType: 'new_asteroid',
+    numbers: {
+        speed: [5, 10],
+        y: [0, 5]
+    }
+});
+command({
+    type: 'random_numbers',
+    returnType: 'new_asteroid',
+    numbers: {
+        speed: [5, 10],
+        y: [0, 5]
+    }
+});
 command({ type: 'shoes', returnType: 'new_car' });
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
