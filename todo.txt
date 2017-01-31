@@ -5,6 +5,7 @@ Todo
             when the commands array has commands, the subscribing function issues those commands
                 and empties the array
             subscribe is no longer just render
+            actually may have to do this with a map call
         issue command to get a random y, nextDuration, and speed values for an asteroid appearance
             what about weighting some numbers so they appear more frequently?
                 maybe do this later
