@@ -181,7 +181,24 @@ var game = function game(gameState, input) {
 },
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
-}); // 60 fps
+}),
+    // 60 fps
+commandObservable = new Rx.Subject(),
+    commandStream = commandObservable.filter(function (x) {
+    return x.type !== 'no_op';
+}),
+    command = function command(c) {
+    switch (c.type) {
+        case 'random_numbers':
+            return commandObservable.onNext({
+                type: c.returnType
+            });
+        default:
+            return commandObservable.onNext({
+                type: 'no_op'
+            });
+    }
+};
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (input) {
     return input.key + input.type;
@@ -190,6 +207,11 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
 })).merge(clock).map(function (input) {
     return { type: input };
 }).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
+
+commandStream.subscribe(console.log);
+command({ type: 'random_numbers', returnType: 'new_asteroid' });
+command({ type: 'random_numbers', returnType: 'new_car' });
+command({ type: 'shoes', returnType: 'new_car' });
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {

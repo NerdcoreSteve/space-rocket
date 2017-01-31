@@ -24,7 +24,21 @@ const
                 return gameState
         }
     },
-    clock = Rx.Observable.interval(1000/60).map(() => 'tick') // 60 fps
+    clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
+    commandObservable = new Rx.Subject(),
+    commandStream = commandObservable.filter(x => x.type !== 'no_op'),
+    command = c => {
+        switch(c.type) {
+            case 'random_numbers':
+                return commandObservable.onNext({
+                    type: c.returnType
+                })
+            default:
+                return commandObservable.onNext({
+                    type: 'no_op'
+                })
+        }
+    }
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
@@ -36,3 +50,9 @@ Rx.Observable.fromEvent(document, 'keydown')
     .map(input => ({type: input}))
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))
+
+
+commandStream.subscribe(console.log)
+command({type: 'random_numbers', returnType: 'new_asteroid'})
+command({type: 'random_numbers', returnType: 'new_car'})
+command({type: 'shoes', returnType: 'new_car'})
