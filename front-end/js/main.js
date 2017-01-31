@@ -56,6 +56,7 @@ Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keypress').map(() => 'anykey'))
     .merge(clock)
     .map(input => ({type: input}))
+    .merge(commandStream)
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))
 

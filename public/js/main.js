@@ -212,7 +212,7 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return 'anykey';
 })).merge(clock).map(function (input) {
     return { type: input };
-}).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
+}).merge(commandStream).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
 commandStream.subscribe(console.log);
 command({

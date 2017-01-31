@@ -1,12 +1,11 @@
 https://github.com/shakiba/fastcontext
 Todo
     make a stream of random asteroids
-        create an action function that can be called from anywhere, but that when called
-            adds a signal to the stream
-            make it work a little like redux-saga, but no need to use generators yet
-        Now create a random case for the action that sends a packet of random values
-            down the stream
-        issue command to get a random y and nextDuration values for an asteroid appearance
+        gameState needs to have a commands array
+            when the commands array has commands, the subscribing function issues those commands
+                and empties the array
+            subscribe is no longer just render
+        issue command to get a random y, nextDuration, and speed values for an asteroid appearance
             what about weighting some numbers so they appear more frequently?
                 maybe do this later
         is it ok for asteroids to overlap?
