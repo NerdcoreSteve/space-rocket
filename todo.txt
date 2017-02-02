@@ -1,13 +1,21 @@
 https://github.com/shakiba/fastcontext
+Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
-    make a pause screen
-        shows game instructions
+    make a pause screen that shows game instructions
+        draw "paused"
+        draw "Esc is start/pause"
+        draw "up and down arrows move rocket"
+            may decide to split
+        create mode called paused mode (very like restart) that renders the background
+            This is the initial mode
+        put "paused" etc on the screen in this mode
     Do I have a full game now?
-        as soon as I do, I need to release it on digital ocean instead with a doman,
+        as soon as I do, I need to release it on digital ocean instead with a domain,
             make a trailer, publicize, etc
             make a "let's make" video about what I've done
     game is a little choppy, what are some ideas to speed it up?
         only render on 'tick'
+        look at html5 canvas optimizations
         don't use R.prop if you don't have to
         try not using array methods for map, filter, etc
         make your own versions of some of these functions optimized for your use
@@ -17,13 +25,19 @@ Todo
             should allow you to test private module functions
         Do I need to test my little RxJs chain?
         How would I test render?
+    use flow or typescript?
+    linters
     How can I garuntee there will always be a way to get past the asteroids?
+    I'd kinda like the ability to change controls
     show player stats on pause screen?
+    asteroids should only show up fully on screen or they can show up partially on the top
+        of the screen too.
     nextAsteroidDuration should also be random?
     is it ok for asteroids to overlap?
     use collision rectangles slightly smaller than the image rects
     collision doesn't need screenHeight
     Soundtrack and sound effects
+    can I make the asteroid random numbers not quite random so I can tweak things?
     You can make the game more full screen if you remove the canvas css margin
     in-game tutorial bits that tell you to press up and down?
         when you get the ability to shoot, tutorial should tell you to press space
