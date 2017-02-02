@@ -28,6 +28,7 @@ Todo
     use flow or typescript?
     linters
     How can I garuntee there will always be a way to get past the asteroids?
+    Make asteroids bigger?
     I'd kinda like the ability to change controls
     show player stats on pause screen?
     asteroids should only show up fully on screen or they can show up partially on the top
