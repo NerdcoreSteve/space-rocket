@@ -145,6 +145,10 @@ var R = require('ramda'),
                     })
                 })
             });
+        case 'new_asteroid':
+            console.log('new asteroid!!');
+            console.log(input);
+            return gameState;
         default:
             return gameState;
     }
@@ -154,6 +158,8 @@ module.exports = flying;
 
 },{"./tap.js":317,"ramda":4}],3:[function(require,module,exports){
 'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
     Rx = require('rx'),
@@ -169,7 +175,7 @@ var R = require('ramda'),
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
-var game = function game(gameState, input) {
+var gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
         case 'flying':
             return flyingMode(gameState, input);
@@ -182,29 +188,31 @@ var game = function game(gameState, input) {
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 },
+    effects = function effects(gameState) {
+    return R.pipe(R.prop('commands'), R.map(function (command) {
+        switch (command.type) {
+            case 'random_numbers':
+                return {
+                    type: command.returnType,
+                    numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
+                        return [pair[0], random(pair[1][0], pair[1][1])];
+                    }), R.fromPairs)(command)
+                };
+        }
+    }), R.filter(function (x) {
+        return x;
+    }), R.reduce(function (gameState, effect) {
+        return gameModes(gameState, effect);
+    }, gameState), function (gameState) {
+        return _extends({}, gameState, {
+            commands: []
+        });
+    })(gameState);
+},
+    game = R.pipe(gameModes, effects),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
-}),
-    // 60 fps
-commandObservable = new Rx.Subject(),
-    commandStream = commandObservable.filter(function (x) {
-    return x.type !== 'no_op';
-}),
-    command = function command(c) {
-    switch (c.type) {
-        case 'random_numbers':
-            return commandObservable.onNext({
-                type: c.returnType,
-                numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
-                    return [pair[0], random(pair[1][0], pair[1][1])];
-                }), R.fromPairs)(c)
-            });
-        default:
-            return commandObservable.onNext({
-                type: 'no_op'
-            });
-    }
-};
+}); // 60 fps
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (input) {
     return input.key + input.type;
@@ -212,26 +220,7 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return 'anykey';
 })).merge(clock).map(function (input) {
     return { type: input };
-}).merge(commandStream).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
-
-commandStream.subscribe(console.log);
-command({
-    type: 'random_numbers',
-    returnType: 'new_asteroid',
-    numbers: {
-        speed: [5, 10],
-        y: [0, 5]
-    }
-});
-command({
-    type: 'random_numbers',
-    returnType: 'new_asteroid',
-    numbers: {
-        speed: [5, 10],
-        y: [0, 5]
-    }
-});
-command({ type: 'shoes', returnType: 'new_car' });
+}).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
@@ -23069,6 +23058,24 @@ module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
     return {
+        commands: [{
+            type: 'random_numbers',
+            returnType: 'new_asteroid',
+            numbers: {
+                speed: [5, 10],
+                y: [0, 5]
+            }
+        }, {
+            type: 'random_numbers',
+            returnType: 'new_asteroid',
+            numbers: {
+                speed: [5, 10],
+                y: [0, 5]
+            }
+        }, {
+            type: 'shoes',
+            returnType: 'new_car'
+        }],
         screen: {
             width: width,
             height: height

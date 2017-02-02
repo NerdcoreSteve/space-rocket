@@ -14,7 +14,7 @@ context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 const
-    game = (gameState, input) => {
+    gameModes = (gameState, input) => {
         switch(gameState.mode) {
             case 'flying':
                 return flyingMode(gameState, input)
@@ -25,28 +25,33 @@ const
         }
     },
     random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
-    commandObservable = new Rx.Subject(),
-    commandStream = commandObservable.filter(x => x.type !== 'no_op'),
-    command = c => {
-        switch(c.type) {
-            case 'random_numbers':
-                return commandObservable.onNext({
-                    type: c.returnType,
-                    numbers:
-                        R.pipe(
-                            R.prop('numbers'),
-                            R.toPairs,
-                            R.map(pair => [pair[0], random(pair[1][0], pair[1][1])]),
-                            R.fromPairs)
-                                (c)
-                })
-            default:
-                return commandObservable.onNext({
-                    type: 'no_op'
-                })
-        }
-    }
+    effects = gameState =>
+        R.pipe(
+            R.prop('commands'),
+            R.map(command => {
+                switch(command.type) {
+                    case 'random_numbers':
+                        return {
+                            type: command.returnType,
+                            numbers:
+                                R.pipe(
+                                    R.prop('numbers'),
+                                    R.toPairs,
+                                    R.map(pair => [pair[0], random(pair[1][0], pair[1][1])]),
+                                    R.fromPairs)
+                                        (command)
+                        }
+                }
+            }),
+            R.filter(x => x),
+            R.reduce((gameState, effect) => gameModes(gameState, effect), gameState),
+            gameState => ({
+                ...gameState,
+                commands: []
+            }))
+                (gameState),
+    game = R.pipe(gameModes, effects),
+    clock = Rx.Observable.interval(1000/60).map(() => 'tick') // 60 fps
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
@@ -56,26 +61,5 @@ Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keypress').map(() => 'anykey'))
     .merge(clock)
     .map(input => ({type: input}))
-    .merge(commandStream)
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))
-
-
-commandStream.subscribe(console.log)
-command({
-    type: 'random_numbers',
-    returnType: 'new_asteroid',
-    numbers: {
-        speed: [5, 10],
-        y: [0, 5]
-    }
-})
-command({
-    type: 'random_numbers',
-    returnType: 'new_asteroid',
-    numbers: {
-        speed: [5, 10],
-        y: [0, 5]
-    }
-})
-command({type: 'shoes', returnType: 'new_car'})

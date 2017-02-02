@@ -183,6 +183,10 @@ const
                         }
                     }
                 }
+            case 'new_asteroid':
+                console.log('new asteroid!!')
+                console.log(input)
+                return gameState
             default:
                 return gameState
         }

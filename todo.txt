@@ -1,12 +1,9 @@
 https://github.com/shakiba/fastcontext
 Todo
     make a stream of random asteroids
-        gameState needs to have a commands array
-            when the commands array has commands, the subscribing function issues those commands
-                and empties the array
-            subscribe is no longer just render
-            actually may have to do this with a map call
         issue command to get a random y, nextDuration, and speed values for an asteroid appearance
+            should I give commands the ability to use a function to convert the numbers prop to
+                whatever I want?
             what about weighting some numbers so they appear more frequently?
                 maybe do this later
         is it ok for asteroids to overlap?
