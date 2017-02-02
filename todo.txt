@@ -13,6 +13,7 @@ Todo
             make a "let's make" video about what I've done
     game is a little choppy, what are some ideas to speed it up?
         only render on 'tick'
+            merge clock in effects reduce, change commands array to steam, no reduce
         look at html5 canvas optimizations
         don't use R.prop if you don't have to
         try not using array methods for map, filter, etc
