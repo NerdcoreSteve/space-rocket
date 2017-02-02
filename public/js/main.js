@@ -117,6 +117,14 @@ var R = require('ramda'),
             });
         case 'tick':
             return _extends({}, gameState, {
+                commands: gameState.field.asteroidField.nextCounter === 0 ? gameState.commands.concat({
+                    type: 'random_numbers',
+                    returnType: 'new_asteroid',
+                    numbers: {
+                        speed: [130, 260],
+                        y: [1, 100]
+                    }
+                }) : gameState.commands,
                 field: _extends({}, gameState.field, {
                     starField: _extends({}, gameState.field.starField, {
                         x1: starFieldDy(gameState),
@@ -130,9 +138,7 @@ var R = require('ramda'),
                             });
                         }), R.reject(function (asteroid) {
                             return asteroid.x + asteroid.width < 0;
-                        }), function (asteroids) {
-                            return !gameState.field.asteroidField.nextCounter ? asteroids.concat(asteroid(gameState.screen.width, gameState.screen.height / 2, gameState.screen.width / 130)) : asteroids;
-                        })(gameState.field.asteroidField.asteroids)
+                        }))(gameState.field.asteroidField.asteroids)
                     }),
                     rocket: _extends({}, gameState.field.rocket, {
                         y: gameState.field.rocket.y + rocketDy(gameState),
@@ -23056,14 +23062,7 @@ module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
     return {
-        commands: [{
-            type: 'random_numbers',
-            returnType: 'new_asteroid',
-            numbers: {
-                speed: [130, 260],
-                y: [1, 100]
-            }
-        }],
+        commands: [],
         screen: {
             width: width,
             height: height

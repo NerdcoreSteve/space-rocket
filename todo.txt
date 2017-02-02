@@ -1,24 +1,28 @@
 https://github.com/shakiba/fastcontext
 Todo
-    make a stream of random asteroids
-        issue command to get a random y, nextDuration, and speed values for an asteroid appearance
-            should I give commands the ability to use a function to convert the numbers prop to
-                whatever I want?
-            what about weighting some numbers so they appear more frequently?
-                maybe do this later
-        is it ok for asteroids to overlap?
-    make a pause screen that shows game instructions and player stats
-    use collision rectangles slightly smaller than the image rects
+    make a pause screen
+        shows game instructions
     Do I have a full game now?
         as soon as I do, I need to release it on digital ocean instead with a doman,
             make a trailer, publicize, etc
             make a "let's make" video about what I've done
-    collision doesn't need screenHeight
+    game is a little choppy, what are some ideas to speed it up?
+        only render on 'tick'
+        don't use R.prop if you don't have to
+        try not using array methods for map, filter, etc
+        make your own versions of some of these functions optimized for your use
+        try using a persistent data structure like immutable.js or the clojurescript one
     write tests for everything
         https://github.com/jhnns/rewire
             should allow you to test private module functions
         Do I need to test my little RxJs chain?
         How would I test render?
+    How can I garuntee there will always be a way to get past the asteroids?
+    show player stats on pause screen?
+    nextAsteroidDuration should also be random?
+    is it ok for asteroids to overlap?
+    use collision rectangles slightly smaller than the image rects
+    collision doesn't need screenHeight
     Soundtrack and sound effects
     You can make the game more full screen if you remove the canvas css margin
     in-game tutorial bits that tell you to press up and down?

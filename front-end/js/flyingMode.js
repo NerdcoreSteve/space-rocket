@@ -135,6 +135,16 @@ const
             case 'tick':
                 return {
                     ...gameState,
+                    commands: gameState.field.asteroidField.nextCounter === 0
+                        ? gameState.commands.concat({
+                                type: 'random_numbers',
+                                returnType: 'new_asteroid',
+                                numbers: {
+                                    speed: [130, 260],
+                                    y: [1, 100]
+                                }
+                            })
+                        : gameState.commands,
                     field: {
                         ...gameState.field,
                         starField: {
@@ -153,15 +163,7 @@ const
                                         ...asteroid,
                                         x: asteroid.x - asteroid.speed
                                     })),
-                                R.reject(asteroid => asteroid.x + asteroid.width < 0),
-                                asteroids =>
-                                    !gameState.field.asteroidField.nextCounter
-                                        ? asteroids.concat(
-                                            asteroid(
-                                                gameState.screen.width,
-                                                gameState.screen.height / 2,
-                                                gameState.screen.width / 130))
-                                        : asteroids)
+                                R.reject(asteroid => asteroid.x + asteroid.width < 0))
                                     (gameState.field.asteroidField.asteroids)
                         },
                         rocket: {

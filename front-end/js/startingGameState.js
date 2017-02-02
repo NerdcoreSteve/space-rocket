@@ -3,16 +3,7 @@ module.exports = (width, height) => {
         rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122)
     return {
-        commands: [
-            {
-                type: 'random_numbers',
-                returnType: 'new_asteroid',
-                numbers: {
-                    speed: [130, 260],
-                    y: [1, 100]
-                }
-            }
-        ],
+        commands: [],
         screen: {
             width: width,
             height: height
