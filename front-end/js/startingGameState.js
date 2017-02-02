@@ -8,21 +8,9 @@ module.exports = (width, height) => {
                 type: 'random_numbers',
                 returnType: 'new_asteroid',
                 numbers: {
-                    speed: [5, 10],
-                    y: [0, 5]
+                    speed: [130, 260],
+                    y: [1, 100]
                 }
-            },
-            {
-                type: 'random_numbers',
-                returnType: 'new_asteroid',
-                numbers: {
-                    speed: [5, 10],
-                    y: [0, 5]
-                }
-            },
-            {
-                type: 'shoes',
-                returnType: 'new_car'
             }
         ],
         screen: {

@@ -69,7 +69,7 @@ const
                         ? {...gameState, mode: 'restart'}
                         : gameState)
                     (gameState),
-    asteroid = (width, y) => {
+    asteroid = (width, y, speed) => {
         const
             asteroidWidth = width / 20,
             asteroidHeight = asteroidWidth * (87/95)
@@ -78,7 +78,7 @@ const
             y: y,
             width: asteroidWidth,
             height: asteroidHeight,
-            speed: width / 130,
+            speed: speed,
             image: '/images/asteroid.png'
         }
     },
@@ -159,7 +159,8 @@ const
                                         ? asteroids.concat(
                                             asteroid(
                                                 gameState.screen.width,
-                                                gameState.screen.height / 2))
+                                                gameState.screen.height / 2,
+                                                gameState.screen.width / 130))
                                         : asteroids)
                                     (gameState.field.asteroidField.asteroids)
                         },
@@ -184,9 +185,14 @@ const
                     }
                 }
             case 'new_asteroid':
-                console.log('new asteroid!!')
-                console.log(input)
-                return gameState
+                return R.over(
+                    R.lensPath(['field', 'asteroidField', 'asteroids']),
+                    R.append(
+                        asteroid(
+                            gameState.screen.width,
+                            gameState.screen.height * input.numbers.y / 100,
+                            gameState.screen.width / input.numbers.speed)),
+                    gameState)
             default:
                 return gameState
         }

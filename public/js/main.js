@@ -65,7 +65,7 @@ var R = require('ramda'),
         return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
     })(gameState);
 },
-    asteroid = function asteroid(width, y) {
+    asteroid = function asteroid(width, y, speed) {
     var asteroidWidth = width / 20,
         asteroidHeight = asteroidWidth * (87 / 95);
     return {
@@ -73,7 +73,7 @@ var R = require('ramda'),
         y: y,
         width: asteroidWidth,
         height: asteroidHeight,
-        speed: width / 130,
+        speed: speed,
         image: '/images/asteroid.png'
     };
 },
@@ -131,7 +131,7 @@ var R = require('ramda'),
                         }), R.reject(function (asteroid) {
                             return asteroid.x + asteroid.width < 0;
                         }), function (asteroids) {
-                            return !gameState.field.asteroidField.nextCounter ? asteroids.concat(asteroid(gameState.screen.width, gameState.screen.height / 2)) : asteroids;
+                            return !gameState.field.asteroidField.nextCounter ? asteroids.concat(asteroid(gameState.screen.width, gameState.screen.height / 2, gameState.screen.width / 130)) : asteroids;
                         })(gameState.field.asteroidField.asteroids)
                     }),
                     rocket: _extends({}, gameState.field.rocket, {
@@ -146,9 +146,7 @@ var R = require('ramda'),
                 })
             });
         case 'new_asteroid':
-            console.log('new asteroid!!');
-            console.log(input);
-            return gameState;
+            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width, gameState.screen.height * input.numbers.y / 100, gameState.screen.width / input.numbers.speed)), gameState);
         default:
             return gameState;
     }
@@ -23062,19 +23060,9 @@ module.exports = function (width, height) {
             type: 'random_numbers',
             returnType: 'new_asteroid',
             numbers: {
-                speed: [5, 10],
-                y: [0, 5]
+                speed: [130, 260],
+                y: [1, 100]
             }
-        }, {
-            type: 'random_numbers',
-            returnType: 'new_asteroid',
-            numbers: {
-                speed: [5, 10],
-                y: [0, 5]
-            }
-        }, {
-            type: 'shoes',
-            returnType: 'new_car'
         }],
         screen: {
             width: width,
