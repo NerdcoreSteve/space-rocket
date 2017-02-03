@@ -2,7 +2,6 @@ https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
     make a pause screen that shows game instructions
-        draw "Esc is start/pause"
         draw "up and down arrows move rocket"
         create mode called paused mode (very like restart) that renders the background
             This is the initial mode
