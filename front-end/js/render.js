@@ -4,6 +4,13 @@ const
         imageObject.src = url
         return imageObject
     },
+    drawImage = (context, imageObj) =>
+        context.drawImage(
+            image(imageObj.image),
+            imageObj.x,
+            imageObj.y,
+            imageObj.width,
+            imageObj.height),
     drawDestroyed = (gameState, context) =>
         context.drawImage(
             image(gameState.restart.destroyed.image),
@@ -67,7 +74,9 @@ module.exports = context => gameState => {
                     collision.width,
                     collision.height))
 
-        if(gameState.mode === 'restart') {
+        if(gameState.mode === 'pause') {
+            drawImage(context, gameState.pause.paused)
+        } else if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'destroyed') {
                 drawDestroyed(gameState, context)
             } else if(gameState.restart.mode === 'anykey') {

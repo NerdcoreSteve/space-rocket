@@ -1,6 +1,7 @@
 const
     R = require('ramda'),
     Rx = require('rx'),
+    pauseMode = require('./pauseMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
@@ -16,6 +17,8 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 const
     gameModes = (gameState, input) => {
         switch(gameState.mode) {
+            case 'pause':
+                return pauseMode(gameState, input)
             case 'flying':
                 return flyingMode(gameState, input)
             case 'restart':
@@ -51,7 +54,10 @@ const
             }))
                 (gameState),
     game = R.pipe(gameModes, effects),
-    clock = Rx.Observable.interval(1000/60).map(() => 'tick') // 60 fps
+    clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
+    escKey = Rx.Observable.fromEvent(document, 'keydown')
+        .map(R.prop('key'))
+        .filter(R.equals('Escape'))
 
 Rx.Observable.fromEvent(document, 'keydown')
     .merge(Rx.Observable.fromEvent(document, 'keyup'))
@@ -60,6 +66,7 @@ Rx.Observable.fromEvent(document, 'keydown')
     .distinctUntilChanged()
     .merge(Rx.Observable.fromEvent(document, 'keypress').map(() => 'anykey'))
     .merge(clock)
+    .merge(escKey)
     .map(input => ({type: input}))
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))

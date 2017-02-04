@@ -8,7 +8,16 @@ module.exports = (width, height) => {
             width: width,
             height: height
         },
-        mode: 'flying',
+        mode: 'pause',
+        pause: {
+            paused: {
+                x: width * .2,
+                y: height * .5,
+                width: width * .6,
+                height: width * .6 * (90/290),
+                image: '/images/paused.png',
+            },
+        },
         restart: {
             mode: 'begin',
             crashedHold: 40,

@@ -160,13 +160,14 @@ var R = require('ramda'),
 
 module.exports = flying;
 
-},{"./tap.js":317,"ramda":4}],3:[function(require,module,exports){
+},{"./tap.js":318,"ramda":4}],3:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
     Rx = require('rx'),
+    pauseMode = require('./pauseMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
@@ -181,6 +182,8 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 var gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
+        case 'pause':
+            return pauseMode(gameState, input);
         case 'flying':
             return flyingMode(gameState, input);
         case 'restart':
@@ -216,17 +219,19 @@ var gameModes = function gameModes(gameState, input) {
     game = R.pipe(gameModes, effects),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
-}); // 60 fps
+}),
+    // 60 fps
+escKey = Rx.Observable.fromEvent(document, 'keydown').map(R.prop('key')).filter(R.equals('Escape'));
 
 Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(document, 'keyup')).map(function (input) {
     return input.key + input.type;
 }).filter(boolMatch(/^(ArrowUp|ArrowDown).*$/)).distinctUntilChanged().merge(Rx.Observable.fromEvent(document, 'keypress').map(function () {
     return 'anykey';
-})).merge(clock).map(function (input) {
+})).merge(clock).merge(escKey).map(function (input) {
     return { type: input };
 }).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
-},{"./boolMatch":1,"./flyingMode.js":2,"./render.js":314,"./restartMode.js":315,"./startingGameState.js":316,"./tap.js":317,"ramda":4,"rx":313}],4:[function(require,module,exports){
+},{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startingGameState.js":317,"./tap.js":318,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
   F: require('./src/F'),
   T: require('./src/T'),
@@ -22960,13 +22965,33 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":318}],314:[function(require,module,exports){
+},{"_process":319}],314:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var tap = require('./tap.js');
+module.exports = function (gameState, input) {
+    switch (input.type) {
+        case 'Escape':
+            return _extends({}, gameState, {
+                mode: 'flying'
+            });
+        default:
+            return gameState;
+    }
+};
+
+},{"./tap.js":318}],315:[function(require,module,exports){
 'use strict';
 
 var image = function image(url) {
     var imageObject = new Image();
     imageObject.src = url;
     return imageObject;
+},
+    drawImage = function drawImage(context, imageObj) {
+    return context.drawImage(image(imageObj.image), imageObj.x, imageObj.y, imageObj.width, imageObj.height);
 },
     drawDestroyed = function drawDestroyed(gameState, context) {
     return context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
@@ -22994,7 +23019,9 @@ module.exports = function (context) {
                 return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
             });
 
-            if (gameState.mode === 'restart') {
+            if (gameState.mode === 'pause') {
+                drawImage(context, gameState.pause.paused);
+            } else if (gameState.mode === 'restart') {
                 if (gameState.restart.mode === 'destroyed') {
                     drawDestroyed(gameState, context);
                 } else if (gameState.restart.mode === 'anykey') {
@@ -23006,7 +23033,7 @@ module.exports = function (context) {
     };
 };
 
-},{}],315:[function(require,module,exports){
+},{}],316:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -23055,7 +23082,7 @@ module.exports = function (gameState, input) {
     return anyKeyCheck(input, restartLogic(gameState));
 };
 
-},{"./boolMatch":1,"./startingGameState.js":316,"./tap.js":317}],316:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":317,"./tap.js":318}],317:[function(require,module,exports){
 'use strict';
 
 module.exports = function (width, height) {
@@ -23067,7 +23094,16 @@ module.exports = function (width, height) {
             width: width,
             height: height
         },
-        mode: 'flying',
+        mode: 'pause',
+        pause: {
+            paused: {
+                x: width * .2,
+                y: height * .5,
+                width: width * .6,
+                height: width * .6 * (90 / 290),
+                image: '/images/paused.png'
+            }
+        },
         restart: {
             mode: 'begin',
             crashedHold: 40,
@@ -23127,14 +23163,14 @@ module.exports = function (width, height) {
     };
 };
 
-},{}],317:[function(require,module,exports){
+},{}],318:[function(require,module,exports){
 "use strict";
 
 module.exports = function (x) {
   console.log(x);return x;
 };
 
-},{}],318:[function(require,module,exports){
+},{}],319:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

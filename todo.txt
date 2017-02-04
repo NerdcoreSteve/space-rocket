@@ -2,7 +2,6 @@ https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
     make a pause screen that shows game instructions
-        draw "up and down arrows move rocket"
         create mode called paused mode (very like restart) that renders the background
             This is the initial mode
         put "paused", "Esc is start/pause", and "up and down arrows move rocket" on screen
@@ -25,6 +24,9 @@ Todo
         How would I test render?
     use flow or typescript?
     linters
+    Refactor render
+        use your defined drawImage
+    move all mode info in game state into a "modes" object
     How can I garuntee there will always be a way to get past the asteroids?
     Make asteroids bigger?
     I'd kinda like the ability to change controls
