@@ -12,9 +12,9 @@ module.exports = (width, height) => {
         pause: {
             paused: {
                 x: width * .2,
-                y: height * .5,
-                width: width * .6,
-                height: width * .6 * (90/290),
+                y: height * .2,
+                width: width * .4,
+                height: width * .4 * (90/290),
                 image: '/images/paused.png',
             },
         },

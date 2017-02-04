@@ -22989,13 +22989,17 @@ module.exports = function (gameState, input) {
 },{"./tap.js":318}],315:[function(require,module,exports){
 'use strict';
 
-var image = function image(url) {
+var R = require('ramda'),
+    image = function image(url) {
     var imageObject = new Image();
     imageObject.src = url;
     return imageObject;
 },
-    drawImage = function drawImage(context, imageObj) {
+    drawImage = R.curry(function (context, imageObj) {
     return context.drawImage(image(imageObj.image), imageObj.x, imageObj.y, imageObj.width, imageObj.height);
+}),
+    drawImages = function drawImages(context, imageObjs) {
+    return imageObjs.forEach(drawImage(context));
 },
     drawDestroyed = function drawDestroyed(gameState, context) {
     return context.drawImage(image(gameState.restart.destroyed.image), gameState.restart.destroyed.x, gameState.restart.destroyed.y, gameState.restart.destroyed.width, gameState.restart.destroyed.height);
@@ -23015,13 +23019,8 @@ module.exports = function (context) {
 
             context.drawImage(image(gameState.field.rocket.image), gameState.field.rocket.x, gameState.field.rocket.y, gameState.field.rocket.width, gameState.field.rocket.height);
 
-            gameState.field.asteroidField.asteroids.forEach(function (asteroid) {
-                return context.drawImage(image(asteroid.image), asteroid.x, asteroid.y, asteroid.width, asteroid.height);
-            });
-
-            gameState.field.collisions.forEach(function (collision) {
-                return context.drawImage(image(collision.image), collision.x, collision.y, collision.width, collision.height);
-            });
+            drawImages(context, gameState.field.asteroidField.asteroids);
+            drawImages(context, gameState.field.collisions);
 
             if (gameState.mode === 'pause') {
                 drawImage(context, gameState.pause.paused);
@@ -23037,7 +23036,7 @@ module.exports = function (context) {
     };
 };
 
-},{}],316:[function(require,module,exports){
+},{"ramda":4}],316:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -23104,9 +23103,9 @@ module.exports = function (width, height) {
         pause: {
             paused: {
                 x: width * .2,
-                y: height * .5,
-                width: width * .6,
-                height: width * .6 * (90 / 290),
+                y: height * .2,
+                width: width * .4,
+                height: width * .4 * (90 / 290),
                 image: '/images/paused.png'
             }
         },

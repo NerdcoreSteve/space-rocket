@@ -1,16 +1,18 @@
 const
+    R = require('ramda'),
     image = url => {
         var imageObject = new Image()
         imageObject.src = url
         return imageObject
     },
-    drawImage = (context, imageObj) =>
+    drawImage = R.curry((context, imageObj) =>
         context.drawImage(
             image(imageObj.image),
             imageObj.x,
             imageObj.y,
             imageObj.width,
-            imageObj.height),
+            imageObj.height)),
+    drawImages = (context, imageObjs) => imageObjs.forEach(drawImage(context)),
     drawDestroyed = (gameState, context) =>
         context.drawImage(
             image(gameState.restart.destroyed.image),
@@ -56,23 +58,8 @@ module.exports = context => gameState => {
             gameState.field.rocket.width,
             gameState.field.rocket.height)
 
-        gameState.field.asteroidField.asteroids.forEach(
-            asteroid =>
-                context.drawImage(
-                    image(asteroid.image),
-                    asteroid.x,
-                    asteroid.y,
-                    asteroid.width,
-                    asteroid.height))
-
-        gameState.field.collisions.forEach(
-            collision =>
-                context.drawImage(
-                    image(collision.image),
-                    collision.x,
-                    collision.y,
-                    collision.width,
-                    collision.height))
+        drawImages(context, gameState.field.asteroidField.asteroids)
+        drawImages(context, gameState.field.collisions)
 
         if(gameState.mode === 'pause') {
             drawImage(context, gameState.pause.paused)
