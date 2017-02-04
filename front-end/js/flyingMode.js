@@ -195,6 +195,11 @@ const
                             gameState.screen.height * input.numbers.y / 100,
                             gameState.screen.width / input.numbers.speed)),
                     gameState)
+            case 'Escape':
+                return {
+                    ...gameState,
+                    mode: 'pause'
+                }
             default:
                 return gameState
         }

@@ -153,6 +153,10 @@ var R = require('ramda'),
             });
         case 'new_asteroid':
             return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width, gameState.screen.height * input.numbers.y / 100, gameState.screen.width / input.numbers.speed)), gameState);
+        case 'Escape':
+            return _extends({}, gameState, {
+                mode: 'pause'
+            });
         default:
             return gameState;
     }
@@ -23042,7 +23046,9 @@ var tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = function anyKeyCheck(input, gameState) {
-    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? startingGameState(gameState.screen.width, gameState.screen.height) : gameState;
+    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? _extends({}, startingGameState(gameState.screen.width, gameState.screen.height), {
+        mode: 'flying'
+    }) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
     switch (gameState.restart.mode) {

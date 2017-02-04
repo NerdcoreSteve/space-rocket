@@ -4,7 +4,10 @@ const
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = (input, gameState) =>
         boolMatch(/^(.*?keydown|anykey)$/, input.type)
-            ? startingGameState(gameState.screen.width, gameState.screen.height)
+            ? {
+                ...startingGameState(gameState.screen.width, gameState.screen.height),
+                mode: 'flying'
+            }
             : gameState,
     restartLogic = (gameState) => {
         switch(gameState.restart.mode) {
