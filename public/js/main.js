@@ -23106,23 +23106,23 @@ module.exports = function (width, height) {
             paused: {
                 x: width * .2,
                 y: height * .05,
-                width: width * .4,
-                height: width * .4 * (90 / 290),
+                width: width * .6,
+                height: width * .6 * (90 / 290),
                 image: '/images/paused.png'
             },
-            esc: {
-                x: width * .2,
-                y: height * .1,
-                width: width * .4,
-                height: width * .4 * (90 / 930),
-                image: '/images/esc.png'
-            },
             updown: {
-                x: width * .2,
-                y: height * .05,
-                width: width * .4,
-                height: width * .4 * (90 / 930),
+                x: width * .05,
+                y: height * .55,
+                width: width * .9,
+                height: width * .9 * (90 / 1324),
                 image: '/images/updown.png'
+            },
+            esc: {
+                x: width * .25,
+                y: height * .8,
+                width: width * .5,
+                height: width * .5 * (90 / 930),
+                image: '/images/esc.png'
             }
         },
         restart: {

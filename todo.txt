@@ -7,8 +7,9 @@ Todo
         instead of "pause"
             Draw "press any key to start"
             Draw "space rocket" title text
-            place "space rocket", "up and down arrows move rocket", "press any key to start"
-                "escape is start/pause"
+            place "space rocket", "up and down arrows move rocket", "escape is start/pause"
+                if you press esc, go to pause mode
+                if you press up or down go to flying mode
     Do I have a full game now?
         as soon as I do, I need to release it on digital ocean instead with a domain,
             make a trailer, publicize, etc
