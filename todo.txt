@@ -8,6 +8,8 @@ Todo
             place "space rocket", "press any key", "up and down arrows move rocket"
                 "escape is start/pause"
             position text images properly
+    don't have asteroids clipped by the bottom
+        range of appearance is 0 to height - asteroid height
     put up on digital ocean
         how does it load in iconito? Do I need some loading logic?
     make another "let's make" video where I explain how I made the game
