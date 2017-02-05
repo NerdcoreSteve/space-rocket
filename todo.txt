@@ -3,6 +3,10 @@ Always ask "what is the next thing I can do that will most easily make the game 
 Todo
     make a pause screen that shows game instructions
         put "paused", "Esc is start/pause", and "up and down arrows move rocket" on screen
+    Make a splash screen for the start of the game
+        Just the star background moving
+        The words "Space Rocket!"
+        and a larger image of the ship
     Do I have a full game now?
         as soon as I do, I need to release it on digital ocean instead with a domain,
             make a trailer, publicize, etc
