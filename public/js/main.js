@@ -152,7 +152,7 @@ var R = require('ramda'),
                 })
             });
         case 'new_asteroid':
-            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width, gameState.screen.height * input.numbers.y / 100, gameState.screen.width / input.numbers.speed)), gameState);
+            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height * (input.numbers.y / 100.0), gameState.screen.width / (input.numbers.speed * 1.0))), gameState);
         case 'Escape':
             return _extends({}, gameState, {
                 mode: 'pause'
