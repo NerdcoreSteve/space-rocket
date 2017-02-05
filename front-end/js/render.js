@@ -63,6 +63,8 @@ module.exports = context => gameState => {
 
         if(gameState.mode === 'pause') {
             drawImage(context, gameState.pause.paused)
+            drawImage(context, gameState.pause.esc)
+            drawImage(context, gameState.pause.updown)
         } else if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'destroyed') {
                 drawDestroyed(gameState, context)

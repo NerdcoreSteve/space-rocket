@@ -23024,6 +23024,8 @@ module.exports = function (context) {
 
             if (gameState.mode === 'pause') {
                 drawImage(context, gameState.pause.paused);
+                drawImage(context, gameState.pause.esc);
+                drawImage(context, gameState.pause.updown);
             } else if (gameState.mode === 'restart') {
                 if (gameState.restart.mode === 'destroyed') {
                     drawDestroyed(gameState, context);
@@ -23103,10 +23105,24 @@ module.exports = function (width, height) {
         pause: {
             paused: {
                 x: width * .2,
-                y: height * .2,
+                y: height * .05,
                 width: width * .4,
                 height: width * .4 * (90 / 290),
                 image: '/images/paused.png'
+            },
+            esc: {
+                x: width * .2,
+                y: height * .1,
+                width: width * .4,
+                height: width * .4 * (90 / 930),
+                image: '/images/esc.png'
+            },
+            updown: {
+                x: width * .2,
+                y: height * .05,
+                width: width * .4,
+                height: width * .4 * (90 / 930),
+                image: '/images/updown.png'
             }
         },
         restart: {

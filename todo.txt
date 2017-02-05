@@ -1,12 +1,14 @@
 https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
-    make a pause screen that shows game instructions
-        put "paused", "Esc is start/pause", and "up and down arrows move rocket" on screen
-    Make a splash screen for the start of the game
-        Just the star background moving
-        The words "Space Rocket!"
-        and a larger image of the ship
+    pause screen that shows game instructions
+        position text images appropriately
+    make a start screen mode that is similar to pause mode, but has the title "space rocket"
+        instead of "pause"
+            Draw "press any key to start"
+            Draw "space rocket" title text
+            place "space rocket", "up and down arrows move rocket", "press any key to start"
+                "escape is start/pause"
     Do I have a full game now?
         as soon as I do, I need to release it on digital ocean instead with a domain,
             make a trailer, publicize, etc
@@ -57,6 +59,10 @@ Todo
     make a set of asteroid images so they don't all look the same
     What else before I call it done?
     put up on heroku and porfolio
+    Make a splash screen for the start of the game
+        Just the star background moving
+        The words "Space Rocket!"
+        and a larger image of the ship
 
 Todo later:
 make a function that takes gamestate, canvas height and width,

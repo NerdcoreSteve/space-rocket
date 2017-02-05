@@ -12,11 +12,25 @@ module.exports = (width, height) => {
         pause: {
             paused: {
                 x: width * .2,
-                y: height * .2,
+                y: height * .05,
                 width: width * .4,
                 height: width * .4 * (90/290),
                 image: '/images/paused.png',
             },
+            esc: {
+                x: width * .2,
+                y: height * .1,
+                width: width * .4,
+                height: width * .4 * (90/930),
+                image: '/images/esc.png',
+            },
+            updown: {
+                x: width * .2,
+                y: height * .05,
+                width: width * .4,
+                height: width * .4 * (90/930),
+                image: '/images/updown.png',
+            }
         },
         restart: {
             mode: 'begin',
