@@ -1,19 +1,19 @@
 https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
-    pause screen that shows game instructions
-        position text images appropriately
     make a start screen mode that is similar to pause mode, but has the title "space rocket"
         instead of "pause"
-            Draw "press any key to start"
+            Draw "press any key"
             Draw "space rocket" title text
-            place "space rocket", "up and down arrows move rocket", "escape is start/pause"
-                if you press esc, go to pause mode
-                if you press up or down go to flying mode
-    Do I have a full game now?
-        as soon as I do, I need to release it on digital ocean instead with a domain,
-            make a trailer, publicize, etc
-            make a "let's make" video about what I've done
+            place "space rocket", "press any key", "up and down arrows move rocket"
+                "escape is start/pause"
+            position text images properly
+    put up on digital ocean
+        how does it load in iconito? Do I need some loading logic?
+    make another "let's make" video where I explain how I made the game
+    Follow Extra credits advice for publicizing the game
+        trailer, etc.
+    move the stuff in this file to trello and a document (as appropriate)
     game is a little choppy, what are some ideas to speed it up?
         only render on 'tick'
             merge clock in effects reduce, change commands array to steam, no reduce
@@ -32,14 +32,15 @@ Todo
     Refactor render
         use your defined drawImage
     move all mode info in game state into a "modes" object
-    How can I garuntee there will always be a way to get past the asteroids?
-    Make asteroids bigger?
-    I'd kinda like the ability to change controls
+    Make asteroids of various sizes
+    need to redo collision image logic
+    make asteroids rotate at various speeds
+    give the player the ability to shoot
     show player stats on pause screen?
+    I'd kinda like the ability to change controls
     asteroids should only show up fully on screen or they can show up partially on the top
         of the screen too.
     nextAsteroidDuration should also be random?
-    is it ok for asteroids to overlap?
     use collision rectangles slightly smaller than the image rects
     collision doesn't need screenHeight
     Soundtrack and sound effects
