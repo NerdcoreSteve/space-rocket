@@ -35,6 +35,7 @@ Todo
     linters
     Refactor render
         use your defined drawImage
+    increase difficulty over time
     move all mode info in game state into a "modes" object
     Make asteroids of various sizes
     need to redo collision image logic
