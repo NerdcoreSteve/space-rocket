@@ -1,11 +1,11 @@
 https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
-    don't have asteroids clipped by the bottom
-        range of appearance is 0 to height - asteroid height
     put up on digital ocean
+        make a super simple web site for your game company
         how does it load in iconito? Do I need some loading logic?
     make another "let's make" video where I explain how I made the game
+    make the game company site a bit more appealing to get people to come and stay
     Follow Extra credits advice for publicizing the game
         trailer, etc.
     move the stuff in this file to trello and a document (as appropriate)

@@ -65,12 +65,12 @@ var R = require('ramda'),
         return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
     })(gameState);
 },
-    asteroid = function asteroid(width, y, speed) {
+    asteroid = function asteroid(width, height, rand, speed) {
     var asteroidWidth = width / 20,
         asteroidHeight = asteroidWidth * (87 / 95);
     return {
         x: width * 1.5,
-        y: y,
+        y: (height - asteroidHeight / 2) * (rand / 100.0),
         width: asteroidWidth,
         height: asteroidHeight,
         speed: speed,
@@ -152,7 +152,7 @@ var R = require('ramda'),
                 })
             });
         case 'new_asteroid':
-            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height * (input.numbers.y / 100.0), gameState.screen.width / (input.numbers.speed * 1.0))), gameState);
+            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height, input.numbers.y, gameState.screen.width / (input.numbers.speed * 1.0))), gameState);
         case 'Escape':
             return _extends({}, gameState, {
                 mode: 'pause'

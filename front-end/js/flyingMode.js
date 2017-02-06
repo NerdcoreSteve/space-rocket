@@ -69,13 +69,13 @@ const
                         ? {...gameState, mode: 'restart'}
                         : gameState)
                     (gameState),
-    asteroid = (width, y, speed) => {
+    asteroid = (width, height, rand, speed) => {
         const
             asteroidWidth = width / 20,
             asteroidHeight = asteroidWidth * (87/95)
         return {
             x: width * 1.5,
-            y: y,
+            y: (height - (asteroidHeight / 2)) * (rand / 100.0),
             width: asteroidWidth,
             height: asteroidHeight,
             speed: speed,
@@ -192,7 +192,8 @@ const
                     R.append(
                         asteroid(
                             gameState.screen.width * 1.0,
-                            gameState.screen.height * (input.numbers.y / 100.0),
+                            gameState.screen.height,
+                            input.numbers.y,
                             gameState.screen.width / (input.numbers.speed * 1.0))),
                     gameState)
             case 'Escape':
