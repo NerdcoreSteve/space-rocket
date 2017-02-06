@@ -186,6 +186,8 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
 var gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
+        case 'start':
+            return pauseMode(gameState, input);
         case 'pause':
             return pauseMode(gameState, input);
         case 'flying':
@@ -23022,7 +23024,12 @@ module.exports = function (context) {
             drawImages(context, gameState.field.asteroidField.asteroids);
             drawImages(context, gameState.field.collisions);
 
-            if (gameState.mode === 'pause') {
+            if (gameState.mode === 'start') {
+                drawImage(context, gameState.start.space_rocket);
+                drawImage(context, gameState.start.esc);
+                drawImage(context, gameState.start.updown);
+                drawImage(context, gameState.start.pressAnyKey);
+            } else if (gameState.mode === 'pause') {
                 drawImage(context, gameState.pause.paused);
                 drawImage(context, gameState.pause.esc);
                 drawImage(context, gameState.pause.updown);
@@ -23101,7 +23108,37 @@ module.exports = function (width, height) {
             width: width,
             height: height
         },
-        mode: 'pause',
+        mode: 'start',
+        start: {
+            space_rocket: {
+                x: width * .2,
+                y: height * .05,
+                width: width * .6,
+                height: width * .6 * (200 / 387),
+                image: '/images/space_rocket.png'
+            },
+            updown: {
+                x: width * .05,
+                y: height * .55,
+                width: width * .9,
+                height: width * .9 * (90 / 1324),
+                image: '/images/updown.png'
+            },
+            esc: {
+                x: width * .25,
+                y: height * .8,
+                width: width * .5,
+                height: width * .5 * (90 / 930),
+                image: '/images/esc.png'
+            },
+            pressAnyKey: {
+                x: width * .2,
+                y: height * .5,
+                width: width * .6,
+                height: width * .6 * (90 / 623),
+                image: '/images/pressAnyKey.png'
+            }
+        },
         pause: {
             paused: {
                 x: width * .2,

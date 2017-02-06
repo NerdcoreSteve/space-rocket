@@ -17,6 +17,8 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640)
 const
     gameModes = (gameState, input) => {
         switch(gameState.mode) {
+            case 'start':
+                return pauseMode(gameState, input)
             case 'pause':
                 return pauseMode(gameState, input)
             case 'flying':

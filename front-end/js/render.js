@@ -61,7 +61,12 @@ module.exports = context => gameState => {
         drawImages(context, gameState.field.asteroidField.asteroids)
         drawImages(context, gameState.field.collisions)
 
-        if(gameState.mode === 'pause') {
+        if(gameState.mode === 'start') {
+            drawImage(context, gameState.start.space_rocket)
+            drawImage(context, gameState.start.esc)
+            drawImage(context, gameState.start.updown)
+            drawImage(context, gameState.start.pressAnyKey)
+        } else if(gameState.mode === 'pause') {
             drawImage(context, gameState.pause.paused)
             drawImage(context, gameState.pause.esc)
             drawImage(context, gameState.pause.updown)
