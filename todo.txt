@@ -1,13 +1,6 @@
 https://github.com/shakiba/fastcontext
 Always ask "what is the next thing I can do that will most easily make the game better?"
 Todo
-    make a start screen mode that is similar to pause mode, but has the title "space rocket"
-        instead of "pause"
-            Draw "press any key"
-            Draw "space rocket" title text
-            place "space rocket", "press any key", "up and down arrows move rocket"
-                "escape is start/pause"
-            position text images properly
     don't have asteroids clipped by the bottom
         range of appearance is 0 to height - asteroid height
     put up on digital ocean
