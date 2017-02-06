@@ -2,6 +2,7 @@ const
     R = require('ramda'),
     Rx = require('rx'),
     pauseMode = require('./pauseMode.js'),
+    startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
@@ -18,7 +19,7 @@ const
     gameModes = (gameState, input) => {
         switch(gameState.mode) {
             case 'start':
-                return pauseMode(gameState, input)
+                return startMode(gameState, input)
             case 'pause':
                 return pauseMode(gameState, input)
             case 'flying':

@@ -164,7 +164,7 @@ var R = require('ramda'),
 
 module.exports = flying;
 
-},{"./tap.js":318,"ramda":4}],3:[function(require,module,exports){
+},{"./tap.js":319,"ramda":4}],3:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -172,6 +172,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var R = require('ramda'),
     Rx = require('rx'),
     pauseMode = require('./pauseMode.js'),
+    startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
     render = require('./render.js'),
@@ -187,7 +188,7 @@ context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 var gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
         case 'start':
-            return pauseMode(gameState, input);
+            return startMode(gameState, input);
         case 'pause':
             return pauseMode(gameState, input);
         case 'flying':
@@ -237,7 +238,7 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return { type: input };
 }).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
 
-},{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startingGameState.js":317,"./tap.js":318,"ramda":4,"rx":313}],4:[function(require,module,exports){
+},{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startMode.js":317,"./startingGameState.js":318,"./tap.js":319,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
   F: require('./src/F'),
   T: require('./src/T'),
@@ -22971,7 +22972,7 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":319}],314:[function(require,module,exports){
+},{"_process":320}],314:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -22988,7 +22989,7 @@ module.exports = function (gameState, input) {
     }
 };
 
-},{"./tap.js":318}],315:[function(require,module,exports){
+},{"./tap.js":319}],315:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
@@ -23096,7 +23097,24 @@ module.exports = function (gameState, input) {
     return anyKeyCheck(input, restartLogic(gameState));
 };
 
-},{"./boolMatch":1,"./startingGameState.js":317,"./tap.js":318}],317:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":318,"./tap.js":319}],317:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var tap = require('./tap.js');
+module.exports = function (gameState, input) {
+    switch (input.type) {
+        case 'anykey':
+            return _extends({}, gameState, {
+                mode: 'flying'
+            });
+        default:
+            return gameState;
+    }
+};
+
+},{"./tap.js":319}],318:[function(require,module,exports){
 'use strict';
 
 module.exports = function (width, height) {
@@ -23221,14 +23239,14 @@ module.exports = function (width, height) {
     };
 };
 
-},{}],318:[function(require,module,exports){
+},{}],319:[function(require,module,exports){
 "use strict";
 
 module.exports = function (x) {
   console.log(x);return x;
 };
 
-},{}],319:[function(require,module,exports){
+},{}],320:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
