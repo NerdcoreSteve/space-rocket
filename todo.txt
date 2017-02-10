@@ -26,9 +26,7 @@ Todo
         How would I test render?
     use flow or typescript?
     linters
-    Refactor render
-        use your defined drawImage
-        gamestate should tell render what to render?
+    gamestate should tell render what to render?
     increase difficulty over time
     move all mode info in game state into a "modes" object
     Make asteroids of various sizes
