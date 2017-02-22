@@ -1,5 +1,28 @@
 body {
     background-color: black;
+    font-family: Orbitron;
+    color: #f8cc00;
+}
+
+h1 {
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+a {
+    text-decoration: none;
+}
+a:link {
+    color: #ff5420;
+}
+a:visited {
+    color: #ff5420;
+}
+a:hover {
+    color: #f8cc00;
+}
+a:active {
+    color: #ff5420;
 }
 
 #gameScreen {
