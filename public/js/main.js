@@ -22993,11 +22993,11 @@ module.exports = function (gameState, input) {
 'use strict';
 
 var R = require('ramda'),
-    image = function image(url) {
+    image = R.memoize(function (url) {
     var imageObject = new Image();
     imageObject.src = url;
     return imageObject;
-},
+}),
     drawImage = R.curry(function (context, imageObj) {
     return context.drawImage(image(imageObj.image), imageObj.x, imageObj.y, imageObj.width, imageObj.height);
 }),

@@ -1,10 +1,10 @@
 const
     R = require('ramda'),
-    image = url => {
+    image = R.memoize(url => {
         var imageObject = new Image()
         imageObject.src = url
         return imageObject
-    },
+    }),
     drawImage = R.curry((context, imageObj) =>
         context.drawImage(
             image(imageObj.image),
