@@ -171,11 +171,30 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var R = require('ramda'),
     Rx = require('rx'),
+    Box = function Box(x) {
+    return {
+        map: function map(f) {
+            return Box(f(x));
+        }
+    };
+},
+    store = function store(_state, reducer) {
+    return {
+        reduce: function reduce(input) {
+            _state = reducer(_state, input);return _state;
+        },
+        state: function state() {
+            return _state;
+        }
+    };
+},
     pauseMode = require('./pauseMode.js'),
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
-    render = require('./render.js'),
+
+//TODO should render be curried?
+render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
@@ -224,6 +243,7 @@ var gameModes = function gameModes(gameState, input) {
     })(gameState);
 },
     game = R.pipe(gameModes, effects),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
 }),
@@ -236,7 +256,16 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return 'anykey';
 })).merge(clock).merge(escKey).map(function (input) {
     return { type: input };
-}).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
+}).subscribe(function (input) {
+    return Box(gameStore.reduce(input)).map(function (newGameState) {
+        render(context, newGameState);
+    });
+});
+//if input is tick, render, otherwise don't
+/*
+.scan(game, startingGameState(context.canvas.width, context.canvas.height))
+.subscribe(render(context))
+*/
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startMode.js":317,"./startingGameState.js":318,"./tap.js":319,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {

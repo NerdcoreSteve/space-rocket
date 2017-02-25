@@ -1,10 +1,20 @@
 const
     R = require('ramda'),
     Rx = require('rx'),
+    Box = x => ({
+        map: f => Box(f(x))
+    }),
+    store = (state, reducer) => {
+        return {
+            reduce: input => { state = reducer(state, input); return state },
+            state: () => state
+        }
+    },
     pauseMode = require('./pauseMode.js'),
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
+    //TODO should render be curried?
     render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
@@ -57,6 +67,7 @@ const
             }))
                 (gameState),
     game = R.pipe(gameModes, effects),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     escKey = Rx.Observable.fromEvent(document, 'keydown')
         .map(R.prop('key'))
@@ -71,5 +82,11 @@ Rx.Observable.fromEvent(document, 'keydown')
     .merge(clock)
     .merge(escKey)
     .map(input => ({type: input}))
+    .subscribe(
+        input => Box(gameStore.reduce(input)).map(
+            newGameState => { render(context, newGameState) }))
+        //if input is tick, render, otherwise don't
+    /*
     .scan(game, startingGameState(context.canvas.width, context.canvas.height))
     .subscribe(render(context))
+    */
