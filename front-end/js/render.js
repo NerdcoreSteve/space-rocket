@@ -14,7 +14,7 @@ const
             imageObj.height)),
     drawImages = (context, imageObjs) => imageObjs.forEach(drawImage(context))
 
-module.exports = context => gameState => {
+module.exports = (context, gameState) => {
     window.requestAnimationFrame(() => {
         context.drawImage(
             image(gameState.field.starField.image),

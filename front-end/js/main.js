@@ -14,7 +14,6 @@ const
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
-    //TODO should render be curried?
     render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
@@ -26,6 +25,10 @@ context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 const
+    includeInput = R.curry((input, gameState) => ({
+        ...gameState,
+        input
+    })),
     gameModes = (gameState, input) => {
         switch(gameState.mode) {
             case 'start':
@@ -40,6 +43,7 @@ const
                 return gameState
         }
     },
+    modesIncludingInput = (gameState, input) => R.pipe(gameModes, includeInput(input))(gameState, input),
     random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     effects = gameState =>
         R.pipe(
@@ -60,13 +64,13 @@ const
                 }
             }),
             R.filter(x => x),
-            R.reduce((gameState, effect) => gameModes(gameState, effect), gameState),
+            R.reduce((gameState, effect) => modesIncludingInput(gameState, effect), gameState),
             gameState => ({
                 ...gameState,
                 commands: []
             }))
                 (gameState),
-    game = R.pipe(gameModes, effects),
+    game = R.pipe(modesIncludingInput, effects),
     gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     escKey = Rx.Observable.fromEvent(document, 'keydown')
@@ -84,9 +88,4 @@ Rx.Observable.fromEvent(document, 'keydown')
     .map(input => ({type: input}))
     .subscribe(
         input => Box(gameStore.reduce(input)).map(
-            newGameState => { render(context, newGameState) }))
-        //if input is tick, render, otherwise don't
-    /*
-    .scan(game, startingGameState(context.canvas.width, context.canvas.height))
-    .subscribe(render(context))
-    */
+            newGameState => { if(newGameState.input.type === 'tick') render(context, newGameState) }))

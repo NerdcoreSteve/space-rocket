@@ -192,9 +192,7 @@ var R = require('ramda'),
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
     restartMode = require('./restartMode.js'),
-
-//TODO should render be curried?
-render = require('./render.js'),
+    render = require('./render.js'),
     tap = require('./tap.js'),
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
@@ -204,7 +202,12 @@ render = require('./render.js'),
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
-var gameModes = function gameModes(gameState, input) {
+var includeInput = R.curry(function (input, gameState) {
+    return _extends({}, gameState, {
+        input: input
+    });
+}),
+    gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
         case 'start':
             return startMode(gameState, input);
@@ -217,6 +220,9 @@ var gameModes = function gameModes(gameState, input) {
         default:
             return gameState;
     }
+},
+    modesIncludingInput = function modesIncludingInput(gameState, input) {
+    return R.pipe(gameModes, includeInput(input))(gameState, input);
 },
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -235,14 +241,14 @@ var gameModes = function gameModes(gameState, input) {
     }), R.filter(function (x) {
         return x;
     }), R.reduce(function (gameState, effect) {
-        return gameModes(gameState, effect);
+        return modesIncludingInput(gameState, effect);
     }, gameState), function (gameState) {
         return _extends({}, gameState, {
             commands: []
         });
     })(gameState);
 },
-    game = R.pipe(gameModes, effects),
+    game = R.pipe(modesIncludingInput, effects),
     gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
@@ -258,14 +264,9 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return { type: input };
 }).subscribe(function (input) {
     return Box(gameStore.reduce(input)).map(function (newGameState) {
-        render(context, newGameState);
+        if (newGameState.input.type === 'tick') render(context, newGameState);
     });
 });
-//if input is tick, render, otherwise don't
-/*
-.scan(game, startingGameState(context.canvas.width, context.canvas.height))
-.subscribe(render(context))
-*/
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startMode.js":317,"./startingGameState.js":318,"./tap.js":319,"ramda":4,"rx":313}],4:[function(require,module,exports){
 module.exports = {
@@ -23034,36 +23035,34 @@ var R = require('ramda'),
     return imageObjs.forEach(drawImage(context));
 };
 
-module.exports = function (context) {
-    return function (gameState) {
-        window.requestAnimationFrame(function () {
-            context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
-            context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
+module.exports = function (context, gameState) {
+    window.requestAnimationFrame(function () {
+        context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
+        context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
 
-            drawImage(context, gameState.field.rocket.fire);
-            drawImage(context, gameState.field.rocket);
-            drawImages(context, gameState.field.asteroidField.asteroids);
-            drawImages(context, gameState.field.collisions);
+        drawImage(context, gameState.field.rocket.fire);
+        drawImage(context, gameState.field.rocket);
+        drawImages(context, gameState.field.asteroidField.asteroids);
+        drawImages(context, gameState.field.collisions);
 
-            if (gameState.mode === 'start') {
-                drawImage(context, gameState.start.space_rocket);
-                drawImage(context, gameState.start.esc);
-                drawImage(context, gameState.start.updown);
-                drawImage(context, gameState.start.pressAnyKey);
-            } else if (gameState.mode === 'pause') {
-                drawImage(context, gameState.pause.paused);
-                drawImage(context, gameState.pause.esc);
-                drawImage(context, gameState.pause.updown);
-            } else if (gameState.mode === 'restart') {
-                if (gameState.restart.mode === 'destroyed') {
-                    drawImage(context, gameState.restart.destroyed);
-                } else if (gameState.restart.mode === 'anykey') {
-                    drawImage(context, gameState.restart.destroyed);
-                    drawImage(context, gameState.restart.pressAnyKey);
-                }
+        if (gameState.mode === 'start') {
+            drawImage(context, gameState.start.space_rocket);
+            drawImage(context, gameState.start.esc);
+            drawImage(context, gameState.start.updown);
+            drawImage(context, gameState.start.pressAnyKey);
+        } else if (gameState.mode === 'pause') {
+            drawImage(context, gameState.pause.paused);
+            drawImage(context, gameState.pause.esc);
+            drawImage(context, gameState.pause.updown);
+        } else if (gameState.mode === 'restart') {
+            if (gameState.restart.mode === 'destroyed') {
+                drawImage(context, gameState.restart.destroyed);
+            } else if (gameState.restart.mode === 'anykey') {
+                drawImage(context, gameState.restart.destroyed);
+                drawImage(context, gameState.restart.pressAnyKey);
             }
-        });
-    };
+        }
+    });
 };
 
 },{"ramda":4}],316:[function(require,module,exports){
