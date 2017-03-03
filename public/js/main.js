@@ -178,9 +178,9 @@ var R = require('ramda'),
         }
     };
 },
-    store = function store(_state, reducer) {
+    store = function store(_state) {
     return {
-        reduce: function reduce(input) {
+        reduce: function reduce(reducer, input) {
             _state = reducer(_state, input);return _state;
         },
         state: function state() {
@@ -249,7 +249,7 @@ var includeInput = R.curry(function (input, gameState) {
     })(gameState);
 },
     game = R.pipe(modesIncludingInput, effects),
-    gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height)),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
 }),
@@ -263,7 +263,7 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
 })).merge(clock).merge(escKey).map(function (input) {
     return { type: input };
 }).subscribe(function (input) {
-    return Box(gameStore.reduce(input)).map(function (newGameState) {
+    return Box(gameStore.reduce(game, input)).map(function (newGameState) {
         if (newGameState.input.type === 'tick') render(context, newGameState);
     });
 });
@@ -23259,13 +23259,27 @@ module.exports = function (width, height) {
 };
 
 },{}],319:[function(require,module,exports){
-"use strict";
+'use strict';
 
-module.exports = function (x) {
-  console.log(x);return x;
+var R = require('ramda');
+
+var tap = function tap(x) {
+    console.log(x);return x;
 };
 
-},{}],320:[function(require,module,exports){
+tap.filter = R.curry(function (f, x) {
+    if (f(x)) console.log(x);return x;
+});
+tap.lens = R.curry(function (l, x) {
+    console.log(l(x));return x;
+});
+tap.lensFilter = R.curry(function (l, f, x) {
+    if (f(x)) console.log(l(x));return x;
+});
+
+module.exports = tap;
+
+},{"ramda":4}],320:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};

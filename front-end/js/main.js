@@ -4,9 +4,9 @@ const
     Box = x => ({
         map: f => Box(f(x))
     }),
-    store = (state, reducer) => {
+    store = state => {
         return {
-            reduce: input => { state = reducer(state, input); return state },
+            reduce: (reducer, input) => { state = reducer(state, input); return state },
             state: () => state
         }
     },
@@ -71,7 +71,7 @@ const
             }))
                 (gameState),
     game = R.pipe(modesIncludingInput, effects),
-    gameStore = store(startingGameState(context.canvas.width, context.canvas.height), game),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height)),
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     escKey = Rx.Observable.fromEvent(document, 'keydown')
         .map(R.prop('key'))
@@ -87,5 +87,5 @@ Rx.Observable.fromEvent(document, 'keydown')
     .merge(escKey)
     .map(input => ({type: input}))
     .subscribe(
-        input => Box(gameStore.reduce(input)).map(
+        input => Box(gameStore.reduce(game, input)).map(
             newGameState => { if(newGameState.input.type === 'tick') render(context, newGameState) }))
