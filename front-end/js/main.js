@@ -1,3 +1,4 @@
+//TODO make effects use gameStore.reduce call with it's own reducer
 const
     R = require('ramda'),
     Rx = require('rx'),
