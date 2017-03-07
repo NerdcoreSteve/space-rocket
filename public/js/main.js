@@ -171,23 +171,6 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var R = require('ramda'),
     Rx = require('rx'),
-    Box = function Box(x) {
-    return {
-        map: function map(f) {
-            return Box(f(x));
-        }
-    };
-},
-    store = function store(_state) {
-    return {
-        reduce: function reduce(reducer, input) {
-            _state = reducer(_state, input);return _state;
-        },
-        state: function state() {
-            return _state;
-        }
-    };
-},
     pauseMode = require('./pauseMode.js'),
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),
@@ -202,7 +185,18 @@ var R = require('ramda'),
 context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
 
-var includeInput = R.curry(function (input, gameState) {
+var store = function store(_state) {
+    return {
+        reduce: function reduce(reducer) {
+            var input = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _state.input;
+            _state = reducer(_state, input);return _state;
+        },
+        state: function state() {
+            return _state;
+        }
+    };
+},
+    includeInput = R.curry(function (input, gameState) {
     return _extends({}, gameState, {
         input: input
     });
@@ -221,34 +215,26 @@ var includeInput = R.curry(function (input, gameState) {
             return gameState;
     }
 },
-    modesIncludingInput = function modesIncludingInput(gameState, input) {
+    game = function game(gameState, input) {
     return R.pipe(gameModes, includeInput(input))(gameState, input);
 },
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 },
-    effects = function effects(gameState) {
-    return R.pipe(R.prop('commands'), R.map(function (command) {
+    effects = function effects(gameStore) {
+    gameStore.state().commands.forEach(function (command) {
         switch (command.type) {
             case 'random_numbers':
-                return {
+                return gameStore.reduce(game, {
                     type: command.returnType,
                     numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
                         return [pair[0], random(pair[1][0], pair[1][1])];
                     }), R.fromPairs)(command)
-                };
+                });
         }
-    }), R.filter(function (x) {
-        return x;
-    }), R.reduce(function (gameState, effect) {
-        return modesIncludingInput(gameState, effect);
-    }, gameState), function (gameState) {
-        return _extends({}, gameState, {
-            commands: []
-        });
-    })(gameState);
+    });
+    gameStore.reduce(R.assoc('commands', []));
 },
-    game = R.pipe(modesIncludingInput, effects),
     gameStore = store(startingGameState(context.canvas.width, context.canvas.height)),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
@@ -263,9 +249,9 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
 })).merge(clock).merge(escKey).map(function (input) {
     return { type: input };
 }).subscribe(function (input) {
-    return Box(gameStore.reduce(game, input)).map(function (newGameState) {
-        if (newGameState.input.type === 'tick') render(context, newGameState);
-    });
+    effects(gameStore);
+    gameStore.reduce(game, input);
+    if (input.type === 'tick') render(context, gameStore.state());
 });
 
 },{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startMode.js":317,"./startingGameState.js":318,"./tap.js":319,"ramda":4,"rx":313}],4:[function(require,module,exports){
