@@ -3,7 +3,13 @@ module.exports = (width, height) => {
         rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122)
     return {
-        commands: [],
+        commands: [
+            {
+                type: 'load_images',
+                returnType: 'starting_images_loaded',
+                urls: []
+            }
+        ],
         screen: {
             width: width,
             height: height

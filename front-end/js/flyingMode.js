@@ -1,6 +1,6 @@
 const
     R = require('ramda'),
-    tap = require('./tap.js'),
+    tap = require('./tap'),
     flying = (gameState, input) => checkCollisions(flyingLogic(gameState, input)),
     starFieldDy = gameState =>
         (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
