@@ -1,6 +1,7 @@
 const
     R = require('ramda'),
     Rx = require('rx'),
+    loadingMode = require('./loadingMode.js'),
     pauseMode = require('./pauseMode.js'),
     startMode = require('./startMode.js'),
     flyingMode = require('./flyingMode.js'),

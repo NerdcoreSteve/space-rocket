@@ -16,23 +16,33 @@ const
 
 module.exports = (context, gameState) => {
     window.requestAnimationFrame(() => {
-        context.drawImage(
-            image(gameState.field.starField.image),
-            gameState.field.starField.x1,
-            0,
-            context.canvas.width,
-            context.canvas.height)
-        context.drawImage(
-            image(gameState.field.starField.image),
-            gameState.field.starField.x2,
-            0,
-            context.canvas.width,
-            context.canvas.height)
+        if(gameState.mode !== 'loading') {
+            context.drawImage(
+                image(gameState.field.starField.image),
+                gameState.field.starField.x1,
+                0,
+                context.canvas.width,
+                context.canvas.height)
+            context.drawImage(
+                image(gameState.field.starField.image),
+                gameState.field.starField.x2,
+                0,
+                context.canvas.width,
+                context.canvas.height)
 
-        drawImage(context, gameState.field.rocket.fire)
-        drawImage(context, gameState.field.rocket)
-        drawImages(context, gameState.field.asteroidField.asteroids)
-        drawImages(context, gameState.field.collisions)
+            drawImage(context, gameState.field.rocket.fire)
+            drawImage(context, gameState.field.rocket)
+            drawImages(context, gameState.field.asteroidField.asteroids)
+            drawImages(context, gameState.field.collisions)
+        } else {
+            context.font = gameState.loading.text.font
+            context.textAlign = 'center'
+            context.fillStyle = gameState.loading.text.color
+            context.fillText(
+                gameState.loading.text.text,
+                gameState.loading.text.x,
+                gameState.loading.text.y)
+        }
 
         if(gameState.mode === 'start') {
             drawImage(context, gameState.start.space_rocket)

@@ -8,7 +8,16 @@ module.exports = (width, height) => {
             width: width,
             height: height
         },
-        mode: 'start',
+        mode: 'loading',
+        loading: {
+            text: {
+                x: width * 0.5,
+                y: height * 0.7,
+                font: `900 ${width / 10}px Arial`,
+                color: '#f8cc00',
+                text: 'LOADING'
+            }
+        },
         start: {
             space_rocket: {
                 x: width * .2,
