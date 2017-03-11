@@ -1,13 +1,8 @@
 const
     R = require('ramda'),
-    image = R.memoize(url => {
-        var imageObject = new Image()
-        imageObject.src = url
-        return imageObject
-    }),
     drawImage = R.curry((context, imageObj) =>
         context.drawImage(
-            image(imageObj.image),
+            gameState.images[imageObj.image],
             imageObj.x,
             imageObj.y,
             imageObj.width,
@@ -18,13 +13,13 @@ module.exports = (context, gameState) => {
     window.requestAnimationFrame(() => {
         if(gameState.mode !== 'loading') {
             context.drawImage(
-                image(gameState.field.starField.image),
+                gameState.images[gameState.field.starField.image],
                 gameState.field.starField.x1,
                 0,
                 context.canvas.width,
                 context.canvas.height)
             context.drawImage(
-                image(gameState.field.starField.image),
+                gameState.images[gameState.field.starField.image],
                 gameState.field.starField.x2,
                 0,
                 context.canvas.width,

@@ -1,7 +1,17 @@
 const
     R = require('ramda'),
+    Task = require('data.task'),
+    Immutable = require('immutable'),
+    {Map} = require('immutable-ext'),
     game = require('./game'),
-    random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+    random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+    image = url =>
+        new Task((rej, res) => {
+                var img = new Image()
+                img.onload = function () { res(img, ...arguments) }
+                img.onerror = rej
+                img.src = url
+            })
 
 module.exports =  gameStore => {
     gameStore.state().commands.forEach(command => {
@@ -19,6 +29,15 @@ module.exports =  gameStore => {
                                 R.fromPairs)
                                     (command)
                     })
+            case 'load_images':
+                return Map(command.images)
+                    .traverse(Task.of, image)
+                    .fork(
+                        error => undefined, //TODO what should I do with an error?
+                        images => gameStore.reduce({
+                            type: command.returnType,
+                            images: images,
+                        }))
         }
     })
     gameStore.reduce(R.assoc('commands', []))
