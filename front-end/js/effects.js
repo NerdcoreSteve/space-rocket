@@ -34,10 +34,12 @@ module.exports =  gameStore => {
                     .traverse(Task.of, image)
                     .fork(
                         error => undefined, //TODO what should I do with an error?
-                        images => gameStore.reduce({
-                            type: command.returnType,
-                            images: images,
-                        }))
+                        images => gameStore.reduce(
+                            game,
+                            {
+                                type: command.returnType,
+                                images: images,
+                            }))
         }
     })
     gameStore.reduce(R.assoc('commands', []))

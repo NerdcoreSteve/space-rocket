@@ -17,7 +17,7 @@ module.exports = (width, height) => {
                     rocket: '/images/rocket.png',
                     rocketFire1: '/images/rocketFire1.png',
                     rocketFire2: '/images/rocketFire2.png',
-                    paused: 'paused',
+                    paused: '/images/paused.png',
                     asteroid: '/images/asteroid.png',
                     collision: '/images/collision.png',
                 }

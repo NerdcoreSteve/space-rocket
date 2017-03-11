@@ -45,7 +45,7 @@ module.exports = function (gameStore) {
                     return undefined;
                 }, //TODO what should I do with an error?
                 function (images) {
-                    return gameStore.reduce({
+                    return gameStore.reduce(game, {
                         type: command.returnType,
                         images: images
                     });
@@ -257,10 +257,9 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var tap = require('./tap');
 module.exports = function (gameState, input) {
     switch (input.type) {
-        case 'starting_images_loaded':
-            return _extends({}, gameState, {
-                mode: 'start'
-            });
+        case 'images_loaded':
+            console.log(input.images);
+            return _extends({}, gameState);
         default:
             return gameState;
     }
@@ -29150,7 +29149,7 @@ module.exports = function (width, height) {
         images: {},
         commands: [{
             type: 'load_images',
-            returnType: 'starting_images_loaded',
+            returnType: 'images_loaded',
             images: {
                 space_rocket: '/images/space_rocket.png',
                 updown: '/images/updown.png',
@@ -29160,7 +29159,7 @@ module.exports = function (width, height) {
                 rocket: '/images/rocket.png',
                 rocketFire1: '/images/rocketFire1.png',
                 rocketFire2: '/images/rocketFire2.png',
-                paused: 'paused',
+                paused: '/images/paused.png',
                 asteroid: '/images/asteroid.png',
                 collision: '/images/collision.png'
             }
