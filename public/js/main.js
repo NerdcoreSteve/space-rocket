@@ -47,7 +47,7 @@ module.exports = function (gameStore) {
                 function (images) {
                     return gameStore.reduce(game, {
                         type: command.returnType,
-                        images: images
+                        images: images.toJS()
                     });
                 });
         }
@@ -258,8 +258,10 @@ var tap = require('./tap');
 module.exports = function (gameState, input) {
     switch (input.type) {
         case 'images_loaded':
-            console.log(input.images);
-            return _extends({}, gameState);
+            return _extends({}, gameState, {
+                mode: 'start',
+                images: _extends({}, gameState.images, input.images)
+            });
         default:
             return gameState;
     }
@@ -29027,11 +29029,11 @@ module.exports = function (gameState, input) {
 'use strict';
 
 var R = require('ramda'),
-    drawImage = R.curry(function (context, imageObj) {
-    return context.drawImage(gameState.images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
+    drawImage = R.curry(function (context, images, imageObj) {
+    return context.drawImage(images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
 }),
-    drawImages = function drawImages(context, imageObjs) {
-    return imageObjs.forEach(drawImage(context));
+    drawImages = function drawImages(context, images, imageObjs) {
+    return imageObjs.forEach(drawImage(context, images));
 };
 
 module.exports = function (context, gameState) {
@@ -29040,10 +29042,10 @@ module.exports = function (context, gameState) {
             context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
             context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
 
-            drawImage(context, gameState.field.rocket.fire);
-            drawImage(context, gameState.field.rocket);
-            drawImages(context, gameState.field.asteroidField.asteroids);
-            drawImages(context, gameState.field.collisions);
+            drawImage(context, gameState.images, gameState.field.rocket.fire);
+            drawImage(context, gameState.images, gameState.field.rocket);
+            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids);
+            drawImages(context, gameState.images, gameState.field.collisions);
         } else {
             context.font = gameState.loading.text.font;
             context.textAlign = 'center';
@@ -29052,20 +29054,20 @@ module.exports = function (context, gameState) {
         }
 
         if (gameState.mode === 'start') {
-            drawImage(context, gameState.start.space_rocket);
-            drawImage(context, gameState.start.esc);
-            drawImage(context, gameState.start.updown);
-            drawImage(context, gameState.start.pressAnyKey);
+            drawImage(context, gameState.images, gameState.start.space_rocket);
+            drawImage(context, gameState.images, gameState.start.esc);
+            drawImage(context, gameState.images, gameState.start.updown);
+            drawImage(context, gameState.images, gameState.start.pressAnyKey);
         } else if (gameState.mode === 'pause') {
-            drawImage(context, gameState.pause.paused);
-            drawImage(context, gameState.pause.esc);
-            drawImage(context, gameState.pause.updown);
+            drawImage(context, gameState.images, gameState.pause.paused);
+            drawImage(context, gameState.images, gameState.pause.esc);
+            drawImage(context, gameState.images, gameState.pause.updown);
         } else if (gameState.mode === 'restart') {
             if (gameState.restart.mode === 'destroyed') {
-                drawImage(context, gameState.restart.destroyed);
+                drawImage(context, gameState.images, gameState.restart.destroyed);
             } else if (gameState.restart.mode === 'anykey') {
-                drawImage(context, gameState.restart.destroyed);
-                drawImage(context, gameState.restart.pressAnyKey);
+                drawImage(context, gameState.images, gameState.restart.destroyed);
+                drawImage(context, gameState.images, gameState.restart.pressAnyKey);
             }
         }
     });

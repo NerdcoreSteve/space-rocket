@@ -1,13 +1,13 @@
 const
     R = require('ramda'),
-    drawImage = R.curry((context, imageObj) =>
+    drawImage = R.curry((context, images, imageObj) =>
         context.drawImage(
-            gameState.images[imageObj.image],
+            images[imageObj.image],
             imageObj.x,
             imageObj.y,
             imageObj.width,
             imageObj.height)),
-    drawImages = (context, imageObjs) => imageObjs.forEach(drawImage(context))
+    drawImages = (context, images, imageObjs) => imageObjs.forEach(drawImage(context, images))
 
 module.exports = (context, gameState) => {
     window.requestAnimationFrame(() => {
@@ -25,10 +25,10 @@ module.exports = (context, gameState) => {
                 context.canvas.width,
                 context.canvas.height)
 
-            drawImage(context, gameState.field.rocket.fire)
-            drawImage(context, gameState.field.rocket)
-            drawImages(context, gameState.field.asteroidField.asteroids)
-            drawImages(context, gameState.field.collisions)
+            drawImage(context, gameState.images, gameState.field.rocket.fire)
+            drawImage(context, gameState.images, gameState.field.rocket)
+            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids)
+            drawImages(context, gameState.images, gameState.field.collisions)
         } else {
             context.font = gameState.loading.text.font
             context.textAlign = 'center'
@@ -40,20 +40,20 @@ module.exports = (context, gameState) => {
         }
 
         if(gameState.mode === 'start') {
-            drawImage(context, gameState.start.space_rocket)
-            drawImage(context, gameState.start.esc)
-            drawImage(context, gameState.start.updown)
-            drawImage(context, gameState.start.pressAnyKey)
+            drawImage(context, gameState.images, gameState.start.space_rocket)
+            drawImage(context, gameState.images, gameState.start.esc)
+            drawImage(context, gameState.images, gameState.start.updown)
+            drawImage(context, gameState.images, gameState.start.pressAnyKey)
         } else if(gameState.mode === 'pause') {
-            drawImage(context, gameState.pause.paused)
-            drawImage(context, gameState.pause.esc)
-            drawImage(context, gameState.pause.updown)
+            drawImage(context, gameState.images, gameState.pause.paused)
+            drawImage(context, gameState.images, gameState.pause.esc)
+            drawImage(context, gameState.images, gameState.pause.updown)
         } else if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'destroyed') {
-                drawImage(context, gameState.restart.destroyed)
+                drawImage(context, gameState.images, gameState.restart.destroyed)
             } else if(gameState.restart.mode === 'anykey') {
-                drawImage(context, gameState.restart.destroyed)
-                drawImage(context, gameState.restart.pressAnyKey)
+                drawImage(context, gameState.images, gameState.restart.destroyed)
+                drawImage(context, gameState.images, gameState.restart.pressAnyKey)
             }
         }
     })

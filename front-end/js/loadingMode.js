@@ -3,10 +3,13 @@ const
 module.exports = (gameState, input) => {
     switch(input.type) {
         case 'images_loaded':
-            console.log(input.images)
             return {
                 ...gameState,
-                //mode: 'start'
+                mode: 'start',
+                images: {
+                    ...gameState.images,
+                    ...input.images,
+                },
             }
         default:
             return gameState
