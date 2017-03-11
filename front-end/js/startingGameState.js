@@ -7,7 +7,7 @@ module.exports = (width, height) => {
         commands: [
             {
                 type: 'load_images',
-                returnType: 'starting_images_loaded',
+                returnType: 'images_loaded',
                 images: {
                     space_rocket: '/images/space_rocket.png',
                     updown: '/images/updown.png',
