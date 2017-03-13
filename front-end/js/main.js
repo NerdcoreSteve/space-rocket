@@ -1,14 +1,12 @@
 const
     R = require('ramda'),
     Rx = require('rx'),
-    pauseMode = require('./pauseMode.js'),
-    startMode = require('./startMode.js'),
-    flyingMode = require('./flyingMode.js'),
-    restartMode = require('./restartMode.js'),
-    render = require('./render.js'),
-    tap = require('./tap.js'),
+    game = require('./game'),
+    effects = require('./effects'),
+    render = require('./render'),
+    tap = require('./tap'),
     boolMatch = require('./boolMatch'),
-    startingGameState = require('./startingGameState.js'),
+    startingGameState = require('./startingGameState'),
     context = document.getElementById("gameScreen").getContext("2d"),
     screenShrinkFactor = .6
 
@@ -16,47 +14,13 @@ context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5
 context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640) 
 
 const
-    gameModes = (gameState, input) => {
-        switch(gameState.mode) {
-            case 'start':
-                return startMode(gameState, input)
-            case 'pause':
-                return pauseMode(gameState, input)
-            case 'flying':
-                return flyingMode(gameState, input)
-            case 'restart':
-                return restartMode(gameState, input)
-            default:
-                return gameState
+    store = state => {
+        return {
+            reduce: (reducer, input = state.input) => { state = reducer(state, input); return state },
+            state: () => state
         }
     },
-    random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-    effects = gameState =>
-        R.pipe(
-            R.prop('commands'),
-            R.map(command => {
-                switch(command.type) {
-                    case 'random_numbers':
-                        return {
-                            type: command.returnType,
-                            numbers:
-                                R.pipe(
-                                    R.prop('numbers'),
-                                    R.toPairs,
-                                    R.map(pair => [pair[0], random(pair[1][0], pair[1][1])]),
-                                    R.fromPairs)
-                                        (command)
-                        }
-                }
-            }),
-            R.filter(x => x),
-            R.reduce((gameState, effect) => gameModes(gameState, effect), gameState),
-            gameState => ({
-                ...gameState,
-                commands: []
-            }))
-                (gameState),
-    game = R.pipe(gameModes, effects),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height)),
     clock = Rx.Observable.interval(1000/60).map(() => 'tick'), // 60 fps
     escKey = Rx.Observable.fromEvent(document, 'keydown')
         .map(R.prop('key'))
@@ -71,5 +35,8 @@ Rx.Observable.fromEvent(document, 'keydown')
     .merge(clock)
     .merge(escKey)
     .map(input => ({type: input}))
-    .scan(game, startingGameState(context.canvas.width, context.canvas.height))
-    .subscribe(render(context))
+    .subscribe(input => {
+        effects(gameStore)
+        gameStore.reduce(game, input)
+        if(input.type === 'tick') render(context, gameStore.state())
+    })

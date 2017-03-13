@@ -7,6 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "data.task": "^3.1.1",
+    "immutable": "^4.0.0-rc.1",
+    "immutable-ext": "^1.0.8",
     "ramda": "^0.23.0",
     "rx": "^4.1.0"
   }

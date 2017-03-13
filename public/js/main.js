@@ -6,13 +6,61 @@ module.exports = R.curry(function (regex, string) {
   return R.pipe(R.match(regex), R.length)(string);
 });
 
-},{"ramda":4}],2:[function(require,module,exports){
+},{"ramda":11}],2:[function(require,module,exports){
+'use strict';
+
+var R = require('ramda'),
+    Task = require('data.task'),
+    _require = require('immutable-ext'),
+    Map = _require.Map,
+    game = require('./game'),
+    random = function random(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+},
+    image = function image(url) {
+    return new Task(function (rej, res) {
+        var img = new Image();
+        img.onload = function () {
+            res.apply(undefined, [img].concat(Array.prototype.slice.call(arguments)));
+        };
+        img.onerror = rej;
+        img.src = url;
+    });
+};
+
+
+module.exports = function (gameStore) {
+    gameStore.state().commands.forEach(function (command) {
+        switch (command.type) {
+            case 'random_numbers':
+                return gameStore.reduce(game, {
+                    type: command.returnType,
+                    numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
+                        return [pair[0], random(pair[1][0], pair[1][1])];
+                    }), R.fromPairs)(command)
+                });
+            case 'load_images':
+                return Map(command.images).traverse(Task.of, image).fork(function (error) {
+                    return undefined;
+                }, //TODO what should I do with an error?
+                function (images) {
+                    return gameStore.reduce(game, {
+                        type: command.returnType,
+                        images: images.toJS()
+                    });
+                });
+        }
+    });
+    gameStore.reduce(R.assoc('commands', []));
+};
+
+},{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
-    tap = require('./tap.js'),
+    tap = require('./tap'),
     flying = function flying(gameState, input) {
     return checkCollisions(flyingLogic(gameState, input));
 },
@@ -36,7 +84,7 @@ var R = require('ramda'),
         y: y,
         width: width,
         height: width * (136 / 168),
-        image: '/images/collision.png'
+        image: 'collision'
     };
 },
     rectsMidpoint = function rectsMidpoint(rect1, rect2) {
@@ -74,7 +122,7 @@ var R = require('ramda'),
         width: asteroidWidth,
         height: asteroidHeight,
         speed: speed,
-        image: '/images/asteroid.png'
+        image: 'asteroid'
     };
 },
     flyingLogic = function flyingLogic(gameState, input) {
@@ -164,29 +212,26 @@ var R = require('ramda'),
 
 module.exports = flying;
 
-},{"./tap.js":319,"ramda":4}],3:[function(require,module,exports){
+},{"./tap":326,"ramda":11}],4:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
-    Rx = require('rx'),
-    pauseMode = require('./pauseMode.js'),
-    startMode = require('./startMode.js'),
-    flyingMode = require('./flyingMode.js'),
-    restartMode = require('./restartMode.js'),
-    render = require('./render.js'),
-    tap = require('./tap.js'),
-    boolMatch = require('./boolMatch'),
-    startingGameState = require('./startingGameState.js'),
-    context = document.getElementById("gameScreen").getContext("2d"),
-    screenShrinkFactor = .6;
-
-context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
-context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
-
-var gameModes = function gameModes(gameState, input) {
+    loadingMode = require('./loadingMode'),
+    pauseMode = require('./pauseMode'),
+    startMode = require('./startMode'),
+    flyingMode = require('./flyingMode'),
+    restartMode = require('./restartMode'),
+    includeInput = R.curry(function (input, gameState) {
+    return _extends({}, gameState, {
+        input: input
+    });
+}),
+    gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
+        case 'loading':
+            return loadingMode(gameState, input);
         case 'start':
             return startMode(gameState, input);
         case 'pause':
@@ -198,32 +243,58 @@ var gameModes = function gameModes(gameState, input) {
         default:
             return gameState;
     }
-},
-    random = function random(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-},
-    effects = function effects(gameState) {
-    return R.pipe(R.prop('commands'), R.map(function (command) {
-        switch (command.type) {
-            case 'random_numbers':
-                return {
-                    type: command.returnType,
-                    numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
-                        return [pair[0], random(pair[1][0], pair[1][1])];
-                    }), R.fromPairs)(command)
-                };
+};
+module.exports = function (gameState, input) {
+    return R.pipe(gameModes, includeInput(input))(gameState, input);
+};
+
+},{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"ramda":11}],5:[function(require,module,exports){
+'use strict';
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+var tap = require('./tap');
+module.exports = function (gameState, input) {
+    switch (input.type) {
+        case 'images_loaded':
+            return _extends({}, gameState, {
+                mode: 'start',
+                images: _extends({}, gameState.images, input.images)
+            });
+        default:
+            return gameState;
+    }
+};
+
+},{"./tap":326}],6:[function(require,module,exports){
+'use strict';
+
+var R = require('ramda'),
+    Rx = require('rx'),
+    game = require('./game'),
+    effects = require('./effects'),
+    render = require('./render'),
+    tap = require('./tap'),
+    boolMatch = require('./boolMatch'),
+    startingGameState = require('./startingGameState'),
+    context = document.getElementById("gameScreen").getContext("2d"),
+    screenShrinkFactor = .6;
+
+context.canvas.width = window.innerWidth * screenShrinkFactor * 1.5;
+context.canvas.height = window.innerWidth * screenShrinkFactor * (480 / 640);
+
+var store = function store(_state) {
+    return {
+        reduce: function reduce(reducer) {
+            var input = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _state.input;
+            _state = reducer(_state, input);return _state;
+        },
+        state: function state() {
+            return _state;
         }
-    }), R.filter(function (x) {
-        return x;
-    }), R.reduce(function (gameState, effect) {
-        return gameModes(gameState, effect);
-    }, gameState), function (gameState) {
-        return _extends({}, gameState, {
-            commands: []
-        });
-    })(gameState);
+    };
 },
-    game = R.pipe(gameModes, effects),
+    gameStore = store(startingGameState(context.canvas.width, context.canvas.height)),
     clock = Rx.Observable.interval(1000 / 60).map(function () {
     return 'tick';
 }),
@@ -236,9 +307,5973 @@ Rx.Observable.fromEvent(document, 'keydown').merge(Rx.Observable.fromEvent(docum
     return 'anykey';
 })).merge(clock).merge(escKey).map(function (input) {
     return { type: input };
-}).scan(game, startingGameState(context.canvas.width, context.canvas.height)).subscribe(render(context));
+}).subscribe(function (input) {
+    effects(gameStore);
+    gameStore.reduce(game, input);
+    if (input.type === 'tick') render(context, gameStore.state());
+});
 
-},{"./boolMatch":1,"./flyingMode.js":2,"./pauseMode.js":314,"./render.js":315,"./restartMode.js":316,"./startMode.js":317,"./startingGameState.js":318,"./tap.js":319,"ramda":4,"rx":313}],4:[function(require,module,exports){
+},{"./boolMatch":1,"./effects":2,"./game":4,"./render":322,"./startingGameState":325,"./tap":326,"ramda":11,"rx":320}],7:[function(require,module,exports){
+module.exports = require('./task');
+
+},{"./task":8}],8:[function(require,module,exports){
+(function (process){
+'use strict';
+
+
+/**
+ * A helper for delaying the execution of a function.
+ * @private
+ * @summary (Any... -> Any) -> Void
+ */
+var delayed = typeof setImmediate !== 'undefined'?  setImmediate
+            : typeof process !== 'undefined'?       process.nextTick
+            : /* otherwise */                       setTimeout
+
+/**
+ * @module lib/task
+ */
+module.exports = Task;
+
+// -- Implementation ---------------------------------------------------
+
+/**
+ * The `Task[α, β]` structure represents values that depend on time. This
+ * allows one to model time-based effects explicitly, such that one can have
+ * full knowledge of when they're dealing with delayed computations, latency,
+ * or anything that can not be computed immediately.
+ *
+ * A common use for this structure is to replace the usual Continuation-Passing
+ * Style form of programming, in order to be able to compose and sequence
+ * time-dependent effects using the generic and powerful monadic operations.
+ *
+ * @class
+ * @summary
+ * ((α → Void), (β → Void) → Void), (Void → Void) → Task[α, β]
+ *
+ * Task[α, β] <: Chain[β]
+ *               , Monad[β]
+ *               , Functor[β]
+ *               , Applicative[β]
+ *               , Semigroup[β]
+ *               , Monoid[β]
+ *               , Show
+ */
+function Task(computation, cleanup) {
+  this.fork = computation;
+
+  this.cleanup = cleanup || function() {};
+}
+
+/**
+ * Constructs a new `Task[α, β]` containing the single value `β`.
+ *
+ * `β` can be any value, including `null`, `undefined`, or another
+ * `Task[α, β]` structure.
+ *
+ * @summary β → Task[α, β]
+ */
+Task.prototype.of = function _of(b) {
+  return new Task(function(_, resolve) {
+    return resolve(b);
+  });
+};
+
+Task.of = Task.prototype.of;
+
+/**
+ * Constructs a new `Task[α, β]` containing the single value `α`.
+ *
+ * `α` can be any value, including `null`, `undefined`, or another
+ * `Task[α, β]` structure.
+ *
+ * @summary α → Task[α, β]
+ */
+Task.prototype.rejected = function _rejected(a) {
+  return new Task(function(reject) {
+    return reject(a);
+  });
+};
+
+Task.rejected = Task.prototype.rejected;
+
+// -- Functor ----------------------------------------------------------
+
+/**
+ * Transforms the successful value of the `Task[α, β]` using a regular unary
+ * function.
+ *
+ * @summary @Task[α, β] => (β → γ) → Task[α, γ]
+ */
+Task.prototype.map = function _map(f) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return reject(a);
+    }, function(b) {
+      return resolve(f(b));
+    });
+  }, cleanup);
+};
+
+// -- Chain ------------------------------------------------------------
+
+/**
+ * Transforms the succesful value of the `Task[α, β]` using a function to a
+ * monad.
+ *
+ * @summary @Task[α, β] => (β → Task[α, γ]) → Task[α, γ]
+ */
+Task.prototype.chain = function _chain(f) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return reject(a);
+    }, function(b) {
+      return f(b).fork(reject, resolve);
+    });
+  }, cleanup);
+};
+
+// -- Apply ------------------------------------------------------------
+
+/**
+ * Applys the successful value of the `Task[α, (β → γ)]` to the successful
+ * value of the `Task[α, β]`
+ *
+ * @summary @Task[α, (β → γ)] => Task[α, β] → Task[α, γ]
+ */
+
+Task.prototype.ap = function _ap(that) {
+  var forkThis = this.fork;
+  var forkThat = that.fork;
+  var cleanupThis = this.cleanup;
+  var cleanupThat = that.cleanup;
+
+  function cleanupBoth(state) {
+    cleanupThis(state[0]);
+    cleanupThat(state[1]);
+  }
+
+  return new Task(function(reject, resolve) {
+    var func, funcLoaded = false;
+    var val, valLoaded = false;
+    var rejected = false;
+    var allState;
+
+    var thisState = forkThis(guardReject, guardResolve(function(x) {
+      funcLoaded = true;
+      func = x;
+    }));
+
+    var thatState = forkThat(guardReject, guardResolve(function(x) {
+      valLoaded = true;
+      val = x;
+    }));
+
+    function guardResolve(setter) {
+      return function(x) {
+        if (rejected) {
+          return;
+        }
+
+        setter(x);
+        if (funcLoaded && valLoaded) {
+          delayed(function(){ cleanupBoth(allState) });
+          return resolve(func(val));
+        } else {
+          return x;
+        }
+      }
+    }
+
+    function guardReject(x) {
+      if (!rejected) {
+        rejected = true;
+        return reject(x);
+      }
+    }
+
+    return allState = [thisState, thatState];
+  }, cleanupBoth);
+};
+
+// -- Semigroup ------------------------------------------------------------
+
+/**
+ * Selects the earlier of the two tasks `Task[α, β]`
+ *
+ * @summary @Task[α, β] => Task[α, β] → Task[α, β]
+ */
+
+Task.prototype.concat = function _concat(that) {
+  var forkThis = this.fork;
+  var forkThat = that.fork;
+  var cleanupThis = this.cleanup;
+  var cleanupThat = that.cleanup;
+
+  function cleanupBoth(state) {
+    cleanupThis(state[0]);
+    cleanupThat(state[1]);
+  }
+
+  return new Task(function(reject, resolve) {
+    var done = false;
+    var allState;
+    var thisState = forkThis(guard(reject), guard(resolve));
+    var thatState = forkThat(guard(reject), guard(resolve));
+
+    return allState = [thisState, thatState];
+
+    function guard(f) {
+      return function(x) {
+        if (!done) {
+          done = true;
+          delayed(function(){ cleanupBoth(allState) })
+          return f(x);
+        }
+      };
+    }
+  }, cleanupBoth);
+
+};
+
+// -- Monoid ------------------------------------------------------------
+
+/**
+ * Returns a Task that will never resolve
+ *
+ * @summary Void → Task[α, _]
+ */
+Task.empty = function _empty() {
+  return new Task(function() {});
+};
+
+Task.prototype.empty = Task.empty;
+
+// -- Show -------------------------------------------------------------
+
+/**
+ * Returns a textual representation of the `Task[α, β]`
+ *
+ * @summary @Task[α, β] => Void → String
+ */
+Task.prototype.toString = function _toString() {
+  return 'Task';
+};
+
+// -- Extracting and recovering ----------------------------------------
+
+/**
+ * Transforms a failure value into a new `Task[α, β]`. Does nothing if the
+ * structure already contains a successful value.
+ *
+ * @summary @Task[α, β] => (α → Task[γ, β]) → Task[γ, β]
+ */
+Task.prototype.orElse = function _orElse(f) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return f(a).fork(reject, resolve);
+    }, function(b) {
+      return resolve(b);
+    });
+  }, cleanup);
+};
+
+// -- Folds and extended transformations -------------------------------
+
+/**
+ * Catamorphism. Takes two functions, applies the leftmost one to the failure
+ * value, and the rightmost one to the successful value, depending on which one
+ * is present.
+ *
+ * @summary @Task[α, β] => (α → γ), (β → γ) → Task[δ, γ]
+ */
+Task.prototype.fold = function _fold(f, g) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return resolve(f(a));
+    }, function(b) {
+      return resolve(g(b));
+    });
+  }, cleanup);
+};
+
+/**
+ * Catamorphism.
+ *
+ * @summary @Task[α, β] => { Rejected: α → γ, Resolved: β → γ } → Task[δ, γ]
+ */
+Task.prototype.cata = function _cata(pattern) {
+  return this.fold(pattern.Rejected, pattern.Resolved);
+};
+
+/**
+ * Swaps the disjunction values.
+ *
+ * @summary @Task[α, β] => Void → Task[β, α]
+ */
+Task.prototype.swap = function _swap() {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return resolve(a);
+    }, function(b) {
+      return reject(b);
+    });
+  }, cleanup);
+};
+
+/**
+ * Maps both sides of the disjunction.
+ *
+ * @summary @Task[α, β] => (α → γ), (β → δ) → Task[γ, δ]
+ */
+Task.prototype.bimap = function _bimap(f, g) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return reject(f(a));
+    }, function(b) {
+      return resolve(g(b));
+    });
+  }, cleanup);
+};
+
+/**
+ * Maps the left side of the disjunction (failure).
+ *
+ * @summary @Task[α, β] => (α → γ) → Task[γ, β]
+ */
+Task.prototype.rejectedMap = function _rejectedMap(f) {
+  var fork = this.fork;
+  var cleanup = this.cleanup;
+
+  return new Task(function(reject, resolve) {
+    return fork(function(a) {
+      return reject(f(a));
+    }, function(b) {
+      return resolve(b);
+    });
+  }, cleanup);
+};
+
+}).call(this,require('_process'))
+},{"_process":327}],9:[function(require,module,exports){
+const Immutable = require('immutable')
+const {List, Map} = Immutable
+
+const derived = {
+  fold : function(empty) {
+    return empty != null
+           ? this.reduce((acc, x) => acc.concat(x), empty)
+           : this.reduce((acc, x) => acc.concat(x))
+  },
+  foldMap : function(f, empty) {
+    return this.map(f).fold(empty)
+  },
+  sequence : function(point) {
+    return this.traverse(point, x => x)
+  }
+}
+
+// List
+//====================
+
+// monoid
+List.empty = List()
+List.prototype.empty = List.empty
+
+// traversable
+List.prototype.traverse = function(point, f) {
+  return this.reduce((ys, x) =>
+    f(x).map(x => y => y.concat([x])).ap(ys), point(List()))
+}
+
+List.prototype.sequence = derived.sequence
+
+// foldable
+List.prototype.fold = derived.fold
+List.prototype.foldMap = derived.foldMap
+
+// applicative
+List.prototype.ap = function(other) {
+  return this.map(f => other.map(x => f(x))).flatten()
+}
+
+// monad
+List.prototype.chain = List.prototype.flatMap;
+
+
+
+// Map
+//===============
+
+
+// semigroup
+Map.prototype.concat = function(other) {
+  return this.mergeWith((prev, next) => prev.concat(next), other)
+}
+
+// monoid
+Map.empty = Map({})
+Map.prototype.empty = Map.empty
+
+// foldable
+Map.prototype.fold = derived.fold
+Map.prototype.foldMap = derived.foldMap
+
+// traverable
+Map.prototype.traverse = function(point, f) {
+  return this.reduce((acc, v, k) =>
+    f(v, k).map(x => y => y.merge({[k]: x})).ap(acc), point(Map.empty))
+}
+
+Map.prototype.sequence = derived.sequence
+
+// monad
+Map.prototype.chain = Map.prototype.flatMap
+
+module.exports = Immutable
+
+},{"immutable":10}],10:[function(require,module,exports){
+/**
+ *  Copyright (c) 2014-2015, Facebook, Inc.
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the BSD-style license found in the
+ *  LICENSE file in the root directory of this source tree. An additional grant
+ *  of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+(function (global, factory) {
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	(factory((global.Immutable = global.Immutable || {})));
+}(this, (function (exports) { 'use strict';
+
+// Used for setting prototype methods that IE8 chokes on.
+var DELETE = 'delete';
+
+// Constants describing the size of trie nodes.
+var SHIFT = 5; // Resulted in best performance after ______?
+var SIZE = 1 << SHIFT;
+var MASK = SIZE - 1;
+
+// A consistent shared value representing "not set" which equals nothing other
+// than itself, and nothing that could be provided externally.
+var NOT_SET = {};
+
+// Boolean references, Rough equivalent of `bool &`.
+var CHANGE_LENGTH = { value: false };
+var DID_ALTER = { value: false };
+
+function MakeRef(ref) {
+  ref.value = false;
+  return ref;
+}
+
+function SetRef(ref) {
+  ref && (ref.value = true);
+}
+
+// A function which returns a value representing an "owner" for transient writes
+// to tries. The return value will only ever equal itself, and will not equal
+// the return of any subsequent call of this function.
+function OwnerID() {}
+
+// http://jsperf.com/copy-array-inline
+function arrCopy(arr, offset) {
+  offset = offset || 0;
+  var len = Math.max(0, arr.length - offset);
+  var newArr = new Array(len);
+  for (var ii = 0; ii < len; ii++) {
+    newArr[ii] = arr[ii + offset];
+  }
+  return newArr;
+}
+
+function ensureSize(iter) {
+  if (iter.size === undefined) {
+    iter.size = iter.__iterate(returnTrue);
+  }
+  return iter.size;
+}
+
+function wrapIndex(iter, index) {
+  // This implements "is array index" which the ECMAString spec defines as:
+  //
+  //     A String property name P is an array index if and only if
+  //     ToString(ToUint32(P)) is equal to P and ToUint32(P) is not equal
+  //     to 2^32−1.
+  //
+  // http://www.ecma-international.org/ecma-262/6.0/#sec-array-exotic-objects
+  if (typeof index !== 'number') {
+    var uint32Index = index >>> 0; // N >>> 0 is shorthand for ToUint32
+    if ('' + uint32Index !== index || uint32Index === 4294967295) {
+      return NaN;
+    }
+    index = uint32Index;
+  }
+  return index < 0 ? ensureSize(iter) + index : index;
+}
+
+function returnTrue() {
+  return true;
+}
+
+function wholeSlice(begin, end, size) {
+  return (begin === 0 || (size !== undefined && begin <= -size)) &&
+    (end === undefined || (size !== undefined && end >= size));
+}
+
+function resolveBegin(begin, size) {
+  return resolveIndex(begin, size, 0);
+}
+
+function resolveEnd(end, size) {
+  return resolveIndex(end, size, size);
+}
+
+function resolveIndex(index, size, defaultIndex) {
+  // Sanitize indices using this shorthand for ToInt32(argument)
+  // http://www.ecma-international.org/ecma-262/6.0/#sec-toint32
+  return index === undefined
+    ? defaultIndex
+    : index < 0
+        ? size === Infinity ? size : Math.max(0, size + index) | 0
+        : size === undefined || size === index
+            ? index
+            : Math.min(size, index) | 0;
+}
+
+function isImmutable(maybeImmutable) {
+  return (isCollection(maybeImmutable) || isRecord(maybeImmutable)) &&
+    !maybeImmutable.__ownerID;
+}
+
+function isCollection(maybeCollection) {
+  return !!(maybeCollection && maybeCollection[IS_ITERABLE_SENTINEL]);
+}
+
+function isKeyed(maybeKeyed) {
+  return !!(maybeKeyed && maybeKeyed[IS_KEYED_SENTINEL]);
+}
+
+function isIndexed(maybeIndexed) {
+  return !!(maybeIndexed && maybeIndexed[IS_INDEXED_SENTINEL]);
+}
+
+function isAssociative(maybeAssociative) {
+  return isKeyed(maybeAssociative) || isIndexed(maybeAssociative);
+}
+
+function isOrdered(maybeOrdered) {
+  return !!(maybeOrdered && maybeOrdered[IS_ORDERED_SENTINEL]);
+}
+
+function isRecord(maybeRecord) {
+  return !!(maybeRecord && maybeRecord[IS_RECORD_SENTINEL]);
+}
+
+function isValueObject(maybeValue) {
+  return !!(maybeValue &&
+    typeof maybeValue.equals === 'function' &&
+    typeof maybeValue.hashCode === 'function');
+}
+
+var IS_ITERABLE_SENTINEL = '@@__IMMUTABLE_ITERABLE__@@';
+var IS_KEYED_SENTINEL = '@@__IMMUTABLE_KEYED__@@';
+var IS_INDEXED_SENTINEL = '@@__IMMUTABLE_INDEXED__@@';
+var IS_ORDERED_SENTINEL = '@@__IMMUTABLE_ORDERED__@@';
+var IS_RECORD_SENTINEL = '@@__IMMUTABLE_RECORD__@@';
+
+var Collection = function Collection(value) {
+  return isCollection(value) ? value : Seq(value);
+};
+
+var KeyedCollection = (function (Collection) {
+  function KeyedCollection(value) {
+    return isKeyed(value) ? value : KeyedSeq(value);
+  }
+
+  if ( Collection ) KeyedCollection.__proto__ = Collection;
+  KeyedCollection.prototype = Object.create( Collection && Collection.prototype );
+  KeyedCollection.prototype.constructor = KeyedCollection;
+
+  return KeyedCollection;
+}(Collection));
+
+var IndexedCollection = (function (Collection) {
+  function IndexedCollection(value) {
+    return isIndexed(value) ? value : IndexedSeq(value);
+  }
+
+  if ( Collection ) IndexedCollection.__proto__ = Collection;
+  IndexedCollection.prototype = Object.create( Collection && Collection.prototype );
+  IndexedCollection.prototype.constructor = IndexedCollection;
+
+  return IndexedCollection;
+}(Collection));
+
+var SetCollection = (function (Collection) {
+  function SetCollection(value) {
+    return isCollection(value) && !isAssociative(value) ? value : SetSeq(value);
+  }
+
+  if ( Collection ) SetCollection.__proto__ = Collection;
+  SetCollection.prototype = Object.create( Collection && Collection.prototype );
+  SetCollection.prototype.constructor = SetCollection;
+
+  return SetCollection;
+}(Collection));
+
+Collection.Keyed = KeyedCollection;
+Collection.Indexed = IndexedCollection;
+Collection.Set = SetCollection;
+
+var ITERATE_KEYS = 0;
+var ITERATE_VALUES = 1;
+var ITERATE_ENTRIES = 2;
+
+var REAL_ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
+var FAUX_ITERATOR_SYMBOL = '@@iterator';
+
+var ITERATOR_SYMBOL = REAL_ITERATOR_SYMBOL || FAUX_ITERATOR_SYMBOL;
+
+var Iterator = function Iterator(next) {
+  this.next = next;
+};
+
+Iterator.prototype.toString = function toString () {
+  return '[Iterator]';
+};
+
+Iterator.KEYS = ITERATE_KEYS;
+Iterator.VALUES = ITERATE_VALUES;
+Iterator.ENTRIES = ITERATE_ENTRIES;
+
+Iterator.prototype.inspect = (Iterator.prototype.toSource = function() {
+  return this.toString();
+});
+Iterator.prototype[ITERATOR_SYMBOL] = function() {
+  return this;
+};
+
+function iteratorValue(type, k, v, iteratorResult) {
+  var value = type === 0 ? k : type === 1 ? v : [k, v];
+  iteratorResult
+    ? (iteratorResult.value = value)
+    : (iteratorResult = {
+        value: value,
+        done: false
+      });
+  return iteratorResult;
+}
+
+function iteratorDone() {
+  return { value: undefined, done: true };
+}
+
+function hasIterator(maybeIterable) {
+  return !!getIteratorFn(maybeIterable);
+}
+
+function isIterator(maybeIterator) {
+  return maybeIterator && typeof maybeIterator.next === 'function';
+}
+
+function getIterator(iterable) {
+  var iteratorFn = getIteratorFn(iterable);
+  return iteratorFn && iteratorFn.call(iterable);
+}
+
+function getIteratorFn(iterable) {
+  var iteratorFn = iterable &&
+    ((REAL_ITERATOR_SYMBOL && iterable[REAL_ITERATOR_SYMBOL]) ||
+      iterable[FAUX_ITERATOR_SYMBOL]);
+  if (typeof iteratorFn === 'function') {
+    return iteratorFn;
+  }
+}
+
+function isArrayLike(value) {
+  return value && typeof value.length === 'number';
+}
+
+var Seq = (function (Collection$$1) {
+  function Seq(value) {
+    return value === null || value === undefined
+      ? emptySequence()
+      : isCollection(value) || isRecord(value)
+          ? value.toSeq()
+          : seqFromValue(value);
+  }
+
+  if ( Collection$$1 ) Seq.__proto__ = Collection$$1;
+  Seq.prototype = Object.create( Collection$$1 && Collection$$1.prototype );
+  Seq.prototype.constructor = Seq;
+
+  Seq.of = function of (/*...values*/) {
+    return Seq(arguments);
+  };
+
+  Seq.prototype.toSeq = function toSeq () {
+    return this;
+  };
+
+  Seq.prototype.toString = function toString () {
+    return this.__toString('Seq {', '}');
+  };
+
+  Seq.prototype.cacheResult = function cacheResult () {
+    if (!this._cache && this.__iterateUncached) {
+      this._cache = this.entrySeq().toArray();
+      this.size = this._cache.length;
+    }
+    return this;
+  };
+
+  // abstract __iterateUncached(fn, reverse)
+
+  Seq.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var cache = this._cache;
+    if (cache) {
+      var size = cache.length;
+      var i = 0;
+      while (i !== size) {
+        var entry = cache[reverse ? size - ++i : i++];
+        if (fn(entry[1], entry[0], this$1) === false) {
+          break;
+        }
+      }
+      return i;
+    }
+    return this.__iterateUncached(fn, reverse);
+  };
+
+  // abstract __iteratorUncached(type, reverse)
+
+  Seq.prototype.__iterator = function __iterator (type, reverse) {
+    var cache = this._cache;
+    if (cache) {
+      var size = cache.length;
+      var i = 0;
+      return new Iterator(function () {
+        if (i === size) {
+          return iteratorDone();
+        }
+        var entry = cache[reverse ? size - ++i : i++];
+        return iteratorValue(type, entry[0], entry[1]);
+      });
+    }
+    return this.__iteratorUncached(type, reverse);
+  };
+
+  return Seq;
+}(Collection));
+
+var KeyedSeq = (function (Seq) {
+  function KeyedSeq(value) {
+    return value === null || value === undefined
+      ? emptySequence().toKeyedSeq()
+      : isCollection(value)
+          ? isKeyed(value) ? value.toSeq() : value.fromEntrySeq()
+          : isRecord(value) ? value.toSeq() : keyedSeqFromValue(value);
+  }
+
+  if ( Seq ) KeyedSeq.__proto__ = Seq;
+  KeyedSeq.prototype = Object.create( Seq && Seq.prototype );
+  KeyedSeq.prototype.constructor = KeyedSeq;
+
+  KeyedSeq.prototype.toKeyedSeq = function toKeyedSeq () {
+    return this;
+  };
+
+  return KeyedSeq;
+}(Seq));
+
+var IndexedSeq = (function (Seq) {
+  function IndexedSeq(value) {
+    return value === null || value === undefined
+      ? emptySequence()
+      : isCollection(value)
+          ? isKeyed(value) ? value.entrySeq() : value.toIndexedSeq()
+          : isRecord(value)
+              ? value.toSeq().entrySeq()
+              : indexedSeqFromValue(value);
+  }
+
+  if ( Seq ) IndexedSeq.__proto__ = Seq;
+  IndexedSeq.prototype = Object.create( Seq && Seq.prototype );
+  IndexedSeq.prototype.constructor = IndexedSeq;
+
+  IndexedSeq.of = function of (/*...values*/) {
+    return IndexedSeq(arguments);
+  };
+
+  IndexedSeq.prototype.toIndexedSeq = function toIndexedSeq () {
+    return this;
+  };
+
+  IndexedSeq.prototype.toString = function toString () {
+    return this.__toString('Seq [', ']');
+  };
+
+  return IndexedSeq;
+}(Seq));
+
+var SetSeq = (function (Seq) {
+  function SetSeq(value) {
+    return (isCollection(value) && !isAssociative(value)
+      ? value
+      : IndexedSeq(value)).toSetSeq();
+  }
+
+  if ( Seq ) SetSeq.__proto__ = Seq;
+  SetSeq.prototype = Object.create( Seq && Seq.prototype );
+  SetSeq.prototype.constructor = SetSeq;
+
+  SetSeq.of = function of (/*...values*/) {
+    return SetSeq(arguments);
+  };
+
+  SetSeq.prototype.toSetSeq = function toSetSeq () {
+    return this;
+  };
+
+  return SetSeq;
+}(Seq));
+
+Seq.isSeq = isSeq;
+Seq.Keyed = KeyedSeq;
+Seq.Set = SetSeq;
+Seq.Indexed = IndexedSeq;
+
+var IS_SEQ_SENTINEL = '@@__IMMUTABLE_SEQ__@@';
+
+Seq.prototype[IS_SEQ_SENTINEL] = true;
+
+// #pragma Root Sequences
+
+var ArraySeq = (function (IndexedSeq) {
+  function ArraySeq(array) {
+    this._array = array;
+    this.size = array.length;
+  }
+
+  if ( IndexedSeq ) ArraySeq.__proto__ = IndexedSeq;
+  ArraySeq.prototype = Object.create( IndexedSeq && IndexedSeq.prototype );
+  ArraySeq.prototype.constructor = ArraySeq;
+
+  ArraySeq.prototype.get = function get (index, notSetValue) {
+    return this.has(index) ? this._array[wrapIndex(this, index)] : notSetValue;
+  };
+
+  ArraySeq.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var array = this._array;
+    var size = array.length;
+    var i = 0;
+    while (i !== size) {
+      var ii = reverse ? size - ++i : i++;
+      if (fn(array[ii], ii, this$1) === false) {
+        break;
+      }
+    }
+    return i;
+  };
+
+  ArraySeq.prototype.__iterator = function __iterator (type, reverse) {
+    var array = this._array;
+    var size = array.length;
+    var i = 0;
+    return new Iterator(function () {
+      if (i === size) {
+        return iteratorDone();
+      }
+      var ii = reverse ? size - ++i : i++;
+      return iteratorValue(type, ii, array[ii]);
+    });
+  };
+
+  return ArraySeq;
+}(IndexedSeq));
+
+var ObjectSeq = (function (KeyedSeq) {
+  function ObjectSeq(object) {
+    var keys = Object.keys(object);
+    this._object = object;
+    this._keys = keys;
+    this.size = keys.length;
+  }
+
+  if ( KeyedSeq ) ObjectSeq.__proto__ = KeyedSeq;
+  ObjectSeq.prototype = Object.create( KeyedSeq && KeyedSeq.prototype );
+  ObjectSeq.prototype.constructor = ObjectSeq;
+
+  ObjectSeq.prototype.get = function get (key, notSetValue) {
+    if (notSetValue !== undefined && !this.has(key)) {
+      return notSetValue;
+    }
+    return this._object[key];
+  };
+
+  ObjectSeq.prototype.has = function has (key) {
+    return this._object.hasOwnProperty(key);
+  };
+
+  ObjectSeq.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var object = this._object;
+    var keys = this._keys;
+    var size = keys.length;
+    var i = 0;
+    while (i !== size) {
+      var key = keys[reverse ? size - ++i : i++];
+      if (fn(object[key], key, this$1) === false) {
+        break;
+      }
+    }
+    return i;
+  };
+
+  ObjectSeq.prototype.__iterator = function __iterator (type, reverse) {
+    var object = this._object;
+    var keys = this._keys;
+    var size = keys.length;
+    var i = 0;
+    return new Iterator(function () {
+      if (i === size) {
+        return iteratorDone();
+      }
+      var key = keys[reverse ? size - ++i : i++];
+      return iteratorValue(type, key, object[key]);
+    });
+  };
+
+  return ObjectSeq;
+}(KeyedSeq));
+ObjectSeq.prototype[IS_ORDERED_SENTINEL] = true;
+
+var CollectionSeq = (function (IndexedSeq) {
+  function CollectionSeq(collection) {
+    this._collection = collection;
+    this.size = collection.length || collection.size;
+  }
+
+  if ( IndexedSeq ) CollectionSeq.__proto__ = IndexedSeq;
+  CollectionSeq.prototype = Object.create( IndexedSeq && IndexedSeq.prototype );
+  CollectionSeq.prototype.constructor = CollectionSeq;
+
+  CollectionSeq.prototype.__iterateUncached = function __iterateUncached (fn, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var collection = this._collection;
+    var iterator = getIterator(collection);
+    var iterations = 0;
+    if (isIterator(iterator)) {
+      var step;
+      while (!(step = iterator.next()).done) {
+        if (fn(step.value, iterations++, this$1) === false) {
+          break;
+        }
+      }
+    }
+    return iterations;
+  };
+
+  CollectionSeq.prototype.__iteratorUncached = function __iteratorUncached (type, reverse) {
+    if (reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    var collection = this._collection;
+    var iterator = getIterator(collection);
+    if (!isIterator(iterator)) {
+      return new Iterator(iteratorDone);
+    }
+    var iterations = 0;
+    return new Iterator(function () {
+      var step = iterator.next();
+      return step.done ? step : iteratorValue(type, iterations++, step.value);
+    });
+  };
+
+  return CollectionSeq;
+}(IndexedSeq));
+
+var IteratorSeq = (function (IndexedSeq) {
+  function IteratorSeq(iterator) {
+    this._iterator = iterator;
+    this._iteratorCache = [];
+  }
+
+  if ( IndexedSeq ) IteratorSeq.__proto__ = IndexedSeq;
+  IteratorSeq.prototype = Object.create( IndexedSeq && IndexedSeq.prototype );
+  IteratorSeq.prototype.constructor = IteratorSeq;
+
+  IteratorSeq.prototype.__iterateUncached = function __iterateUncached (fn, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var iterator = this._iterator;
+    var cache = this._iteratorCache;
+    var iterations = 0;
+    while (iterations < cache.length) {
+      if (fn(cache[iterations], iterations++, this$1) === false) {
+        return iterations;
+      }
+    }
+    var step;
+    while (!(step = iterator.next()).done) {
+      var val = step.value;
+      cache[iterations] = val;
+      if (fn(val, iterations++, this$1) === false) {
+        break;
+      }
+    }
+    return iterations;
+  };
+
+  IteratorSeq.prototype.__iteratorUncached = function __iteratorUncached (type, reverse) {
+    if (reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    var iterator = this._iterator;
+    var cache = this._iteratorCache;
+    var iterations = 0;
+    return new Iterator(function () {
+      if (iterations >= cache.length) {
+        var step = iterator.next();
+        if (step.done) {
+          return step;
+        }
+        cache[iterations] = step.value;
+      }
+      return iteratorValue(type, iterations, cache[iterations++]);
+    });
+  };
+
+  return IteratorSeq;
+}(IndexedSeq));
+
+// # pragma Helper functions
+
+function isSeq(maybeSeq) {
+  return !!(maybeSeq && maybeSeq[IS_SEQ_SENTINEL]);
+}
+
+var EMPTY_SEQ;
+
+function emptySequence() {
+  return EMPTY_SEQ || (EMPTY_SEQ = new ArraySeq([]));
+}
+
+function keyedSeqFromValue(value) {
+  var seq = Array.isArray(value)
+    ? new ArraySeq(value)
+    : isIterator(value)
+        ? new IteratorSeq(value)
+        : hasIterator(value) ? new CollectionSeq(value) : undefined;
+  if (seq) {
+    return seq.fromEntrySeq();
+  }
+  if (typeof value === 'object') {
+    return new ObjectSeq(value);
+  }
+  throw new TypeError(
+    'Expected Array or collection object of [k, v] entries, or keyed object: ' +
+      value
+  );
+}
+
+function indexedSeqFromValue(value) {
+  var seq = maybeIndexedSeqFromValue(value);
+  if (seq) {
+    return seq;
+  }
+  throw new TypeError(
+    'Expected Array or collection object of values: ' + value
+  );
+}
+
+function seqFromValue(value) {
+  var seq = maybeIndexedSeqFromValue(value);
+  if (seq) {
+    return seq;
+  }
+  if (typeof value === 'object') {
+    return new ObjectSeq(value);
+  }
+  throw new TypeError(
+    'Expected Array or collection object of values, or keyed object: ' + value
+  );
+}
+
+function maybeIndexedSeqFromValue(value) {
+  return isArrayLike(value)
+    ? new ArraySeq(value)
+    : isIterator(value)
+        ? new IteratorSeq(value)
+        : hasIterator(value) ? new CollectionSeq(value) : undefined;
+}
+
+/**
+ * An extension of the "same-value" algorithm as [described for use by ES6 Map
+ * and Set](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map#Key_equality)
+ *
+ * NaN is considered the same as NaN, however -0 and 0 are considered the same
+ * value, which is different from the algorithm described by
+ * [`Object.is`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is).
+ *
+ * This is extended further to allow Objects to describe the values they
+ * represent, by way of `valueOf` or `equals` (and `hashCode`).
+ *
+ * Note: because of this extension, the key equality of Immutable.Map and the
+ * value equality of Immutable.Set will differ from ES6 Map and Set.
+ *
+ * ### Defining custom values
+ *
+ * The easiest way to describe the value an object represents is by implementing
+ * `valueOf`. For example, `Date` represents a value by returning a unix
+ * timestamp for `valueOf`:
+ *
+ *     var date1 = new Date(1234567890000); // Fri Feb 13 2009 ...
+ *     var date2 = new Date(1234567890000);
+ *     date1.valueOf(); // 1234567890000
+ *     assert( date1 !== date2 );
+ *     assert( Immutable.is( date1, date2 ) );
+ *
+ * Note: overriding `valueOf` may have other implications if you use this object
+ * where JavaScript expects a primitive, such as implicit string coercion.
+ *
+ * For more complex types, especially collections, implementing `valueOf` may
+ * not be performant. An alternative is to implement `equals` and `hashCode`.
+ *
+ * `equals` takes another object, presumably of similar type, and returns true
+ * if it is equal. Equality is symmetrical, so the same result should be
+ * returned if this and the argument are flipped.
+ *
+ *     assert( a.equals(b) === b.equals(a) );
+ *
+ * `hashCode` returns a 32bit integer number representing the object which will
+ * be used to determine how to store the value object in a Map or Set. You must
+ * provide both or neither methods, one must not exist without the other.
+ *
+ * Also, an important relationship between these methods must be upheld: if two
+ * values are equal, they *must* return the same hashCode. If the values are not
+ * equal, they might have the same hashCode; this is called a hash collision,
+ * and while undesirable for performance reasons, it is acceptable.
+ *
+ *     if (a.equals(b)) {
+ *       assert( a.hashCode() === b.hashCode() );
+ *     }
+ *
+ * All Immutable collections are Value Objects: they implement `equals()`
+ * and `hashCode()`.
+ */
+function is(valueA, valueB) {
+  if (valueA === valueB || (valueA !== valueA && valueB !== valueB)) {
+    return true;
+  }
+  if (!valueA || !valueB) {
+    return false;
+  }
+  if (
+    typeof valueA.valueOf === 'function' && typeof valueB.valueOf === 'function'
+  ) {
+    valueA = valueA.valueOf();
+    valueB = valueB.valueOf();
+    if (valueA === valueB || (valueA !== valueA && valueB !== valueB)) {
+      return true;
+    }
+    if (!valueA || !valueB) {
+      return false;
+    }
+  }
+  return !!(isValueObject(valueA) &&
+    isValueObject(valueB) &&
+    valueA.equals(valueB));
+}
+
+function fromJS(value, converter) {
+  return fromJSWith(
+    [],
+    converter || defaultConverter,
+    value,
+    '',
+    converter && converter.length > 2 ? [] : undefined,
+    { '': value }
+  );
+}
+
+function fromJSWith(stack, converter, value, key, keyPath, parentValue) {
+  var toSeq = Array.isArray(value)
+    ? IndexedSeq
+    : isPlainObj(value) ? KeyedSeq : null;
+  if (toSeq) {
+    if (~stack.indexOf(value)) {
+      throw new TypeError('Cannot convert circular structure to Immutable');
+    }
+    stack.push(value);
+    keyPath && key !== '' && keyPath.push(key);
+    var converted = converter.call(
+      parentValue,
+      key,
+      toSeq(value).map(function (v, k) { return fromJSWith(stack, converter, v, k, keyPath, value); }),
+      keyPath && keyPath.slice()
+    );
+    stack.pop();
+    keyPath && keyPath.pop();
+    return converted;
+  }
+  return value;
+}
+
+function defaultConverter(k, v) {
+  return isKeyed(v) ? v.toMap() : v.toList();
+}
+
+function isPlainObj(value) {
+  return value &&
+    (value.constructor === Object || value.constructor === undefined);
+}
+
+var imul = typeof Math.imul === 'function' &&
+  Math.imul(0xffffffff, 2) === -2
+  ? Math.imul
+  : function imul(a, b) {
+      a |= 0; // int
+      b |= 0; // int
+      var c = a & 0xffff;
+      var d = b & 0xffff;
+      // Shift by 0 fixes the sign on the high part.
+      return c * d + ((a >>> 16) * d + c * (b >>> 16) << 16 >>> 0) | 0; // int
+    };
+
+// v8 has an optimization for storing 31-bit signed numbers.
+// Values which have either 00 or 11 as the high order bits qualify.
+// This function drops the highest order bit in a signed number, maintaining
+// the sign bit.
+function smi(i32) {
+  return i32 >>> 1 & 0x40000000 | i32 & 0xbfffffff;
+}
+
+function hash(o) {
+  if (o === false || o === null || o === undefined) {
+    return 0;
+  }
+  if (typeof o.valueOf === 'function') {
+    o = o.valueOf();
+    if (o === false || o === null || o === undefined) {
+      return 0;
+    }
+  }
+  if (o === true) {
+    return 1;
+  }
+  var type = typeof o;
+  if (type === 'number') {
+    if (o !== o || o === Infinity) {
+      return 0;
+    }
+    var h = o | 0;
+    if (h !== o) {
+      h ^= o * 0xffffffff;
+    }
+    while (o > 0xffffffff) {
+      o /= 0xffffffff;
+      h ^= o;
+    }
+    return smi(h);
+  }
+  if (type === 'string') {
+    return o.length > STRING_HASH_CACHE_MIN_STRLEN
+      ? cachedHashString(o)
+      : hashString(o);
+  }
+  if (typeof o.hashCode === 'function') {
+    return o.hashCode();
+  }
+  if (type === 'object') {
+    return hashJSObj(o);
+  }
+  if (typeof o.toString === 'function') {
+    return hashString(o.toString());
+  }
+  throw new Error('Value type ' + type + ' cannot be hashed.');
+}
+
+function cachedHashString(string) {
+  var hash = stringHashCache[string];
+  if (hash === undefined) {
+    hash = hashString(string);
+    if (STRING_HASH_CACHE_SIZE === STRING_HASH_CACHE_MAX_SIZE) {
+      STRING_HASH_CACHE_SIZE = 0;
+      stringHashCache = {};
+    }
+    STRING_HASH_CACHE_SIZE++;
+    stringHashCache[string] = hash;
+  }
+  return hash;
+}
+
+// http://jsperf.com/hashing-strings
+function hashString(string) {
+  // This is the hash from JVM
+  // The hash code for a string is computed as
+  // s[0] * 31 ^ (n - 1) + s[1] * 31 ^ (n - 2) + ... + s[n - 1],
+  // where s[i] is the ith character of the string and n is the length of
+  // the string. We "mod" the result to make it between 0 (inclusive) and 2^31
+  // (exclusive) by dropping high bits.
+  var hash = 0;
+  for (var ii = 0; ii < string.length; ii++) {
+    hash = 31 * hash + string.charCodeAt(ii) | 0;
+  }
+  return smi(hash);
+}
+
+function hashJSObj(obj) {
+  var hash;
+  if (usingWeakMap) {
+    hash = weakMap.get(obj);
+    if (hash !== undefined) {
+      return hash;
+    }
+  }
+
+  hash = obj[UID_HASH_KEY];
+  if (hash !== undefined) {
+    return hash;
+  }
+
+  if (!canDefineProperty) {
+    hash = obj.propertyIsEnumerable && obj.propertyIsEnumerable[UID_HASH_KEY];
+    if (hash !== undefined) {
+      return hash;
+    }
+
+    hash = getIENodeHash(obj);
+    if (hash !== undefined) {
+      return hash;
+    }
+  }
+
+  hash = ++objHashUID;
+  if (objHashUID & 0x40000000) {
+    objHashUID = 0;
+  }
+
+  if (usingWeakMap) {
+    weakMap.set(obj, hash);
+  } else if (isExtensible !== undefined && isExtensible(obj) === false) {
+    throw new Error('Non-extensible objects are not allowed as keys.');
+  } else if (canDefineProperty) {
+    Object.defineProperty(obj, UID_HASH_KEY, {
+      enumerable: false,
+      configurable: false,
+      writable: false,
+      value: hash
+    });
+  } else if (
+    obj.propertyIsEnumerable !== undefined &&
+    obj.propertyIsEnumerable === obj.constructor.prototype.propertyIsEnumerable
+  ) {
+    // Since we can't define a non-enumerable property on the object
+    // we'll hijack one of the less-used non-enumerable properties to
+    // save our hash on it. Since this is a function it will not show up in
+    // `JSON.stringify` which is what we want.
+    obj.propertyIsEnumerable = function() {
+      return this.constructor.prototype.propertyIsEnumerable.apply(
+        this,
+        arguments
+      );
+    };
+    obj.propertyIsEnumerable[UID_HASH_KEY] = hash;
+  } else if (obj.nodeType !== undefined) {
+    // At this point we couldn't get the IE `uniqueID` to use as a hash
+    // and we couldn't use a non-enumerable property to exploit the
+    // dontEnum bug so we simply add the `UID_HASH_KEY` on the node
+    // itself.
+    obj[UID_HASH_KEY] = hash;
+  } else {
+    throw new Error('Unable to set a non-enumerable property on object.');
+  }
+
+  return hash;
+}
+
+// Get references to ES5 object methods.
+var isExtensible = Object.isExtensible;
+
+// True if Object.defineProperty works as expected. IE8 fails this test.
+var canDefineProperty = (function() {
+  try {
+    Object.defineProperty({}, '@', {});
+    return true;
+  } catch (e) {
+    return false;
+  }
+})();
+
+// IE has a `uniqueID` property on DOM nodes. We can construct the hash from it
+// and avoid memory leaks from the IE cloneNode bug.
+function getIENodeHash(node) {
+  if (node && node.nodeType > 0) {
+    switch (node.nodeType) {
+      case 1: // Element
+        return node.uniqueID;
+      case 9: // Document
+        return node.documentElement && node.documentElement.uniqueID;
+    }
+  }
+}
+
+// If possible, use a WeakMap.
+var usingWeakMap = typeof WeakMap === 'function';
+var weakMap;
+if (usingWeakMap) {
+  weakMap = new WeakMap();
+}
+
+var objHashUID = 0;
+
+var UID_HASH_KEY = '__immutablehash__';
+if (typeof Symbol === 'function') {
+  UID_HASH_KEY = Symbol(UID_HASH_KEY);
+}
+
+var STRING_HASH_CACHE_MIN_STRLEN = 16;
+var STRING_HASH_CACHE_MAX_SIZE = 255;
+var STRING_HASH_CACHE_SIZE = 0;
+var stringHashCache = {};
+
+var ToKeyedSequence = (function (KeyedSeq$$1) {
+  function ToKeyedSequence(indexed, useKeys) {
+    this._iter = indexed;
+    this._useKeys = useKeys;
+    this.size = indexed.size;
+  }
+
+  if ( KeyedSeq$$1 ) ToKeyedSequence.__proto__ = KeyedSeq$$1;
+  ToKeyedSequence.prototype = Object.create( KeyedSeq$$1 && KeyedSeq$$1.prototype );
+  ToKeyedSequence.prototype.constructor = ToKeyedSequence;
+
+  ToKeyedSequence.prototype.get = function get (key, notSetValue) {
+    return this._iter.get(key, notSetValue);
+  };
+
+  ToKeyedSequence.prototype.has = function has (key) {
+    return this._iter.has(key);
+  };
+
+  ToKeyedSequence.prototype.valueSeq = function valueSeq () {
+    return this._iter.valueSeq();
+  };
+
+  ToKeyedSequence.prototype.reverse = function reverse () {
+    var this$1 = this;
+
+    var reversedSequence = reverseFactory(this, true);
+    if (!this._useKeys) {
+      reversedSequence.valueSeq = function () { return this$1._iter.toSeq().reverse(); };
+    }
+    return reversedSequence;
+  };
+
+  ToKeyedSequence.prototype.map = function map (mapper, context) {
+    var this$1 = this;
+
+    var mappedSequence = mapFactory(this, mapper, context);
+    if (!this._useKeys) {
+      mappedSequence.valueSeq = function () { return this$1._iter.toSeq().map(mapper, context); };
+    }
+    return mappedSequence;
+  };
+
+  ToKeyedSequence.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    return this._iter.__iterate(function (v, k) { return fn(v, k, this$1); }, reverse);
+  };
+
+  ToKeyedSequence.prototype.__iterator = function __iterator (type, reverse) {
+    return this._iter.__iterator(type, reverse);
+  };
+
+  return ToKeyedSequence;
+}(KeyedSeq));
+ToKeyedSequence.prototype[IS_ORDERED_SENTINEL] = true;
+
+var ToIndexedSequence = (function (IndexedSeq$$1) {
+  function ToIndexedSequence(iter) {
+    this._iter = iter;
+    this.size = iter.size;
+  }
+
+  if ( IndexedSeq$$1 ) ToIndexedSequence.__proto__ = IndexedSeq$$1;
+  ToIndexedSequence.prototype = Object.create( IndexedSeq$$1 && IndexedSeq$$1.prototype );
+  ToIndexedSequence.prototype.constructor = ToIndexedSequence;
+
+  ToIndexedSequence.prototype.includes = function includes (value) {
+    return this._iter.includes(value);
+  };
+
+  ToIndexedSequence.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var i = 0;
+    reverse && ensureSize(this);
+    return this._iter.__iterate(
+      function (v) { return fn(v, reverse ? this$1.size - ++i : i++, this$1); },
+      reverse
+    );
+  };
+
+  ToIndexedSequence.prototype.__iterator = function __iterator (type, reverse) {
+    var this$1 = this;
+
+    var iterator = this._iter.__iterator(ITERATE_VALUES, reverse);
+    var i = 0;
+    reverse && ensureSize(this);
+    return new Iterator(function () {
+      var step = iterator.next();
+      return step.done
+        ? step
+        : iteratorValue(
+            type,
+            reverse ? this$1.size - ++i : i++,
+            step.value,
+            step
+          );
+    });
+  };
+
+  return ToIndexedSequence;
+}(IndexedSeq));
+
+var ToSetSequence = (function (SetSeq$$1) {
+  function ToSetSequence(iter) {
+    this._iter = iter;
+    this.size = iter.size;
+  }
+
+  if ( SetSeq$$1 ) ToSetSequence.__proto__ = SetSeq$$1;
+  ToSetSequence.prototype = Object.create( SetSeq$$1 && SetSeq$$1.prototype );
+  ToSetSequence.prototype.constructor = ToSetSequence;
+
+  ToSetSequence.prototype.has = function has (key) {
+    return this._iter.includes(key);
+  };
+
+  ToSetSequence.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    return this._iter.__iterate(function (v) { return fn(v, v, this$1); }, reverse);
+  };
+
+  ToSetSequence.prototype.__iterator = function __iterator (type, reverse) {
+    var iterator = this._iter.__iterator(ITERATE_VALUES, reverse);
+    return new Iterator(function () {
+      var step = iterator.next();
+      return step.done
+        ? step
+        : iteratorValue(type, step.value, step.value, step);
+    });
+  };
+
+  return ToSetSequence;
+}(SetSeq));
+
+var FromEntriesSequence = (function (KeyedSeq$$1) {
+  function FromEntriesSequence(entries) {
+    this._iter = entries;
+    this.size = entries.size;
+  }
+
+  if ( KeyedSeq$$1 ) FromEntriesSequence.__proto__ = KeyedSeq$$1;
+  FromEntriesSequence.prototype = Object.create( KeyedSeq$$1 && KeyedSeq$$1.prototype );
+  FromEntriesSequence.prototype.constructor = FromEntriesSequence;
+
+  FromEntriesSequence.prototype.entrySeq = function entrySeq () {
+    return this._iter.toSeq();
+  };
+
+  FromEntriesSequence.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    return this._iter.__iterate(
+      function (entry) {
+        // Check if entry exists first so array access doesn't throw for holes
+        // in the parent iteration.
+        if (entry) {
+          validateEntry(entry);
+          var indexedCollection = isCollection(entry);
+          return fn(
+            indexedCollection ? entry.get(1) : entry[1],
+            indexedCollection ? entry.get(0) : entry[0],
+            this$1
+          );
+        }
+      },
+      reverse
+    );
+  };
+
+  FromEntriesSequence.prototype.__iterator = function __iterator (type, reverse) {
+    var iterator = this._iter.__iterator(ITERATE_VALUES, reverse);
+    return new Iterator(function () {
+      while (true) {
+        var step = iterator.next();
+        if (step.done) {
+          return step;
+        }
+        var entry = step.value;
+        // Check if entry exists first so array access doesn't throw for holes
+        // in the parent iteration.
+        if (entry) {
+          validateEntry(entry);
+          var indexedCollection = isCollection(entry);
+          return iteratorValue(
+            type,
+            indexedCollection ? entry.get(0) : entry[0],
+            indexedCollection ? entry.get(1) : entry[1],
+            step
+          );
+        }
+      }
+    });
+  };
+
+  return FromEntriesSequence;
+}(KeyedSeq));
+
+ToIndexedSequence.prototype.cacheResult = (ToKeyedSequence.prototype.cacheResult = (ToSetSequence.prototype.cacheResult = (FromEntriesSequence.prototype.cacheResult = cacheResultThrough)));
+
+function flipFactory(collection) {
+  var flipSequence = makeSequence(collection);
+  flipSequence._iter = collection;
+  flipSequence.size = collection.size;
+  flipSequence.flip = function () { return collection; };
+  flipSequence.reverse = function() {
+    var reversedSequence = collection.reverse.apply(this); // super.reverse()
+    reversedSequence.flip = function () { return collection.reverse(); };
+    return reversedSequence;
+  };
+  flipSequence.has = function (key) { return collection.includes(key); };
+  flipSequence.includes = function (key) { return collection.has(key); };
+  flipSequence.cacheResult = cacheResultThrough;
+  flipSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    return collection.__iterate(function (v, k) { return fn(k, v, this$1) !== false; }, reverse);
+  };
+  flipSequence.__iteratorUncached = function(type, reverse) {
+    if (type === ITERATE_ENTRIES) {
+      var iterator = collection.__iterator(type, reverse);
+      return new Iterator(function () {
+        var step = iterator.next();
+        if (!step.done) {
+          var k = step.value[0];
+          step.value[0] = step.value[1];
+          step.value[1] = k;
+        }
+        return step;
+      });
+    }
+    return collection.__iterator(
+      type === ITERATE_VALUES ? ITERATE_KEYS : ITERATE_VALUES,
+      reverse
+    );
+  };
+  return flipSequence;
+}
+
+function mapFactory(collection, mapper, context) {
+  var mappedSequence = makeSequence(collection);
+  mappedSequence.size = collection.size;
+  mappedSequence.has = function (key) { return collection.has(key); };
+  mappedSequence.get = function (key, notSetValue) {
+    var v = collection.get(key, NOT_SET);
+    return v === NOT_SET
+      ? notSetValue
+      : mapper.call(context, v, key, collection);
+  };
+  mappedSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    return collection.__iterate(
+      function (v, k, c) { return fn(mapper.call(context, v, k, c), k, this$1) !== false; },
+      reverse
+    );
+  };
+  mappedSequence.__iteratorUncached = function(type, reverse) {
+    var iterator = collection.__iterator(ITERATE_ENTRIES, reverse);
+    return new Iterator(function () {
+      var step = iterator.next();
+      if (step.done) {
+        return step;
+      }
+      var entry = step.value;
+      var key = entry[0];
+      return iteratorValue(
+        type,
+        key,
+        mapper.call(context, entry[1], key, collection),
+        step
+      );
+    });
+  };
+  return mappedSequence;
+}
+
+function reverseFactory(collection, useKeys) {
+  var this$1 = this;
+
+  var reversedSequence = makeSequence(collection);
+  reversedSequence._iter = collection;
+  reversedSequence.size = collection.size;
+  reversedSequence.reverse = function () { return collection; };
+  if (collection.flip) {
+    reversedSequence.flip = function() {
+      var flipSequence = flipFactory(collection);
+      flipSequence.reverse = function () { return collection.flip(); };
+      return flipSequence;
+    };
+  }
+  reversedSequence.get = function (key, notSetValue) { return collection.get(useKeys ? key : -1 - key, notSetValue); };
+  reversedSequence.has = function (key) { return collection.has(useKeys ? key : -1 - key); };
+  reversedSequence.includes = function (value) { return collection.includes(value); };
+  reversedSequence.cacheResult = cacheResultThrough;
+  reversedSequence.__iterate = function(fn, reverse) {
+    var this$1 = this;
+
+    var i = 0;
+    reverse && ensureSize(collection);
+    return collection.__iterate(
+      function (v, k) { return fn(v, useKeys ? k : reverse ? this$1.size - ++i : i++, this$1); },
+      !reverse
+    );
+  };
+  reversedSequence.__iterator = function (type, reverse) {
+    var i = 0;
+    reverse && ensureSize(collection);
+    var iterator = collection.__iterator(ITERATE_ENTRIES, !reverse);
+    return new Iterator(function () {
+      var step = iterator.next();
+      if (step.done) {
+        return step;
+      }
+      var entry = step.value;
+      return iteratorValue(
+        type,
+        useKeys ? entry[0] : reverse ? this$1.size - ++i : i++,
+        entry[1],
+        step
+      );
+    });
+  };
+  return reversedSequence;
+}
+
+function filterFactory(collection, predicate, context, useKeys) {
+  var filterSequence = makeSequence(collection);
+  if (useKeys) {
+    filterSequence.has = function (key) {
+      var v = collection.get(key, NOT_SET);
+      return v !== NOT_SET && !!predicate.call(context, v, key, collection);
+    };
+    filterSequence.get = function (key, notSetValue) {
+      var v = collection.get(key, NOT_SET);
+      return v !== NOT_SET && predicate.call(context, v, key, collection)
+        ? v
+        : notSetValue;
+    };
+  }
+  filterSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    var iterations = 0;
+    collection.__iterate(
+      function (v, k, c) {
+        if (predicate.call(context, v, k, c)) {
+          return fn(v, useKeys ? k : iterations++, this$1);
+        }
+      },
+      reverse
+    );
+    return iterations;
+  };
+  filterSequence.__iteratorUncached = function(type, reverse) {
+    var iterator = collection.__iterator(ITERATE_ENTRIES, reverse);
+    var iterations = 0;
+    return new Iterator(function () {
+      while (true) {
+        var step = iterator.next();
+        if (step.done) {
+          return step;
+        }
+        var entry = step.value;
+        var key = entry[0];
+        var value = entry[1];
+        if (predicate.call(context, value, key, collection)) {
+          return iteratorValue(type, useKeys ? key : iterations++, value, step);
+        }
+      }
+    });
+  };
+  return filterSequence;
+}
+
+function countByFactory(collection, grouper, context) {
+  var groups = Map().asMutable();
+  collection.__iterate(function (v, k) {
+    groups.update(grouper.call(context, v, k, collection), 0, function (a) { return a + 1; });
+  });
+  return groups.asImmutable();
+}
+
+function groupByFactory(collection, grouper, context) {
+  var isKeyedIter = isKeyed(collection);
+  var groups = (isOrdered(collection) ? OrderedMap() : Map()).asMutable();
+  collection.__iterate(function (v, k) {
+    groups.update(
+      grouper.call(context, v, k, collection),
+      function (a) { return ((a = a || []), a.push(isKeyedIter ? [k, v] : v), a); }
+    );
+  });
+  var coerce = collectionClass(collection);
+  return groups.map(function (arr) { return reify(collection, coerce(arr)); });
+}
+
+function sliceFactory(collection, begin, end, useKeys) {
+  var originalSize = collection.size;
+
+  if (wholeSlice(begin, end, originalSize)) {
+    return collection;
+  }
+
+  var resolvedBegin = resolveBegin(begin, originalSize);
+  var resolvedEnd = resolveEnd(end, originalSize);
+
+  // begin or end will be NaN if they were provided as negative numbers and
+  // this collection's size is unknown. In that case, cache first so there is
+  // a known size and these do not resolve to NaN.
+  if (resolvedBegin !== resolvedBegin || resolvedEnd !== resolvedEnd) {
+    return sliceFactory(collection.toSeq().cacheResult(), begin, end, useKeys);
+  }
+
+  // Note: resolvedEnd is undefined when the original sequence's length is
+  // unknown and this slice did not supply an end and should contain all
+  // elements after resolvedBegin.
+  // In that case, resolvedSize will be NaN and sliceSize will remain undefined.
+  var resolvedSize = resolvedEnd - resolvedBegin;
+  var sliceSize;
+  if (resolvedSize === resolvedSize) {
+    sliceSize = resolvedSize < 0 ? 0 : resolvedSize;
+  }
+
+  var sliceSeq = makeSequence(collection);
+
+  // If collection.size is undefined, the size of the realized sliceSeq is
+  // unknown at this point unless the number of items to slice is 0
+  sliceSeq.size = sliceSize === 0
+    ? sliceSize
+    : (collection.size && sliceSize) || undefined;
+
+  if (!useKeys && isSeq(collection) && sliceSize >= 0) {
+    sliceSeq.get = function(index, notSetValue) {
+      index = wrapIndex(this, index);
+      return index >= 0 && index < sliceSize
+        ? collection.get(index + resolvedBegin, notSetValue)
+        : notSetValue;
+    };
+  }
+
+  sliceSeq.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    if (sliceSize === 0) {
+      return 0;
+    }
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var skipped = 0;
+    var isSkipping = true;
+    var iterations = 0;
+    collection.__iterate(function (v, k) {
+      if (!(isSkipping && (isSkipping = skipped++ < resolvedBegin))) {
+        iterations++;
+        return fn(v, useKeys ? k : iterations - 1, this$1) !== false &&
+          iterations !== sliceSize;
+      }
+    });
+    return iterations;
+  };
+
+  sliceSeq.__iteratorUncached = function(type, reverse) {
+    if (sliceSize !== 0 && reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    // Don't bother instantiating parent iterator if taking 0.
+    var iterator = sliceSize !== 0 && collection.__iterator(type, reverse);
+    var skipped = 0;
+    var iterations = 0;
+    return new Iterator(function () {
+      while (skipped++ < resolvedBegin) {
+        iterator.next();
+      }
+      if (++iterations > sliceSize) {
+        return iteratorDone();
+      }
+      var step = iterator.next();
+      if (useKeys || type === ITERATE_VALUES) {
+        return step;
+      }
+      if (type === ITERATE_KEYS) {
+        return iteratorValue(type, iterations - 1, undefined, step);
+      }
+      return iteratorValue(type, iterations - 1, step.value[1], step);
+    });
+  };
+
+  return sliceSeq;
+}
+
+function takeWhileFactory(collection, predicate, context) {
+  var takeSequence = makeSequence(collection);
+  takeSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var iterations = 0;
+    collection.__iterate(
+      function (v, k, c) { return predicate.call(context, v, k, c) && ++iterations && fn(v, k, this$1); }
+    );
+    return iterations;
+  };
+  takeSequence.__iteratorUncached = function(type, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    var iterator = collection.__iterator(ITERATE_ENTRIES, reverse);
+    var iterating = true;
+    return new Iterator(function () {
+      if (!iterating) {
+        return iteratorDone();
+      }
+      var step = iterator.next();
+      if (step.done) {
+        return step;
+      }
+      var entry = step.value;
+      var k = entry[0];
+      var v = entry[1];
+      if (!predicate.call(context, v, k, this$1)) {
+        iterating = false;
+        return iteratorDone();
+      }
+      return type === ITERATE_ENTRIES ? step : iteratorValue(type, k, v, step);
+    });
+  };
+  return takeSequence;
+}
+
+function skipWhileFactory(collection, predicate, context, useKeys) {
+  var skipSequence = makeSequence(collection);
+  skipSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var isSkipping = true;
+    var iterations = 0;
+    collection.__iterate(function (v, k, c) {
+      if (!(isSkipping && (isSkipping = predicate.call(context, v, k, c)))) {
+        iterations++;
+        return fn(v, useKeys ? k : iterations - 1, this$1);
+      }
+    });
+    return iterations;
+  };
+  skipSequence.__iteratorUncached = function(type, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    var iterator = collection.__iterator(ITERATE_ENTRIES, reverse);
+    var skipping = true;
+    var iterations = 0;
+    return new Iterator(function () {
+      var step;
+      var k;
+      var v;
+      do {
+        step = iterator.next();
+        if (step.done) {
+          if (useKeys || type === ITERATE_VALUES) {
+            return step;
+          }
+          if (type === ITERATE_KEYS) {
+            return iteratorValue(type, iterations++, undefined, step);
+          }
+          return iteratorValue(type, iterations++, step.value[1], step);
+        }
+        var entry = step.value;
+        k = entry[0];
+        v = entry[1];
+        skipping && (skipping = predicate.call(context, v, k, this$1));
+      } while (skipping);
+      return type === ITERATE_ENTRIES ? step : iteratorValue(type, k, v, step);
+    });
+  };
+  return skipSequence;
+}
+
+function concatFactory(collection, values) {
+  var isKeyedCollection = isKeyed(collection);
+  var iters = [collection]
+    .concat(values)
+    .map(function (v) {
+      if (!isCollection(v)) {
+        v = isKeyedCollection
+          ? keyedSeqFromValue(v)
+          : indexedSeqFromValue(Array.isArray(v) ? v : [v]);
+      } else if (isKeyedCollection) {
+        v = KeyedCollection(v);
+      }
+      return v;
+    })
+    .filter(function (v) { return v.size !== 0; });
+
+  if (iters.length === 0) {
+    return collection;
+  }
+
+  if (iters.length === 1) {
+    var singleton = iters[0];
+    if (
+      singleton === collection ||
+      (isKeyedCollection && isKeyed(singleton)) ||
+      (isIndexed(collection) && isIndexed(singleton))
+    ) {
+      return singleton;
+    }
+  }
+
+  var concatSeq = new ArraySeq(iters);
+  if (isKeyedCollection) {
+    concatSeq = concatSeq.toKeyedSeq();
+  } else if (!isIndexed(collection)) {
+    concatSeq = concatSeq.toSetSeq();
+  }
+  concatSeq = concatSeq.flatten(true);
+  concatSeq.size = iters.reduce(
+    function (sum, seq) {
+      if (sum !== undefined) {
+        var size = seq.size;
+        if (size !== undefined) {
+          return sum + size;
+        }
+      }
+    },
+    0
+  );
+  return concatSeq;
+}
+
+function flattenFactory(collection, depth, useKeys) {
+  var flatSequence = makeSequence(collection);
+  flatSequence.__iterateUncached = function(fn, reverse) {
+    if (reverse) {
+      return this.cacheResult().__iterate(fn, reverse);
+    }
+    var iterations = 0;
+    var stopped = false;
+    function flatDeep(iter, currentDepth) {
+      iter.__iterate(
+        function (v, k) {
+          if ((!depth || currentDepth < depth) && isCollection(v)) {
+            flatDeep(v, currentDepth + 1);
+          } else if (
+            fn(v, useKeys ? k : iterations++, flatSequence) === false
+          ) {
+            stopped = true;
+          }
+          return !stopped;
+        },
+        reverse
+      );
+    }
+    flatDeep(collection, 0);
+    return iterations;
+  };
+  flatSequence.__iteratorUncached = function(type, reverse) {
+    if (reverse) {
+      return this.cacheResult().__iterator(type, reverse);
+    }
+    var iterator = collection.__iterator(type, reverse);
+    var stack = [];
+    var iterations = 0;
+    return new Iterator(function () {
+      while (iterator) {
+        var step = iterator.next();
+        if (step.done !== false) {
+          iterator = stack.pop();
+          continue;
+        }
+        var v = step.value;
+        if (type === ITERATE_ENTRIES) {
+          v = v[1];
+        }
+        if ((!depth || stack.length < depth) && isCollection(v)) {
+          stack.push(iterator);
+          iterator = v.__iterator(type, reverse);
+        } else {
+          return useKeys ? step : iteratorValue(type, iterations++, v, step);
+        }
+      }
+      return iteratorDone();
+    });
+  };
+  return flatSequence;
+}
+
+function flatMapFactory(collection, mapper, context) {
+  var coerce = collectionClass(collection);
+  return collection
+    .toSeq()
+    .map(function (v, k) { return coerce(mapper.call(context, v, k, collection)); })
+    .flatten(true);
+}
+
+function interposeFactory(collection, separator) {
+  var interposedSequence = makeSequence(collection);
+  interposedSequence.size = collection.size && collection.size * 2 - 1;
+  interposedSequence.__iterateUncached = function(fn, reverse) {
+    var this$1 = this;
+
+    var iterations = 0;
+    collection.__iterate(
+      function (v) { return (!iterations || fn(separator, iterations++, this$1) !== false) &&
+        fn(v, iterations++, this$1) !== false; },
+      reverse
+    );
+    return iterations;
+  };
+  interposedSequence.__iteratorUncached = function(type, reverse) {
+    var iterator = collection.__iterator(ITERATE_VALUES, reverse);
+    var iterations = 0;
+    var step;
+    return new Iterator(function () {
+      if (!step || iterations % 2) {
+        step = iterator.next();
+        if (step.done) {
+          return step;
+        }
+      }
+      return iterations % 2
+        ? iteratorValue(type, iterations++, separator)
+        : iteratorValue(type, iterations++, step.value, step);
+    });
+  };
+  return interposedSequence;
+}
+
+function sortFactory(collection, comparator, mapper) {
+  if (!comparator) {
+    comparator = defaultComparator;
+  }
+  var isKeyedCollection = isKeyed(collection);
+  var index = 0;
+  var entries = collection
+    .toSeq()
+    .map(function (v, k) { return [k, v, index++, mapper ? mapper(v, k, collection) : v]; })
+    .toArray();
+  entries.sort(function (a, b) { return comparator(a[3], b[3]) || a[2] - b[2]; }).forEach(
+    isKeyedCollection
+      ? function (v, i) {
+          entries[i].length = 2;
+        }
+      : function (v, i) {
+          entries[i] = v[1];
+        }
+  );
+  return isKeyedCollection
+    ? KeyedSeq(entries)
+    : isIndexed(collection) ? IndexedSeq(entries) : SetSeq(entries);
+}
+
+function maxFactory(collection, comparator, mapper) {
+  if (!comparator) {
+    comparator = defaultComparator;
+  }
+  if (mapper) {
+    var entry = collection
+      .toSeq()
+      .map(function (v, k) { return [v, mapper(v, k, collection)]; })
+      .reduce(function (a, b) { return maxCompare(comparator, a[1], b[1]) ? b : a; });
+    return entry && entry[0];
+  }
+  return collection.reduce(function (a, b) { return maxCompare(comparator, a, b) ? b : a; });
+}
+
+function maxCompare(comparator, a, b) {
+  var comp = comparator(b, a);
+  // b is considered the new max if the comparator declares them equal, but
+  // they are not equal and b is in fact a nullish value.
+  return (comp === 0 &&
+    b !== a &&
+    (b === undefined || b === null || b !== b)) ||
+    comp > 0;
+}
+
+function zipWithFactory(keyIter, zipper, iters) {
+  var zipSequence = makeSequence(keyIter);
+  zipSequence.size = new ArraySeq(iters).map(function (i) { return i.size; }).min();
+  // Note: this a generic base implementation of __iterate in terms of
+  // __iterator which may be more generically useful in the future.
+  zipSequence.__iterate = function(fn, reverse) {
+    var this$1 = this;
+
+    /* generic:
+    var iterator = this.__iterator(ITERATE_ENTRIES, reverse);
+    var step;
+    var iterations = 0;
+    while (!(step = iterator.next()).done) {
+      iterations++;
+      if (fn(step.value[1], step.value[0], this) === false) {
+        break;
+      }
+    }
+    return iterations;
+    */
+    // indexed:
+    var iterator = this.__iterator(ITERATE_VALUES, reverse);
+    var step;
+    var iterations = 0;
+    while (!(step = iterator.next()).done) {
+      if (fn(step.value, iterations++, this$1) === false) {
+        break;
+      }
+    }
+    return iterations;
+  };
+  zipSequence.__iteratorUncached = function(type, reverse) {
+    var iterators = iters.map(
+      function (i) { return ((i = Collection(i)), getIterator(reverse ? i.reverse() : i)); }
+    );
+    var iterations = 0;
+    var isDone = false;
+    return new Iterator(function () {
+      var steps;
+      if (!isDone) {
+        steps = iterators.map(function (i) { return i.next(); });
+        isDone = steps.some(function (s) { return s.done; });
+      }
+      if (isDone) {
+        return iteratorDone();
+      }
+      return iteratorValue(
+        type,
+        iterations++,
+        zipper.apply(null, steps.map(function (s) { return s.value; }))
+      );
+    });
+  };
+  return zipSequence;
+}
+
+// #pragma Helper Functions
+
+function reify(iter, seq) {
+  return iter === seq ? iter : isSeq(iter) ? seq : iter.constructor(seq);
+}
+
+function validateEntry(entry) {
+  if (entry !== Object(entry)) {
+    throw new TypeError('Expected [K, V] tuple: ' + entry);
+  }
+}
+
+function collectionClass(collection) {
+  return isKeyed(collection)
+    ? KeyedCollection
+    : isIndexed(collection) ? IndexedCollection : SetCollection;
+}
+
+function makeSequence(collection) {
+  return Object.create(
+    (isKeyed(collection)
+      ? KeyedSeq
+      : isIndexed(collection) ? IndexedSeq : SetSeq).prototype
+  );
+}
+
+function cacheResultThrough() {
+  if (this._iter.cacheResult) {
+    this._iter.cacheResult();
+    this.size = this._iter.size;
+    return this;
+  }
+  return Seq.prototype.cacheResult.call(this);
+}
+
+function defaultComparator(a, b) {
+  if (a === undefined && b === undefined) {
+    return 0;
+  }
+
+  if (a === undefined) {
+    return 1;
+  }
+
+  if (b === undefined) {
+    return -1;
+  }
+
+  return a > b ? 1 : a < b ? -1 : 0;
+}
+
+function coerceKeyPath(keyPath) {
+  if (isArrayLike(keyPath) && typeof keyPath !== 'string') {
+    return keyPath;
+  }
+  if (isOrdered(keyPath)) {
+    return keyPath.toArray();
+  }
+  throw new TypeError(
+    'Invalid keyPath: expected Ordered Collection or Array: ' + keyPath
+  );
+}
+
+function invariant(condition, error) {
+  if (!condition) { throw new Error(error); }
+}
+
+function assertNotInfinite(size) {
+  invariant(
+    size !== Infinity,
+    'Cannot perform this action with an infinite size.'
+  );
+}
+
+/**
+ * Converts a value to a string, adding quotes if a string was provided.
+ */
+function quoteString(value) {
+  return typeof value === 'string' ? JSON.stringify(value) : String(value);
+}
+
+var Map = (function (KeyedCollection$$1) {
+  function Map(value) {
+    return value === null || value === undefined
+      ? emptyMap()
+      : isMap(value) && !isOrdered(value)
+          ? value
+          : emptyMap().withMutations(function (map) {
+              var iter = KeyedCollection$$1(value);
+              assertNotInfinite(iter.size);
+              iter.forEach(function (v, k) { return map.set(k, v); });
+            });
+  }
+
+  if ( KeyedCollection$$1 ) Map.__proto__ = KeyedCollection$$1;
+  Map.prototype = Object.create( KeyedCollection$$1 && KeyedCollection$$1.prototype );
+  Map.prototype.constructor = Map;
+
+  Map.of = function of () {
+    var keyValues = [], len = arguments.length;
+    while ( len-- ) keyValues[ len ] = arguments[ len ];
+
+    return emptyMap().withMutations(function (map) {
+      for (var i = 0; i < keyValues.length; i += 2) {
+        if (i + 1 >= keyValues.length) {
+          throw new Error('Missing value for key: ' + keyValues[i]);
+        }
+        map.set(keyValues[i], keyValues[i + 1]);
+      }
+    });
+  };
+
+  Map.prototype.toString = function toString () {
+    return this.__toString('Map {', '}');
+  };
+
+  // @pragma Access
+
+  Map.prototype.get = function get (k, notSetValue) {
+    return this._root
+      ? this._root.get(0, undefined, k, notSetValue)
+      : notSetValue;
+  };
+
+  // @pragma Modification
+
+  Map.prototype.set = function set (k, v) {
+    return updateMap(this, k, v);
+  };
+
+  Map.prototype.setIn = function setIn (keyPath, v) {
+    return this.updateIn(keyPath, NOT_SET, function () { return v; });
+  };
+
+  Map.prototype.remove = function remove (k) {
+    return updateMap(this, k, NOT_SET);
+  };
+
+  Map.prototype.deleteIn = function deleteIn (keyPath) {
+    keyPath = [].concat( coerceKeyPath(keyPath) );
+    if (keyPath.length) {
+      var lastKey = keyPath.pop();
+      return this.updateIn(keyPath, function (c) { return c && c.remove(lastKey); });
+    }
+  };
+
+  Map.prototype.deleteAll = function deleteAll (keys) {
+    var collection = Collection(keys);
+
+    if (collection.size === 0) {
+      return this;
+    }
+
+    return this.withMutations(function (map) {
+      collection.forEach(function (key) { return map.remove(key); });
+    });
+  };
+
+  Map.prototype.update = function update (k, notSetValue, updater) {
+    return arguments.length === 1
+      ? k(this)
+      : this.updateIn([k], notSetValue, updater);
+  };
+
+  Map.prototype.updateIn = function updateIn (keyPath, notSetValue, updater) {
+    if (!updater) {
+      updater = notSetValue;
+      notSetValue = undefined;
+    }
+    var updatedValue = updateInDeepMap(
+      this,
+      coerceKeyPath(keyPath),
+      0,
+      notSetValue,
+      updater
+    );
+    return updatedValue === NOT_SET ? notSetValue : updatedValue;
+  };
+
+  Map.prototype.clear = function clear () {
+    if (this.size === 0) {
+      return this;
+    }
+    if (this.__ownerID) {
+      this.size = 0;
+      this._root = null;
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return emptyMap();
+  };
+
+  // @pragma Composition
+
+  Map.prototype.merge = function merge (/*...iters*/) {
+    return mergeIntoMapWith(this, undefined, arguments);
+  };
+
+  Map.prototype.mergeWith = function mergeWith (merger) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return mergeIntoMapWith(this, merger, iters);
+  };
+
+  Map.prototype.mergeIn = function mergeIn (keyPath) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return this.updateIn(
+      keyPath,
+      emptyMap(),
+      function (m) { return typeof m.merge === 'function'
+          ? m.merge.apply(m, iters)
+          : iters[iters.length - 1]; }
+    );
+  };
+
+  Map.prototype.mergeDeep = function mergeDeep (/*...iters*/) {
+    return mergeIntoMapWith(this, deepMerger, arguments);
+  };
+
+  Map.prototype.mergeDeepWith = function mergeDeepWith (merger) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return mergeIntoMapWith(this, deepMergerWith(merger), iters);
+  };
+
+  Map.prototype.mergeDeepIn = function mergeDeepIn (keyPath) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return this.updateIn(
+      keyPath,
+      emptyMap(),
+      function (m) { return typeof m.mergeDeep === 'function'
+          ? m.mergeDeep.apply(m, iters)
+          : iters[iters.length - 1]; }
+    );
+  };
+
+  Map.prototype.sort = function sort (comparator) {
+    // Late binding
+    return OrderedMap(sortFactory(this, comparator));
+  };
+
+  Map.prototype.sortBy = function sortBy (mapper, comparator) {
+    // Late binding
+    return OrderedMap(sortFactory(this, comparator, mapper));
+  };
+
+  // @pragma Mutability
+
+  Map.prototype.withMutations = function withMutations (fn) {
+    var mutable = this.asMutable();
+    fn(mutable);
+    return mutable.wasAltered() ? mutable.__ensureOwner(this.__ownerID) : this;
+  };
+
+  Map.prototype.asMutable = function asMutable () {
+    return this.__ownerID ? this : this.__ensureOwner(new OwnerID());
+  };
+
+  Map.prototype.asImmutable = function asImmutable () {
+    return this.__ensureOwner();
+  };
+
+  Map.prototype.wasAltered = function wasAltered () {
+    return this.__altered;
+  };
+
+  Map.prototype.__iterator = function __iterator (type, reverse) {
+    return new MapIterator(this, type, reverse);
+  };
+
+  Map.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var iterations = 0;
+    this._root &&
+      this._root.iterate(
+        function (entry) {
+          iterations++;
+          return fn(entry[1], entry[0], this$1);
+        },
+        reverse
+      );
+    return iterations;
+  };
+
+  Map.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+    if (ownerID === this.__ownerID) {
+      return this;
+    }
+    if (!ownerID) {
+      if (this.size === 0) {
+        return emptyMap();
+      }
+      this.__ownerID = ownerID;
+      this.__altered = false;
+      return this;
+    }
+    return makeMap(this.size, this._root, ownerID, this.__hash);
+  };
+
+  return Map;
+}(KeyedCollection));
+
+function isMap(maybeMap) {
+  return !!(maybeMap && maybeMap[IS_MAP_SENTINEL]);
+}
+
+Map.isMap = isMap;
+
+var IS_MAP_SENTINEL = '@@__IMMUTABLE_MAP__@@';
+
+var MapPrototype = Map.prototype;
+MapPrototype[IS_MAP_SENTINEL] = true;
+MapPrototype[DELETE] = MapPrototype.remove;
+MapPrototype.removeIn = MapPrototype.deleteIn;
+MapPrototype.removeAll = MapPrototype.deleteAll;
+
+// #pragma Trie Nodes
+
+var ArrayMapNode = function ArrayMapNode(ownerID, entries) {
+  this.ownerID = ownerID;
+  this.entries = entries;
+};
+
+ArrayMapNode.prototype.get = function get (shift, keyHash, key, notSetValue) {
+  var entries = this.entries;
+  for (var ii = 0, len = entries.length; ii < len; ii++) {
+    if (is(key, entries[ii][0])) {
+      return entries[ii][1];
+    }
+  }
+  return notSetValue;
+};
+
+ArrayMapNode.prototype.update = function update (ownerID, shift, keyHash, key, value, didChangeSize, didAlter) {
+  var removed = value === NOT_SET;
+
+  var entries = this.entries;
+  var idx = 0;
+  var len = entries.length;
+  for (; idx < len; idx++) {
+    if (is(key, entries[idx][0])) {
+      break;
+    }
+  }
+  var exists = idx < len;
+
+  if (exists ? entries[idx][1] === value : removed) {
+    return this;
+  }
+
+  SetRef(didAlter);
+  (removed || !exists) && SetRef(didChangeSize);
+
+  if (removed && entries.length === 1) {
+    return; // undefined
+  }
+
+  if (!exists && !removed && entries.length >= MAX_ARRAY_MAP_SIZE) {
+    return createNodes(ownerID, entries, key, value);
+  }
+
+  var isEditable = ownerID && ownerID === this.ownerID;
+  var newEntries = isEditable ? entries : arrCopy(entries);
+
+  if (exists) {
+    if (removed) {
+      idx === len - 1
+        ? newEntries.pop()
+        : (newEntries[idx] = newEntries.pop());
+    } else {
+      newEntries[idx] = [key, value];
+    }
+  } else {
+    newEntries.push([key, value]);
+  }
+
+  if (isEditable) {
+    this.entries = newEntries;
+    return this;
+  }
+
+  return new ArrayMapNode(ownerID, newEntries);
+};
+
+var BitmapIndexedNode = function BitmapIndexedNode(ownerID, bitmap, nodes) {
+  this.ownerID = ownerID;
+  this.bitmap = bitmap;
+  this.nodes = nodes;
+};
+
+BitmapIndexedNode.prototype.get = function get (shift, keyHash, key, notSetValue) {
+  if (keyHash === undefined) {
+    keyHash = hash(key);
+  }
+  var bit = 1 << ((shift === 0 ? keyHash : keyHash >>> shift) & MASK);
+  var bitmap = this.bitmap;
+  return (bitmap & bit) === 0
+    ? notSetValue
+    : this.nodes[popCount(bitmap & bit - 1)].get(
+        shift + SHIFT,
+        keyHash,
+        key,
+        notSetValue
+      );
+};
+
+BitmapIndexedNode.prototype.update = function update (ownerID, shift, keyHash, key, value, didChangeSize, didAlter) {
+  if (keyHash === undefined) {
+    keyHash = hash(key);
+  }
+  var keyHashFrag = (shift === 0 ? keyHash : keyHash >>> shift) & MASK;
+  var bit = 1 << keyHashFrag;
+  var bitmap = this.bitmap;
+  var exists = (bitmap & bit) !== 0;
+
+  if (!exists && value === NOT_SET) {
+    return this;
+  }
+
+  var idx = popCount(bitmap & bit - 1);
+  var nodes = this.nodes;
+  var node = exists ? nodes[idx] : undefined;
+  var newNode = updateNode(
+    node,
+    ownerID,
+    shift + SHIFT,
+    keyHash,
+    key,
+    value,
+    didChangeSize,
+    didAlter
+  );
+
+  if (newNode === node) {
+    return this;
+  }
+
+  if (!exists && newNode && nodes.length >= MAX_BITMAP_INDEXED_SIZE) {
+    return expandNodes(ownerID, nodes, bitmap, keyHashFrag, newNode);
+  }
+
+  if (
+    exists && !newNode && nodes.length === 2 && isLeafNode(nodes[idx ^ 1])
+  ) {
+    return nodes[idx ^ 1];
+  }
+
+  if (exists && newNode && nodes.length === 1 && isLeafNode(newNode)) {
+    return newNode;
+  }
+
+  var isEditable = ownerID && ownerID === this.ownerID;
+  var newBitmap = exists ? newNode ? bitmap : bitmap ^ bit : bitmap | bit;
+  var newNodes = exists
+    ? newNode
+        ? setIn(nodes, idx, newNode, isEditable)
+        : spliceOut(nodes, idx, isEditable)
+    : spliceIn(nodes, idx, newNode, isEditable);
+
+  if (isEditable) {
+    this.bitmap = newBitmap;
+    this.nodes = newNodes;
+    return this;
+  }
+
+  return new BitmapIndexedNode(ownerID, newBitmap, newNodes);
+};
+
+var HashArrayMapNode = function HashArrayMapNode(ownerID, count, nodes) {
+  this.ownerID = ownerID;
+  this.count = count;
+  this.nodes = nodes;
+};
+
+HashArrayMapNode.prototype.get = function get (shift, keyHash, key, notSetValue) {
+  if (keyHash === undefined) {
+    keyHash = hash(key);
+  }
+  var idx = (shift === 0 ? keyHash : keyHash >>> shift) & MASK;
+  var node = this.nodes[idx];
+  return node
+    ? node.get(shift + SHIFT, keyHash, key, notSetValue)
+    : notSetValue;
+};
+
+HashArrayMapNode.prototype.update = function update (ownerID, shift, keyHash, key, value, didChangeSize, didAlter) {
+  if (keyHash === undefined) {
+    keyHash = hash(key);
+  }
+  var idx = (shift === 0 ? keyHash : keyHash >>> shift) & MASK;
+  var removed = value === NOT_SET;
+  var nodes = this.nodes;
+  var node = nodes[idx];
+
+  if (removed && !node) {
+    return this;
+  }
+
+  var newNode = updateNode(
+    node,
+    ownerID,
+    shift + SHIFT,
+    keyHash,
+    key,
+    value,
+    didChangeSize,
+    didAlter
+  );
+  if (newNode === node) {
+    return this;
+  }
+
+  var newCount = this.count;
+  if (!node) {
+    newCount++;
+  } else if (!newNode) {
+    newCount--;
+    if (newCount < MIN_HASH_ARRAY_MAP_SIZE) {
+      return packNodes(ownerID, nodes, newCount, idx);
+    }
+  }
+
+  var isEditable = ownerID && ownerID === this.ownerID;
+  var newNodes = setIn(nodes, idx, newNode, isEditable);
+
+  if (isEditable) {
+    this.count = newCount;
+    this.nodes = newNodes;
+    return this;
+  }
+
+  return new HashArrayMapNode(ownerID, newCount, newNodes);
+};
+
+var HashCollisionNode = function HashCollisionNode(ownerID, keyHash, entries) {
+  this.ownerID = ownerID;
+  this.keyHash = keyHash;
+  this.entries = entries;
+};
+
+HashCollisionNode.prototype.get = function get (shift, keyHash, key, notSetValue) {
+  var entries = this.entries;
+  for (var ii = 0, len = entries.length; ii < len; ii++) {
+    if (is(key, entries[ii][0])) {
+      return entries[ii][1];
+    }
+  }
+  return notSetValue;
+};
+
+HashCollisionNode.prototype.update = function update (ownerID, shift, keyHash, key, value, didChangeSize, didAlter) {
+  if (keyHash === undefined) {
+    keyHash = hash(key);
+  }
+
+  var removed = value === NOT_SET;
+
+  if (keyHash !== this.keyHash) {
+    if (removed) {
+      return this;
+    }
+    SetRef(didAlter);
+    SetRef(didChangeSize);
+    return mergeIntoNode(this, ownerID, shift, keyHash, [key, value]);
+  }
+
+  var entries = this.entries;
+  var idx = 0;
+  var len = entries.length;
+  for (; idx < len; idx++) {
+    if (is(key, entries[idx][0])) {
+      break;
+    }
+  }
+  var exists = idx < len;
+
+  if (exists ? entries[idx][1] === value : removed) {
+    return this;
+  }
+
+  SetRef(didAlter);
+  (removed || !exists) && SetRef(didChangeSize);
+
+  if (removed && len === 2) {
+    return new ValueNode(ownerID, this.keyHash, entries[idx ^ 1]);
+  }
+
+  var isEditable = ownerID && ownerID === this.ownerID;
+  var newEntries = isEditable ? entries : arrCopy(entries);
+
+  if (exists) {
+    if (removed) {
+      idx === len - 1
+        ? newEntries.pop()
+        : (newEntries[idx] = newEntries.pop());
+    } else {
+      newEntries[idx] = [key, value];
+    }
+  } else {
+    newEntries.push([key, value]);
+  }
+
+  if (isEditable) {
+    this.entries = newEntries;
+    return this;
+  }
+
+  return new HashCollisionNode(ownerID, this.keyHash, newEntries);
+};
+
+var ValueNode = function ValueNode(ownerID, keyHash, entry) {
+  this.ownerID = ownerID;
+  this.keyHash = keyHash;
+  this.entry = entry;
+};
+
+ValueNode.prototype.get = function get (shift, keyHash, key, notSetValue) {
+  return is(key, this.entry[0]) ? this.entry[1] : notSetValue;
+};
+
+ValueNode.prototype.update = function update (ownerID, shift, keyHash, key, value, didChangeSize, didAlter) {
+  var removed = value === NOT_SET;
+  var keyMatch = is(key, this.entry[0]);
+  if (keyMatch ? value === this.entry[1] : removed) {
+    return this;
+  }
+
+  SetRef(didAlter);
+
+  if (removed) {
+    SetRef(didChangeSize);
+    return; // undefined
+  }
+
+  if (keyMatch) {
+    if (ownerID && ownerID === this.ownerID) {
+      this.entry[1] = value;
+      return this;
+    }
+    return new ValueNode(ownerID, this.keyHash, [key, value]);
+  }
+
+  SetRef(didChangeSize);
+  return mergeIntoNode(this, ownerID, shift, hash(key), [key, value]);
+};
+
+// #pragma Iterators
+
+ArrayMapNode.prototype.iterate = (HashCollisionNode.prototype.iterate = function(
+  fn,
+  reverse
+) {
+  var entries = this.entries;
+  for (var ii = 0, maxIndex = entries.length - 1; ii <= maxIndex; ii++) {
+    if (fn(entries[reverse ? maxIndex - ii : ii]) === false) {
+      return false;
+    }
+  }
+});
+
+BitmapIndexedNode.prototype.iterate = (HashArrayMapNode.prototype.iterate = function(
+  fn,
+  reverse
+) {
+  var nodes = this.nodes;
+  for (var ii = 0, maxIndex = nodes.length - 1; ii <= maxIndex; ii++) {
+    var node = nodes[reverse ? maxIndex - ii : ii];
+    if (node && node.iterate(fn, reverse) === false) {
+      return false;
+    }
+  }
+});
+
+// eslint-disable-next-line no-unused-vars
+ValueNode.prototype.iterate = function(fn, reverse) {
+  return fn(this.entry);
+};
+
+var MapIterator = (function (Iterator$$1) {
+  function MapIterator(map, type, reverse) {
+    this._type = type;
+    this._reverse = reverse;
+    this._stack = map._root && mapIteratorFrame(map._root);
+  }
+
+  if ( Iterator$$1 ) MapIterator.__proto__ = Iterator$$1;
+  MapIterator.prototype = Object.create( Iterator$$1 && Iterator$$1.prototype );
+  MapIterator.prototype.constructor = MapIterator;
+
+  MapIterator.prototype.next = function next () {
+    var this$1 = this;
+
+    var type = this._type;
+    var stack = this._stack;
+    while (stack) {
+      var node = stack.node;
+      var index = stack.index++;
+      var maxIndex = (void 0);
+      if (node.entry) {
+        if (index === 0) {
+          return mapIteratorValue(type, node.entry);
+        }
+      } else if (node.entries) {
+        maxIndex = node.entries.length - 1;
+        if (index <= maxIndex) {
+          return mapIteratorValue(
+            type,
+            node.entries[this$1._reverse ? maxIndex - index : index]
+          );
+        }
+      } else {
+        maxIndex = node.nodes.length - 1;
+        if (index <= maxIndex) {
+          var subNode = node.nodes[this$1._reverse ? maxIndex - index : index];
+          if (subNode) {
+            if (subNode.entry) {
+              return mapIteratorValue(type, subNode.entry);
+            }
+            stack = (this$1._stack = mapIteratorFrame(subNode, stack));
+          }
+          continue;
+        }
+      }
+      stack = (this$1._stack = this$1._stack.__prev);
+    }
+    return iteratorDone();
+  };
+
+  return MapIterator;
+}(Iterator));
+
+function mapIteratorValue(type, entry) {
+  return iteratorValue(type, entry[0], entry[1]);
+}
+
+function mapIteratorFrame(node, prev) {
+  return {
+    node: node,
+    index: 0,
+    __prev: prev
+  };
+}
+
+function makeMap(size, root, ownerID, hash$$1) {
+  var map = Object.create(MapPrototype);
+  map.size = size;
+  map._root = root;
+  map.__ownerID = ownerID;
+  map.__hash = hash$$1;
+  map.__altered = false;
+  return map;
+}
+
+var EMPTY_MAP;
+function emptyMap() {
+  return EMPTY_MAP || (EMPTY_MAP = makeMap(0));
+}
+
+function updateMap(map, k, v) {
+  var newRoot;
+  var newSize;
+  if (!map._root) {
+    if (v === NOT_SET) {
+      return map;
+    }
+    newSize = 1;
+    newRoot = new ArrayMapNode(map.__ownerID, [[k, v]]);
+  } else {
+    var didChangeSize = MakeRef(CHANGE_LENGTH);
+    var didAlter = MakeRef(DID_ALTER);
+    newRoot = updateNode(
+      map._root,
+      map.__ownerID,
+      0,
+      undefined,
+      k,
+      v,
+      didChangeSize,
+      didAlter
+    );
+    if (!didAlter.value) {
+      return map;
+    }
+    newSize = map.size + (didChangeSize.value ? v === NOT_SET ? -1 : 1 : 0);
+  }
+  if (map.__ownerID) {
+    map.size = newSize;
+    map._root = newRoot;
+    map.__hash = undefined;
+    map.__altered = true;
+    return map;
+  }
+  return newRoot ? makeMap(newSize, newRoot) : emptyMap();
+}
+
+function updateNode(
+  node,
+  ownerID,
+  shift,
+  keyHash,
+  key,
+  value,
+  didChangeSize,
+  didAlter
+) {
+  if (!node) {
+    if (value === NOT_SET) {
+      return node;
+    }
+    SetRef(didAlter);
+    SetRef(didChangeSize);
+    return new ValueNode(ownerID, keyHash, [key, value]);
+  }
+  return node.update(
+    ownerID,
+    shift,
+    keyHash,
+    key,
+    value,
+    didChangeSize,
+    didAlter
+  );
+}
+
+function isLeafNode(node) {
+  return node.constructor === ValueNode ||
+    node.constructor === HashCollisionNode;
+}
+
+function mergeIntoNode(node, ownerID, shift, keyHash, entry) {
+  if (node.keyHash === keyHash) {
+    return new HashCollisionNode(ownerID, keyHash, [node.entry, entry]);
+  }
+
+  var idx1 = (shift === 0 ? node.keyHash : node.keyHash >>> shift) & MASK;
+  var idx2 = (shift === 0 ? keyHash : keyHash >>> shift) & MASK;
+
+  var newNode;
+  var nodes = idx1 === idx2
+    ? [mergeIntoNode(node, ownerID, shift + SHIFT, keyHash, entry)]
+    : ((newNode = new ValueNode(ownerID, keyHash, entry)), idx1 < idx2
+        ? [node, newNode]
+        : [newNode, node]);
+
+  return new BitmapIndexedNode(ownerID, 1 << idx1 | 1 << idx2, nodes);
+}
+
+function createNodes(ownerID, entries, key, value) {
+  if (!ownerID) {
+    ownerID = new OwnerID();
+  }
+  var node = new ValueNode(ownerID, hash(key), [key, value]);
+  for (var ii = 0; ii < entries.length; ii++) {
+    var entry = entries[ii];
+    node = node.update(ownerID, 0, undefined, entry[0], entry[1]);
+  }
+  return node;
+}
+
+function packNodes(ownerID, nodes, count, excluding) {
+  var bitmap = 0;
+  var packedII = 0;
+  var packedNodes = new Array(count);
+  for (var ii = 0, bit = 1, len = nodes.length; ii < len; ii++, (bit <<= 1)) {
+    var node = nodes[ii];
+    if (node !== undefined && ii !== excluding) {
+      bitmap |= bit;
+      packedNodes[packedII++] = node;
+    }
+  }
+  return new BitmapIndexedNode(ownerID, bitmap, packedNodes);
+}
+
+function expandNodes(ownerID, nodes, bitmap, including, node) {
+  var count = 0;
+  var expandedNodes = new Array(SIZE);
+  for (var ii = 0; bitmap !== 0; ii++, (bitmap >>>= 1)) {
+    expandedNodes[ii] = bitmap & 1 ? nodes[count++] : undefined;
+  }
+  expandedNodes[including] = node;
+  return new HashArrayMapNode(ownerID, count + 1, expandedNodes);
+}
+
+function mergeIntoMapWith(map, merger, collections) {
+  var iters = [];
+  for (var ii = 0; ii < collections.length; ii++) {
+    var value = collections[ii];
+    var iter = KeyedCollection(value);
+    if (!isCollection(value)) {
+      iter = iter.map(function (v) { return fromJS(v); });
+    }
+    iters.push(iter);
+  }
+  return mergeIntoCollectionWith(map, merger, iters);
+}
+
+function deepMerger(oldVal, newVal) {
+  return oldVal && oldVal.mergeDeep && isCollection(newVal)
+    ? oldVal.mergeDeep(newVal)
+    : is(oldVal, newVal) ? oldVal : newVal;
+}
+
+function deepMergerWith(merger) {
+  return function (oldVal, newVal, key) {
+    if (oldVal && oldVal.mergeDeepWith && isCollection(newVal)) {
+      return oldVal.mergeDeepWith(merger, newVal);
+    }
+    var nextValue = merger(oldVal, newVal, key);
+    return is(oldVal, nextValue) ? oldVal : nextValue;
+  };
+}
+
+function mergeIntoCollectionWith(collection, merger, iters) {
+  iters = iters.filter(function (x) { return x.size !== 0; });
+  if (iters.length === 0) {
+    return collection;
+  }
+  if (collection.size === 0 && !collection.__ownerID && iters.length === 1) {
+    return collection.constructor(iters[0]);
+  }
+  return collection.withMutations(function (collection) {
+    var mergeIntoMap = merger
+      ? function (value, key) {
+          collection.update(
+            key,
+            NOT_SET,
+            function (oldVal) { return oldVal === NOT_SET ? value : merger(oldVal, value, key); }
+          );
+        }
+      : function (value, key) {
+          collection.set(key, value);
+        };
+    for (var ii = 0; ii < iters.length; ii++) {
+      iters[ii].forEach(mergeIntoMap);
+    }
+  });
+}
+
+function updateInDeepMap(existing, keyPath, i, notSetValue, updater) {
+  var isNotSet = existing === NOT_SET;
+  if (i === keyPath.length) {
+    var existingValue = isNotSet ? notSetValue : existing;
+    var newValue = updater(existingValue);
+    return newValue === existingValue ? existing : newValue;
+  }
+  if (!(isNotSet || (existing && existing.set))) {
+    throw new TypeError(
+      'Invalid keyPath: Value at [' +
+        keyPath.slice(0, i).map(quoteString) +
+        '] does not have a .set() method and cannot be updated: ' +
+        existing
+    );
+  }
+  var key = keyPath[i];
+  var nextExisting = isNotSet ? NOT_SET : existing.get(key, NOT_SET);
+  var nextUpdated = updateInDeepMap(
+    nextExisting,
+    keyPath,
+    i + 1,
+    notSetValue,
+    updater
+  );
+  return nextUpdated === nextExisting
+    ? existing
+    : nextUpdated === NOT_SET
+        ? existing.remove(key)
+        : (isNotSet ? emptyMap() : existing).set(key, nextUpdated);
+}
+
+function popCount(x) {
+  x -= x >> 1 & 0x55555555;
+  x = (x & 0x33333333) + (x >> 2 & 0x33333333);
+  x = x + (x >> 4) & 0x0f0f0f0f;
+  x += x >> 8;
+  x += x >> 16;
+  return x & 0x7f;
+}
+
+function setIn(array, idx, val, canEdit) {
+  var newArray = canEdit ? array : arrCopy(array);
+  newArray[idx] = val;
+  return newArray;
+}
+
+function spliceIn(array, idx, val, canEdit) {
+  var newLen = array.length + 1;
+  if (canEdit && idx + 1 === newLen) {
+    array[idx] = val;
+    return array;
+  }
+  var newArray = new Array(newLen);
+  var after = 0;
+  for (var ii = 0; ii < newLen; ii++) {
+    if (ii === idx) {
+      newArray[ii] = val;
+      after = -1;
+    } else {
+      newArray[ii] = array[ii + after];
+    }
+  }
+  return newArray;
+}
+
+function spliceOut(array, idx, canEdit) {
+  var newLen = array.length - 1;
+  if (canEdit && idx === newLen) {
+    array.pop();
+    return array;
+  }
+  var newArray = new Array(newLen);
+  var after = 0;
+  for (var ii = 0; ii < newLen; ii++) {
+    if (ii === idx) {
+      after = 1;
+    }
+    newArray[ii] = array[ii + after];
+  }
+  return newArray;
+}
+
+var MAX_ARRAY_MAP_SIZE = SIZE / 4;
+var MAX_BITMAP_INDEXED_SIZE = SIZE / 2;
+var MIN_HASH_ARRAY_MAP_SIZE = SIZE / 4;
+
+var List = (function (IndexedCollection$$1) {
+  function List(value) {
+    var empty = emptyList();
+    if (value === null || value === undefined) {
+      return empty;
+    }
+    if (isList(value)) {
+      return value;
+    }
+    var iter = IndexedCollection$$1(value);
+    var size = iter.size;
+    if (size === 0) {
+      return empty;
+    }
+    assertNotInfinite(size);
+    if (size > 0 && size < SIZE) {
+      return makeList(0, size, SHIFT, null, new VNode(iter.toArray()));
+    }
+    return empty.withMutations(function (list) {
+      list.setSize(size);
+      iter.forEach(function (v, i) { return list.set(i, v); });
+    });
+  }
+
+  if ( IndexedCollection$$1 ) List.__proto__ = IndexedCollection$$1;
+  List.prototype = Object.create( IndexedCollection$$1 && IndexedCollection$$1.prototype );
+  List.prototype.constructor = List;
+
+  List.of = function of (/*...values*/) {
+    return this(arguments);
+  };
+
+  List.prototype.toString = function toString () {
+    return this.__toString('List [', ']');
+  };
+
+  // @pragma Access
+
+  List.prototype.get = function get (index, notSetValue) {
+    index = wrapIndex(this, index);
+    if (index >= 0 && index < this.size) {
+      index += this._origin;
+      var node = listNodeFor(this, index);
+      return node && node.array[index & MASK];
+    }
+    return notSetValue;
+  };
+
+  // @pragma Modification
+
+  List.prototype.set = function set (index, value) {
+    return updateList(this, index, value);
+  };
+
+  List.prototype.remove = function remove (index) {
+    return !this.has(index)
+      ? this
+      : index === 0
+          ? this.shift()
+          : index === this.size - 1 ? this.pop() : this.splice(index, 1);
+  };
+
+  List.prototype.insert = function insert (index, value) {
+    return this.splice(index, 0, value);
+  };
+
+  List.prototype.clear = function clear () {
+    if (this.size === 0) {
+      return this;
+    }
+    if (this.__ownerID) {
+      this.size = (this._origin = (this._capacity = 0));
+      this._level = SHIFT;
+      this._root = (this._tail = null);
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return emptyList();
+  };
+
+  List.prototype.push = function push (/*...values*/) {
+    var values = arguments;
+    var oldSize = this.size;
+    return this.withMutations(function (list) {
+      setListBounds(list, 0, oldSize + values.length);
+      for (var ii = 0; ii < values.length; ii++) {
+        list.set(oldSize + ii, values[ii]);
+      }
+    });
+  };
+
+  List.prototype.pop = function pop () {
+    return setListBounds(this, 0, -1);
+  };
+
+  List.prototype.unshift = function unshift (/*...values*/) {
+    var values = arguments;
+    return this.withMutations(function (list) {
+      setListBounds(list, -values.length);
+      for (var ii = 0; ii < values.length; ii++) {
+        list.set(ii, values[ii]);
+      }
+    });
+  };
+
+  List.prototype.shift = function shift () {
+    return setListBounds(this, 1);
+  };
+
+  // @pragma Composition
+
+  List.prototype.merge = function merge (/*...iters*/) {
+    return mergeIntoListWith(this, undefined, arguments);
+  };
+
+  List.prototype.mergeWith = function mergeWith (merger) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return mergeIntoListWith(this, merger, iters);
+  };
+
+  List.prototype.mergeDeep = function mergeDeep (/*...iters*/) {
+    return mergeIntoListWith(this, deepMerger, arguments);
+  };
+
+  List.prototype.mergeDeepWith = function mergeDeepWith (merger) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return mergeIntoListWith(this, deepMergerWith(merger), iters);
+  };
+
+  List.prototype.setSize = function setSize (size) {
+    return setListBounds(this, 0, size);
+  };
+
+  // @pragma Iteration
+
+  List.prototype.slice = function slice (begin, end) {
+    var size = this.size;
+    if (wholeSlice(begin, end, size)) {
+      return this;
+    }
+    return setListBounds(
+      this,
+      resolveBegin(begin, size),
+      resolveEnd(end, size)
+    );
+  };
+
+  List.prototype.__iterator = function __iterator (type, reverse) {
+    var index = reverse ? this.size : 0;
+    var values = iterateList(this, reverse);
+    return new Iterator(function () {
+      var value = values();
+      return value === DONE
+        ? iteratorDone()
+        : iteratorValue(type, reverse ? --index : index++, value);
+    });
+  };
+
+  List.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var index = reverse ? this.size : 0;
+    var values = iterateList(this, reverse);
+    var value;
+    while ((value = values()) !== DONE) {
+      if (fn(value, reverse ? --index : index++, this$1) === false) {
+        break;
+      }
+    }
+    return index;
+  };
+
+  List.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+    if (ownerID === this.__ownerID) {
+      return this;
+    }
+    if (!ownerID) {
+      if (this.size === 0) {
+        return emptyList();
+      }
+      this.__ownerID = ownerID;
+      return this;
+    }
+    return makeList(
+      this._origin,
+      this._capacity,
+      this._level,
+      this._root,
+      this._tail,
+      ownerID,
+      this.__hash
+    );
+  };
+
+  return List;
+}(IndexedCollection));
+
+function isList(maybeList) {
+  return !!(maybeList && maybeList[IS_LIST_SENTINEL]);
+}
+
+List.isList = isList;
+
+var IS_LIST_SENTINEL = '@@__IMMUTABLE_LIST__@@';
+
+var ListPrototype = List.prototype;
+ListPrototype[IS_LIST_SENTINEL] = true;
+ListPrototype[DELETE] = ListPrototype.remove;
+ListPrototype.setIn = MapPrototype.setIn;
+ListPrototype.deleteIn = (ListPrototype.removeIn = MapPrototype.removeIn);
+ListPrototype.update = MapPrototype.update;
+ListPrototype.updateIn = MapPrototype.updateIn;
+ListPrototype.mergeIn = MapPrototype.mergeIn;
+ListPrototype.mergeDeepIn = MapPrototype.mergeDeepIn;
+ListPrototype.withMutations = MapPrototype.withMutations;
+ListPrototype.asMutable = MapPrototype.asMutable;
+ListPrototype.asImmutable = MapPrototype.asImmutable;
+ListPrototype.wasAltered = MapPrototype.wasAltered;
+
+var VNode = function VNode(array, ownerID) {
+  this.array = array;
+  this.ownerID = ownerID;
+};
+
+// TODO: seems like these methods are very similar
+
+VNode.prototype.removeBefore = function removeBefore (ownerID, level, index) {
+  if (index === level ? 1 << level : 0 || this.array.length === 0) {
+    return this;
+  }
+  var originIndex = index >>> level & MASK;
+  if (originIndex >= this.array.length) {
+    return new VNode([], ownerID);
+  }
+  var removingFirst = originIndex === 0;
+  var newChild;
+  if (level > 0) {
+    var oldChild = this.array[originIndex];
+    newChild = oldChild &&
+      oldChild.removeBefore(ownerID, level - SHIFT, index);
+    if (newChild === oldChild && removingFirst) {
+      return this;
+    }
+  }
+  if (removingFirst && !newChild) {
+    return this;
+  }
+  var editable = editableVNode(this, ownerID);
+  if (!removingFirst) {
+    for (var ii = 0; ii < originIndex; ii++) {
+      editable.array[ii] = undefined;
+    }
+  }
+  if (newChild) {
+    editable.array[originIndex] = newChild;
+  }
+  return editable;
+};
+
+VNode.prototype.removeAfter = function removeAfter (ownerID, level, index) {
+  if (index === (level ? 1 << level : 0) || this.array.length === 0) {
+    return this;
+  }
+  var sizeIndex = index - 1 >>> level & MASK;
+  if (sizeIndex >= this.array.length) {
+    return this;
+  }
+
+  var newChild;
+  if (level > 0) {
+    var oldChild = this.array[sizeIndex];
+    newChild = oldChild &&
+      oldChild.removeAfter(ownerID, level - SHIFT, index);
+    if (newChild === oldChild && sizeIndex === this.array.length - 1) {
+      return this;
+    }
+  }
+
+  var editable = editableVNode(this, ownerID);
+  editable.array.splice(sizeIndex + 1);
+  if (newChild) {
+    editable.array[sizeIndex] = newChild;
+  }
+  return editable;
+};
+
+var DONE = {};
+
+function iterateList(list, reverse) {
+  var left = list._origin;
+  var right = list._capacity;
+  var tailPos = getTailOffset(right);
+  var tail = list._tail;
+
+  return iterateNodeOrLeaf(list._root, list._level, 0);
+
+  function iterateNodeOrLeaf(node, level, offset) {
+    return level === 0
+      ? iterateLeaf(node, offset)
+      : iterateNode(node, level, offset);
+  }
+
+  function iterateLeaf(node, offset) {
+    var array = offset === tailPos ? tail && tail.array : node && node.array;
+    var from = offset > left ? 0 : left - offset;
+    var to = right - offset;
+    if (to > SIZE) {
+      to = SIZE;
+    }
+    return function () {
+      if (from === to) {
+        return DONE;
+      }
+      var idx = reverse ? --to : from++;
+      return array && array[idx];
+    };
+  }
+
+  function iterateNode(node, level, offset) {
+    var values;
+    var array = node && node.array;
+    var from = offset > left ? 0 : left - offset >> level;
+    var to = (right - offset >> level) + 1;
+    if (to > SIZE) {
+      to = SIZE;
+    }
+    return function () {
+      while (true) {
+        if (values) {
+          var value = values();
+          if (value !== DONE) {
+            return value;
+          }
+          values = null;
+        }
+        if (from === to) {
+          return DONE;
+        }
+        var idx = reverse ? --to : from++;
+        values = iterateNodeOrLeaf(
+          array && array[idx],
+          level - SHIFT,
+          offset + (idx << level)
+        );
+      }
+    };
+  }
+}
+
+function makeList(origin, capacity, level, root, tail, ownerID, hash) {
+  var list = Object.create(ListPrototype);
+  list.size = capacity - origin;
+  list._origin = origin;
+  list._capacity = capacity;
+  list._level = level;
+  list._root = root;
+  list._tail = tail;
+  list.__ownerID = ownerID;
+  list.__hash = hash;
+  list.__altered = false;
+  return list;
+}
+
+var EMPTY_LIST;
+function emptyList() {
+  return EMPTY_LIST || (EMPTY_LIST = makeList(0, 0, SHIFT));
+}
+
+function updateList(list, index, value) {
+  index = wrapIndex(list, index);
+
+  if (index !== index) {
+    return list;
+  }
+
+  if (index >= list.size || index < 0) {
+    return list.withMutations(function (list) {
+      index < 0
+        ? setListBounds(list, index).set(0, value)
+        : setListBounds(list, 0, index + 1).set(index, value);
+    });
+  }
+
+  index += list._origin;
+
+  var newTail = list._tail;
+  var newRoot = list._root;
+  var didAlter = MakeRef(DID_ALTER);
+  if (index >= getTailOffset(list._capacity)) {
+    newTail = updateVNode(newTail, list.__ownerID, 0, index, value, didAlter);
+  } else {
+    newRoot = updateVNode(
+      newRoot,
+      list.__ownerID,
+      list._level,
+      index,
+      value,
+      didAlter
+    );
+  }
+
+  if (!didAlter.value) {
+    return list;
+  }
+
+  if (list.__ownerID) {
+    list._root = newRoot;
+    list._tail = newTail;
+    list.__hash = undefined;
+    list.__altered = true;
+    return list;
+  }
+  return makeList(list._origin, list._capacity, list._level, newRoot, newTail);
+}
+
+function updateVNode(node, ownerID, level, index, value, didAlter) {
+  var idx = index >>> level & MASK;
+  var nodeHas = node && idx < node.array.length;
+  if (!nodeHas && value === undefined) {
+    return node;
+  }
+
+  var newNode;
+
+  if (level > 0) {
+    var lowerNode = node && node.array[idx];
+    var newLowerNode = updateVNode(
+      lowerNode,
+      ownerID,
+      level - SHIFT,
+      index,
+      value,
+      didAlter
+    );
+    if (newLowerNode === lowerNode) {
+      return node;
+    }
+    newNode = editableVNode(node, ownerID);
+    newNode.array[idx] = newLowerNode;
+    return newNode;
+  }
+
+  if (nodeHas && node.array[idx] === value) {
+    return node;
+  }
+
+  SetRef(didAlter);
+
+  newNode = editableVNode(node, ownerID);
+  if (value === undefined && idx === newNode.array.length - 1) {
+    newNode.array.pop();
+  } else {
+    newNode.array[idx] = value;
+  }
+  return newNode;
+}
+
+function editableVNode(node, ownerID) {
+  if (ownerID && node && ownerID === node.ownerID) {
+    return node;
+  }
+  return new VNode(node ? node.array.slice() : [], ownerID);
+}
+
+function listNodeFor(list, rawIndex) {
+  if (rawIndex >= getTailOffset(list._capacity)) {
+    return list._tail;
+  }
+  if (rawIndex < 1 << list._level + SHIFT) {
+    var node = list._root;
+    var level = list._level;
+    while (node && level > 0) {
+      node = node.array[rawIndex >>> level & MASK];
+      level -= SHIFT;
+    }
+    return node;
+  }
+}
+
+function setListBounds(list, begin, end) {
+  // Sanitize begin & end using this shorthand for ToInt32(argument)
+  // http://www.ecma-international.org/ecma-262/6.0/#sec-toint32
+  if (begin !== undefined) {
+    begin |= 0;
+  }
+  if (end !== undefined) {
+    end |= 0;
+  }
+  var owner = list.__ownerID || new OwnerID();
+  var oldOrigin = list._origin;
+  var oldCapacity = list._capacity;
+  var newOrigin = oldOrigin + begin;
+  var newCapacity = end === undefined
+    ? oldCapacity
+    : end < 0 ? oldCapacity + end : oldOrigin + end;
+  if (newOrigin === oldOrigin && newCapacity === oldCapacity) {
+    return list;
+  }
+
+  // If it's going to end after it starts, it's empty.
+  if (newOrigin >= newCapacity) {
+    return list.clear();
+  }
+
+  var newLevel = list._level;
+  var newRoot = list._root;
+
+  // New origin might need creating a higher root.
+  var offsetShift = 0;
+  while (newOrigin + offsetShift < 0) {
+    newRoot = new VNode(
+      newRoot && newRoot.array.length ? [undefined, newRoot] : [],
+      owner
+    );
+    newLevel += SHIFT;
+    offsetShift += 1 << newLevel;
+  }
+  if (offsetShift) {
+    newOrigin += offsetShift;
+    oldOrigin += offsetShift;
+    newCapacity += offsetShift;
+    oldCapacity += offsetShift;
+  }
+
+  var oldTailOffset = getTailOffset(oldCapacity);
+  var newTailOffset = getTailOffset(newCapacity);
+
+  // New size might need creating a higher root.
+  while (newTailOffset >= 1 << newLevel + SHIFT) {
+    newRoot = new VNode(
+      newRoot && newRoot.array.length ? [newRoot] : [],
+      owner
+    );
+    newLevel += SHIFT;
+  }
+
+  // Locate or create the new tail.
+  var oldTail = list._tail;
+  var newTail = newTailOffset < oldTailOffset
+    ? listNodeFor(list, newCapacity - 1)
+    : newTailOffset > oldTailOffset ? new VNode([], owner) : oldTail;
+
+  // Merge Tail into tree.
+  if (
+    oldTail &&
+    newTailOffset > oldTailOffset &&
+    newOrigin < oldCapacity &&
+    oldTail.array.length
+  ) {
+    newRoot = editableVNode(newRoot, owner);
+    var node = newRoot;
+    for (var level = newLevel; level > SHIFT; level -= SHIFT) {
+      var idx = oldTailOffset >>> level & MASK;
+      node = (node.array[idx] = editableVNode(node.array[idx], owner));
+    }
+    node.array[oldTailOffset >>> SHIFT & MASK] = oldTail;
+  }
+
+  // If the size has been reduced, there's a chance the tail needs to be trimmed.
+  if (newCapacity < oldCapacity) {
+    newTail = newTail && newTail.removeAfter(owner, 0, newCapacity);
+  }
+
+  // If the new origin is within the tail, then we do not need a root.
+  if (newOrigin >= newTailOffset) {
+    newOrigin -= newTailOffset;
+    newCapacity -= newTailOffset;
+    newLevel = SHIFT;
+    newRoot = null;
+    newTail = newTail && newTail.removeBefore(owner, 0, newOrigin);
+
+    // Otherwise, if the root has been trimmed, garbage collect.
+  } else if (newOrigin > oldOrigin || newTailOffset < oldTailOffset) {
+    offsetShift = 0;
+
+    // Identify the new top root node of the subtree of the old root.
+    while (newRoot) {
+      var beginIndex = newOrigin >>> newLevel & MASK;
+      if (beginIndex !== newTailOffset >>> newLevel & MASK) {
+        break;
+      }
+      if (beginIndex) {
+        offsetShift += (1 << newLevel) * beginIndex;
+      }
+      newLevel -= SHIFT;
+      newRoot = newRoot.array[beginIndex];
+    }
+
+    // Trim the new sides of the new root.
+    if (newRoot && newOrigin > oldOrigin) {
+      newRoot = newRoot.removeBefore(owner, newLevel, newOrigin - offsetShift);
+    }
+    if (newRoot && newTailOffset < oldTailOffset) {
+      newRoot = newRoot.removeAfter(
+        owner,
+        newLevel,
+        newTailOffset - offsetShift
+      );
+    }
+    if (offsetShift) {
+      newOrigin -= offsetShift;
+      newCapacity -= offsetShift;
+    }
+  }
+
+  if (list.__ownerID) {
+    list.size = newCapacity - newOrigin;
+    list._origin = newOrigin;
+    list._capacity = newCapacity;
+    list._level = newLevel;
+    list._root = newRoot;
+    list._tail = newTail;
+    list.__hash = undefined;
+    list.__altered = true;
+    return list;
+  }
+  return makeList(newOrigin, newCapacity, newLevel, newRoot, newTail);
+}
+
+function mergeIntoListWith(list, merger, collections) {
+  var iters = [];
+  var maxSize = 0;
+  for (var ii = 0; ii < collections.length; ii++) {
+    var value = collections[ii];
+    var iter = IndexedCollection(value);
+    if (iter.size > maxSize) {
+      maxSize = iter.size;
+    }
+    if (!isCollection(value)) {
+      iter = iter.map(function (v) { return fromJS(v); });
+    }
+    iters.push(iter);
+  }
+  if (maxSize > list.size) {
+    list = list.setSize(maxSize);
+  }
+  return mergeIntoCollectionWith(list, merger, iters);
+}
+
+function getTailOffset(size) {
+  return size < SIZE ? 0 : size - 1 >>> SHIFT << SHIFT;
+}
+
+var OrderedMap = (function (Map$$1) {
+  function OrderedMap(value) {
+    return value === null || value === undefined
+      ? emptyOrderedMap()
+      : isOrderedMap(value)
+          ? value
+          : emptyOrderedMap().withMutations(function (map) {
+              var iter = KeyedCollection(value);
+              assertNotInfinite(iter.size);
+              iter.forEach(function (v, k) { return map.set(k, v); });
+            });
+  }
+
+  if ( Map$$1 ) OrderedMap.__proto__ = Map$$1;
+  OrderedMap.prototype = Object.create( Map$$1 && Map$$1.prototype );
+  OrderedMap.prototype.constructor = OrderedMap;
+
+  OrderedMap.of = function of (/*...values*/) {
+    return this(arguments);
+  };
+
+  OrderedMap.prototype.toString = function toString () {
+    return this.__toString('OrderedMap {', '}');
+  };
+
+  // @pragma Access
+
+  OrderedMap.prototype.get = function get (k, notSetValue) {
+    var index = this._map.get(k);
+    return index !== undefined ? this._list.get(index)[1] : notSetValue;
+  };
+
+  // @pragma Modification
+
+  OrderedMap.prototype.clear = function clear () {
+    if (this.size === 0) {
+      return this;
+    }
+    if (this.__ownerID) {
+      this.size = 0;
+      this._map.clear();
+      this._list.clear();
+      return this;
+    }
+    return emptyOrderedMap();
+  };
+
+  OrderedMap.prototype.set = function set (k, v) {
+    return updateOrderedMap(this, k, v);
+  };
+
+  OrderedMap.prototype.remove = function remove (k) {
+    return updateOrderedMap(this, k, NOT_SET);
+  };
+
+  OrderedMap.prototype.wasAltered = function wasAltered () {
+    return this._map.wasAltered() || this._list.wasAltered();
+  };
+
+  OrderedMap.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    return this._list.__iterate(
+      function (entry) { return entry && fn(entry[1], entry[0], this$1); },
+      reverse
+    );
+  };
+
+  OrderedMap.prototype.__iterator = function __iterator (type, reverse) {
+    return this._list.fromEntrySeq().__iterator(type, reverse);
+  };
+
+  OrderedMap.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+    if (ownerID === this.__ownerID) {
+      return this;
+    }
+    var newMap = this._map.__ensureOwner(ownerID);
+    var newList = this._list.__ensureOwner(ownerID);
+    if (!ownerID) {
+      if (this.size === 0) {
+        return emptyOrderedMap();
+      }
+      this.__ownerID = ownerID;
+      this._map = newMap;
+      this._list = newList;
+      return this;
+    }
+    return makeOrderedMap(newMap, newList, ownerID, this.__hash);
+  };
+
+  return OrderedMap;
+}(Map));
+
+function isOrderedMap(maybeOrderedMap) {
+  return isMap(maybeOrderedMap) && isOrdered(maybeOrderedMap);
+}
+
+OrderedMap.isOrderedMap = isOrderedMap;
+
+OrderedMap.prototype[IS_ORDERED_SENTINEL] = true;
+OrderedMap.prototype[DELETE] = OrderedMap.prototype.remove;
+
+function makeOrderedMap(map, list, ownerID, hash) {
+  var omap = Object.create(OrderedMap.prototype);
+  omap.size = map ? map.size : 0;
+  omap._map = map;
+  omap._list = list;
+  omap.__ownerID = ownerID;
+  omap.__hash = hash;
+  return omap;
+}
+
+var EMPTY_ORDERED_MAP;
+function emptyOrderedMap() {
+  return EMPTY_ORDERED_MAP ||
+    (EMPTY_ORDERED_MAP = makeOrderedMap(emptyMap(), emptyList()));
+}
+
+function updateOrderedMap(omap, k, v) {
+  var map = omap._map;
+  var list = omap._list;
+  var i = map.get(k);
+  var has = i !== undefined;
+  var newMap;
+  var newList;
+  if (v === NOT_SET) {
+    // removed
+    if (!has) {
+      return omap;
+    }
+    if (list.size >= SIZE && list.size >= map.size * 2) {
+      newList = list.filter(function (entry, idx) { return entry !== undefined && i !== idx; });
+      newMap = newList.toKeyedSeq().map(function (entry) { return entry[0]; }).flip().toMap();
+      if (omap.__ownerID) {
+        newMap.__ownerID = (newList.__ownerID = omap.__ownerID);
+      }
+    } else {
+      newMap = map.remove(k);
+      newList = i === list.size - 1 ? list.pop() : list.set(i, undefined);
+    }
+  } else if (has) {
+    if (v === list.get(i)[1]) {
+      return omap;
+    }
+    newMap = map;
+    newList = list.set(i, [k, v]);
+  } else {
+    newMap = map.set(k, list.size);
+    newList = list.set(list.size, [k, v]);
+  }
+  if (omap.__ownerID) {
+    omap.size = newMap.size;
+    omap._map = newMap;
+    omap._list = newList;
+    omap.__hash = undefined;
+    return omap;
+  }
+  return makeOrderedMap(newMap, newList);
+}
+
+var Stack = (function (IndexedCollection$$1) {
+  function Stack(value) {
+    return value === null || value === undefined
+      ? emptyStack()
+      : isStack(value) ? value : emptyStack().pushAll(value);
+  }
+
+  if ( IndexedCollection$$1 ) Stack.__proto__ = IndexedCollection$$1;
+  Stack.prototype = Object.create( IndexedCollection$$1 && IndexedCollection$$1.prototype );
+  Stack.prototype.constructor = Stack;
+
+  Stack.of = function of (/*...values*/) {
+    return this(arguments);
+  };
+
+  Stack.prototype.toString = function toString () {
+    return this.__toString('Stack [', ']');
+  };
+
+  // @pragma Access
+
+  Stack.prototype.get = function get (index, notSetValue) {
+    var head = this._head;
+    index = wrapIndex(this, index);
+    while (head && index--) {
+      head = head.next;
+    }
+    return head ? head.value : notSetValue;
+  };
+
+  Stack.prototype.peek = function peek () {
+    return this._head && this._head.value;
+  };
+
+  // @pragma Modification
+
+  Stack.prototype.push = function push (/*...values*/) {
+    var arguments$1 = arguments;
+
+    if (arguments.length === 0) {
+      return this;
+    }
+    var newSize = this.size + arguments.length;
+    var head = this._head;
+    for (var ii = arguments.length - 1; ii >= 0; ii--) {
+      head = {
+        value: arguments$1[ii],
+        next: head
+      };
+    }
+    if (this.__ownerID) {
+      this.size = newSize;
+      this._head = head;
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return makeStack(newSize, head);
+  };
+
+  Stack.prototype.pushAll = function pushAll (iter) {
+    iter = IndexedCollection$$1(iter);
+    if (iter.size === 0) {
+      return this;
+    }
+    if (this.size === 0 && isStack(iter)) {
+      return iter;
+    }
+    assertNotInfinite(iter.size);
+    var newSize = this.size;
+    var head = this._head;
+    iter.__iterate(
+      function (value) {
+        newSize++;
+        head = {
+          value: value,
+          next: head
+        };
+      },
+      /* reverse */ true
+    );
+    if (this.__ownerID) {
+      this.size = newSize;
+      this._head = head;
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return makeStack(newSize, head);
+  };
+
+  Stack.prototype.pop = function pop () {
+    return this.slice(1);
+  };
+
+  Stack.prototype.clear = function clear () {
+    if (this.size === 0) {
+      return this;
+    }
+    if (this.__ownerID) {
+      this.size = 0;
+      this._head = undefined;
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return emptyStack();
+  };
+
+  Stack.prototype.slice = function slice (begin, end) {
+    if (wholeSlice(begin, end, this.size)) {
+      return this;
+    }
+    var resolvedBegin = resolveBegin(begin, this.size);
+    var resolvedEnd = resolveEnd(end, this.size);
+    if (resolvedEnd !== this.size) {
+      // super.slice(begin, end);
+      return IndexedCollection$$1.prototype.slice.call(this, begin, end);
+    }
+    var newSize = this.size - resolvedBegin;
+    var head = this._head;
+    while (resolvedBegin--) {
+      head = head.next;
+    }
+    if (this.__ownerID) {
+      this.size = newSize;
+      this._head = head;
+      this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+    return makeStack(newSize, head);
+  };
+
+  // @pragma Mutability
+
+  Stack.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+    if (ownerID === this.__ownerID) {
+      return this;
+    }
+    if (!ownerID) {
+      if (this.size === 0) {
+        return emptyStack();
+      }
+      this.__ownerID = ownerID;
+      this.__altered = false;
+      return this;
+    }
+    return makeStack(this.size, this._head, ownerID, this.__hash);
+  };
+
+  // @pragma Iteration
+
+  Stack.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    if (reverse) {
+      return new ArraySeq(this.toArray()).__iterate(
+        function (v, k) { return fn(v, k, this$1); },
+        reverse
+      );
+    }
+    var iterations = 0;
+    var node = this._head;
+    while (node) {
+      if (fn(node.value, iterations++, this$1) === false) {
+        break;
+      }
+      node = node.next;
+    }
+    return iterations;
+  };
+
+  Stack.prototype.__iterator = function __iterator (type, reverse) {
+    if (reverse) {
+      return new ArraySeq(this.toArray()).__iterator(type, reverse);
+    }
+    var iterations = 0;
+    var node = this._head;
+    return new Iterator(function () {
+      if (node) {
+        var value = node.value;
+        node = node.next;
+        return iteratorValue(type, iterations++, value);
+      }
+      return iteratorDone();
+    });
+  };
+
+  return Stack;
+}(IndexedCollection));
+
+function isStack(maybeStack) {
+  return !!(maybeStack && maybeStack[IS_STACK_SENTINEL]);
+}
+
+Stack.isStack = isStack;
+
+var IS_STACK_SENTINEL = '@@__IMMUTABLE_STACK__@@';
+
+var StackPrototype = Stack.prototype;
+StackPrototype[IS_STACK_SENTINEL] = true;
+StackPrototype.withMutations = MapPrototype.withMutations;
+StackPrototype.asMutable = MapPrototype.asMutable;
+StackPrototype.asImmutable = MapPrototype.asImmutable;
+StackPrototype.wasAltered = MapPrototype.wasAltered;
+StackPrototype.shift = StackPrototype.pop;
+StackPrototype.unshift = StackPrototype.push;
+StackPrototype.unshiftAll = StackPrototype.pushAll;
+
+function makeStack(size, head, ownerID, hash) {
+  var map = Object.create(StackPrototype);
+  map.size = size;
+  map._head = head;
+  map.__ownerID = ownerID;
+  map.__hash = hash;
+  map.__altered = false;
+  return map;
+}
+
+var EMPTY_STACK;
+function emptyStack() {
+  return EMPTY_STACK || (EMPTY_STACK = makeStack(0));
+}
+
+function deepEqual(a, b) {
+  if (a === b) {
+    return true;
+  }
+
+  if (
+    !isCollection(b) ||
+    (a.size !== undefined && b.size !== undefined && a.size !== b.size) ||
+    (a.__hash !== undefined &&
+      b.__hash !== undefined &&
+      a.__hash !== b.__hash) ||
+    isKeyed(a) !== isKeyed(b) ||
+    isIndexed(a) !== isIndexed(b) ||
+    isOrdered(a) !== isOrdered(b)
+  ) {
+    return false;
+  }
+
+  if (a.size === 0 && b.size === 0) {
+    return true;
+  }
+
+  var notAssociative = !isAssociative(a);
+
+  if (isOrdered(a)) {
+    var entries = a.entries();
+    return b.every(function (v, k) {
+      var entry = entries.next().value;
+      return entry && is(entry[1], v) && (notAssociative || is(entry[0], k));
+    }) && entries.next().done;
+  }
+
+  var flipped = false;
+
+  if (a.size === undefined) {
+    if (b.size === undefined) {
+      if (typeof a.cacheResult === 'function') {
+        a.cacheResult();
+      }
+    } else {
+      flipped = true;
+      var _ = a;
+      a = b;
+      b = _;
+    }
+  }
+
+  var allEqual = true;
+  var bSize = b.__iterate(function (v, k) {
+    if (
+      notAssociative
+        ? !a.has(v)
+        : flipped ? !is(v, a.get(k, NOT_SET)) : !is(a.get(k, NOT_SET), v)
+    ) {
+      allEqual = false;
+      return false;
+    }
+  });
+
+  return allEqual && a.size === bSize;
+}
+
+/**
+ * Contributes additional methods to a constructor
+ */
+function mixin(ctor, methods) {
+  var keyCopier = function (key) {
+    ctor.prototype[key] = methods[key];
+  };
+  Object.keys(methods).forEach(keyCopier);
+  Object.getOwnPropertySymbols &&
+    Object.getOwnPropertySymbols(methods).forEach(keyCopier);
+  return ctor;
+}
+
+var Set = (function (SetCollection$$1) {
+  function Set(value) {
+    return value === null || value === undefined
+      ? emptySet()
+      : isSet(value) && !isOrdered(value)
+          ? value
+          : emptySet().withMutations(function (set) {
+              var iter = SetCollection$$1(value);
+              assertNotInfinite(iter.size);
+              iter.forEach(function (v) { return set.add(v); });
+            });
+  }
+
+  if ( SetCollection$$1 ) Set.__proto__ = SetCollection$$1;
+  Set.prototype = Object.create( SetCollection$$1 && SetCollection$$1.prototype );
+  Set.prototype.constructor = Set;
+
+  Set.of = function of (/*...values*/) {
+    return this(arguments);
+  };
+
+  Set.fromKeys = function fromKeys (value) {
+    return this(KeyedCollection(value).keySeq());
+  };
+
+  Set.intersect = function intersect (sets) {
+    sets = Collection(sets).toArray();
+    return sets.length
+      ? SetPrototype.intersect.apply(Set(sets.pop()), sets)
+      : emptySet();
+  };
+
+  Set.union = function union (sets) {
+    sets = Collection(sets).toArray();
+    return sets.length
+      ? SetPrototype.union.apply(Set(sets.pop()), sets)
+      : emptySet();
+  };
+
+  Set.prototype.toString = function toString () {
+    return this.__toString('Set {', '}');
+  };
+
+  // @pragma Access
+
+  Set.prototype.has = function has (value) {
+    return this._map.has(value);
+  };
+
+  // @pragma Modification
+
+  Set.prototype.add = function add (value) {
+    return updateSet(this, this._map.set(value, true));
+  };
+
+  Set.prototype.remove = function remove (value) {
+    return updateSet(this, this._map.remove(value));
+  };
+
+  Set.prototype.clear = function clear () {
+    return updateSet(this, this._map.clear());
+  };
+
+  // @pragma Composition
+
+  Set.prototype.union = function union () {
+    var iters = [], len = arguments.length;
+    while ( len-- ) iters[ len ] = arguments[ len ];
+
+    iters = iters.filter(function (x) { return x.size !== 0; });
+    if (iters.length === 0) {
+      return this;
+    }
+    if (this.size === 0 && !this.__ownerID && iters.length === 1) {
+      return this.constructor(iters[0]);
+    }
+    return this.withMutations(function (set) {
+      for (var ii = 0; ii < iters.length; ii++) {
+        SetCollection$$1(iters[ii]).forEach(function (value) { return set.add(value); });
+      }
+    });
+  };
+
+  Set.prototype.intersect = function intersect () {
+    var iters = [], len = arguments.length;
+    while ( len-- ) iters[ len ] = arguments[ len ];
+
+    if (iters.length === 0) {
+      return this;
+    }
+    iters = iters.map(function (iter) { return SetCollection$$1(iter); });
+    var toRemove = [];
+    this.forEach(function (value) {
+      if (!iters.every(function (iter) { return iter.includes(value); })) {
+        toRemove.push(value);
+      }
+    });
+    return this.withMutations(function (set) {
+      toRemove.forEach(function (value) {
+        set.remove(value);
+      });
+    });
+  };
+
+  Set.prototype.subtract = function subtract () {
+    var iters = [], len = arguments.length;
+    while ( len-- ) iters[ len ] = arguments[ len ];
+
+    if (iters.length === 0) {
+      return this;
+    }
+    var toRemove = [];
+    this.forEach(function (value) {
+      if (iters.some(function (iter) { return iter.includes(value); })) {
+        toRemove.push(value);
+      }
+    });
+    return this.withMutations(function (set) {
+      toRemove.forEach(function (value) {
+        set.remove(value);
+      });
+    });
+  };
+
+  Set.prototype.merge = function merge () {
+    return this.union.apply(this, arguments);
+  };
+
+  Set.prototype.mergeWith = function mergeWith (merger) {
+    var iters = [], len = arguments.length - 1;
+    while ( len-- > 0 ) iters[ len ] = arguments[ len + 1 ];
+
+    return this.union.apply(this, iters);
+  };
+
+  Set.prototype.sort = function sort (comparator) {
+    // Late binding
+    return OrderedSet(sortFactory(this, comparator));
+  };
+
+  Set.prototype.sortBy = function sortBy (mapper, comparator) {
+    // Late binding
+    return OrderedSet(sortFactory(this, comparator, mapper));
+  };
+
+  Set.prototype.wasAltered = function wasAltered () {
+    return this._map.wasAltered();
+  };
+
+  Set.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    return this._map.__iterate(function (_, k) { return fn(k, k, this$1); }, reverse);
+  };
+
+  Set.prototype.__iterator = function __iterator (type, reverse) {
+    return this._map.map(function (_, k) { return k; }).__iterator(type, reverse);
+  };
+
+  Set.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+    if (ownerID === this.__ownerID) {
+      return this;
+    }
+    var newMap = this._map.__ensureOwner(ownerID);
+    if (!ownerID) {
+      if (this.size === 0) {
+        return emptySet();
+      }
+      this.__ownerID = ownerID;
+      this._map = newMap;
+      return this;
+    }
+    return this.__make(newMap, ownerID);
+  };
+
+  return Set;
+}(SetCollection));
+
+function isSet(maybeSet) {
+  return !!(maybeSet && maybeSet[IS_SET_SENTINEL]);
+}
+
+Set.isSet = isSet;
+
+var IS_SET_SENTINEL = '@@__IMMUTABLE_SET__@@';
+
+var SetPrototype = Set.prototype;
+SetPrototype[IS_SET_SENTINEL] = true;
+SetPrototype[DELETE] = SetPrototype.remove;
+SetPrototype.mergeDeep = SetPrototype.merge;
+SetPrototype.mergeDeepWith = SetPrototype.mergeWith;
+SetPrototype.withMutations = MapPrototype.withMutations;
+SetPrototype.asMutable = MapPrototype.asMutable;
+SetPrototype.asImmutable = MapPrototype.asImmutable;
+
+SetPrototype.__empty = emptySet;
+SetPrototype.__make = makeSet;
+
+function updateSet(set, newMap) {
+  if (set.__ownerID) {
+    set.size = newMap.size;
+    set._map = newMap;
+    return set;
+  }
+  return newMap === set._map
+    ? set
+    : newMap.size === 0 ? set.__empty() : set.__make(newMap);
+}
+
+function makeSet(map, ownerID) {
+  var set = Object.create(SetPrototype);
+  set.size = map ? map.size : 0;
+  set._map = map;
+  set.__ownerID = ownerID;
+  return set;
+}
+
+var EMPTY_SET;
+function emptySet() {
+  return EMPTY_SET || (EMPTY_SET = makeSet(emptyMap()));
+}
+
+/**
+ * Returns a lazy seq of nums from start (inclusive) to end
+ * (exclusive), by step, where start defaults to 0, step to 1, and end to
+ * infinity. When start is equal to end, returns empty list.
+ */
+var Range = (function (IndexedSeq$$1) {
+  function Range(start, end, step) {
+    if (!(this instanceof Range)) {
+      return new Range(start, end, step);
+    }
+    invariant(step !== 0, 'Cannot step a Range by 0');
+    start = start || 0;
+    if (end === undefined) {
+      end = Infinity;
+    }
+    step = step === undefined ? 1 : Math.abs(step);
+    if (end < start) {
+      step = -step;
+    }
+    this._start = start;
+    this._end = end;
+    this._step = step;
+    this.size = Math.max(0, Math.ceil((end - start) / step - 1) + 1);
+    if (this.size === 0) {
+      if (EMPTY_RANGE) {
+        return EMPTY_RANGE;
+      }
+      EMPTY_RANGE = this;
+    }
+  }
+
+  if ( IndexedSeq$$1 ) Range.__proto__ = IndexedSeq$$1;
+  Range.prototype = Object.create( IndexedSeq$$1 && IndexedSeq$$1.prototype );
+  Range.prototype.constructor = Range;
+
+  Range.prototype.toString = function toString () {
+    if (this.size === 0) {
+      return 'Range []';
+    }
+    return 'Range [ ' +
+      this._start +
+      '...' +
+      this._end +
+      (this._step !== 1 ? ' by ' + this._step : '') +
+      ' ]';
+  };
+
+  Range.prototype.get = function get (index, notSetValue) {
+    return this.has(index)
+      ? this._start + wrapIndex(this, index) * this._step
+      : notSetValue;
+  };
+
+  Range.prototype.includes = function includes (searchValue) {
+    var possibleIndex = (searchValue - this._start) / this._step;
+    return possibleIndex >= 0 &&
+      possibleIndex < this.size &&
+      possibleIndex === Math.floor(possibleIndex);
+  };
+
+  Range.prototype.slice = function slice (begin, end) {
+    if (wholeSlice(begin, end, this.size)) {
+      return this;
+    }
+    begin = resolveBegin(begin, this.size);
+    end = resolveEnd(end, this.size);
+    if (end <= begin) {
+      return new Range(0, 0);
+    }
+    return new Range(
+      this.get(begin, this._end),
+      this.get(end, this._end),
+      this._step
+    );
+  };
+
+  Range.prototype.indexOf = function indexOf (searchValue) {
+    var offsetValue = searchValue - this._start;
+    if (offsetValue % this._step === 0) {
+      var index = offsetValue / this._step;
+      if (index >= 0 && index < this.size) {
+        return index;
+      }
+    }
+    return -1;
+  };
+
+  Range.prototype.lastIndexOf = function lastIndexOf (searchValue) {
+    return this.indexOf(searchValue);
+  };
+
+  Range.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var size = this.size;
+    var step = this._step;
+    var value = reverse ? this._start + (size - 1) * step : this._start;
+    var i = 0;
+    while (i !== size) {
+      if (fn(value, reverse ? size - ++i : i++, this$1) === false) {
+        break;
+      }
+      value += reverse ? -step : step;
+    }
+    return i;
+  };
+
+  Range.prototype.__iterator = function __iterator (type, reverse) {
+    var size = this.size;
+    var step = this._step;
+    var value = reverse ? this._start + (size - 1) * step : this._start;
+    var i = 0;
+    return new Iterator(function () {
+      if (i === size) {
+        return iteratorDone();
+      }
+      var v = value;
+      value += reverse ? -step : step;
+      return iteratorValue(type, reverse ? size - ++i : i++, v);
+    });
+  };
+
+  Range.prototype.equals = function equals (other) {
+    return other instanceof Range
+      ? this._start === other._start &&
+          this._end === other._end &&
+          this._step === other._step
+      : deepEqual(this, other);
+  };
+
+  return Range;
+}(IndexedSeq));
+
+var EMPTY_RANGE;
+
+// Note: all of these methods are deprecated.
+Collection.isIterable = isCollection;
+Collection.isKeyed = isKeyed;
+Collection.isIndexed = isIndexed;
+Collection.isAssociative = isAssociative;
+Collection.isOrdered = isOrdered;
+
+Collection.Iterator = Iterator;
+
+mixin(Collection, {
+  // ### Conversion to other types
+
+  toArray: function toArray() {
+    assertNotInfinite(this.size);
+    var array = new Array(this.size || 0);
+    this.valueSeq().__iterate(function (v, i) {
+      array[i] = v;
+    });
+    return array;
+  },
+
+  toIndexedSeq: function toIndexedSeq() {
+    return new ToIndexedSequence(this);
+  },
+
+  toJS: function toJS$1() {
+    return this.toSeq().map(toJS).toJSON();
+  },
+
+  toKeyedSeq: function toKeyedSeq() {
+    return new ToKeyedSequence(this, true);
+  },
+
+  toMap: function toMap() {
+    // Use Late Binding here to solve the circular dependency.
+    return Map(this.toKeyedSeq());
+  },
+
+  toObject: function toObject() {
+    assertNotInfinite(this.size);
+    var object = {};
+    this.__iterate(function (v, k) {
+      object[k] = v;
+    });
+    return object;
+  },
+
+  toOrderedMap: function toOrderedMap() {
+    // Use Late Binding here to solve the circular dependency.
+    return OrderedMap(this.toKeyedSeq());
+  },
+
+  toOrderedSet: function toOrderedSet() {
+    // Use Late Binding here to solve the circular dependency.
+    return OrderedSet(isKeyed(this) ? this.valueSeq() : this);
+  },
+
+  toSet: function toSet() {
+    // Use Late Binding here to solve the circular dependency.
+    return Set(isKeyed(this) ? this.valueSeq() : this);
+  },
+
+  toSetSeq: function toSetSeq() {
+    return new ToSetSequence(this);
+  },
+
+  toSeq: function toSeq() {
+    return isIndexed(this)
+      ? this.toIndexedSeq()
+      : isKeyed(this) ? this.toKeyedSeq() : this.toSetSeq();
+  },
+
+  toStack: function toStack() {
+    // Use Late Binding here to solve the circular dependency.
+    return Stack(isKeyed(this) ? this.valueSeq() : this);
+  },
+
+  toList: function toList() {
+    // Use Late Binding here to solve the circular dependency.
+    return List(isKeyed(this) ? this.valueSeq() : this);
+  },
+
+  // ### Common JavaScript methods and properties
+
+  toString: function toString() {
+    return '[Collection]';
+  },
+
+  __toString: function __toString(head, tail) {
+    if (this.size === 0) {
+      return head + tail;
+    }
+    return head +
+      ' ' +
+      this.toSeq().map(this.__toStringMapper).join(', ') +
+      ' ' +
+      tail;
+  },
+
+  // ### ES6 Collection methods (ES6 Array and Map)
+
+  concat: function concat() {
+    var values = [], len = arguments.length;
+    while ( len-- ) values[ len ] = arguments[ len ];
+
+    return reify(this, concatFactory(this, values));
+  },
+
+  includes: function includes(searchValue) {
+    return this.some(function (value) { return is(value, searchValue); });
+  },
+
+  entries: function entries() {
+    return this.__iterator(ITERATE_ENTRIES);
+  },
+
+  every: function every(predicate, context) {
+    assertNotInfinite(this.size);
+    var returnValue = true;
+    this.__iterate(function (v, k, c) {
+      if (!predicate.call(context, v, k, c)) {
+        returnValue = false;
+        return false;
+      }
+    });
+    return returnValue;
+  },
+
+  filter: function filter(predicate, context) {
+    return reify(this, filterFactory(this, predicate, context, true));
+  },
+
+  find: function find(predicate, context, notSetValue) {
+    var entry = this.findEntry(predicate, context);
+    return entry ? entry[1] : notSetValue;
+  },
+
+  forEach: function forEach(sideEffect, context) {
+    assertNotInfinite(this.size);
+    return this.__iterate(context ? sideEffect.bind(context) : sideEffect);
+  },
+
+  join: function join(separator) {
+    assertNotInfinite(this.size);
+    separator = separator !== undefined ? '' + separator : ',';
+    var joined = '';
+    var isFirst = true;
+    this.__iterate(function (v) {
+      isFirst ? (isFirst = false) : (joined += separator);
+      joined += v !== null && v !== undefined ? v.toString() : '';
+    });
+    return joined;
+  },
+
+  keys: function keys() {
+    return this.__iterator(ITERATE_KEYS);
+  },
+
+  map: function map(mapper, context) {
+    return reify(this, mapFactory(this, mapper, context));
+  },
+
+  reduce: function reduce$1(reducer, initialReduction, context) {
+    return reduce(
+      this,
+      reducer,
+      initialReduction,
+      context,
+      arguments.length < 2,
+      false
+    );
+  },
+
+  reduceRight: function reduceRight(reducer, initialReduction, context) {
+    return reduce(
+      this,
+      reducer,
+      initialReduction,
+      context,
+      arguments.length < 2,
+      true
+    );
+  },
+
+  reverse: function reverse() {
+    return reify(this, reverseFactory(this, true));
+  },
+
+  slice: function slice(begin, end) {
+    return reify(this, sliceFactory(this, begin, end, true));
+  },
+
+  some: function some(predicate, context) {
+    return !this.every(not(predicate), context);
+  },
+
+  sort: function sort(comparator) {
+    return reify(this, sortFactory(this, comparator));
+  },
+
+  values: function values() {
+    return this.__iterator(ITERATE_VALUES);
+  },
+
+  // ### More sequential methods
+
+  butLast: function butLast() {
+    return this.slice(0, -1);
+  },
+
+  isEmpty: function isEmpty() {
+    return this.size !== undefined ? this.size === 0 : !this.some(function () { return true; });
+  },
+
+  count: function count(predicate, context) {
+    return ensureSize(
+      predicate ? this.toSeq().filter(predicate, context) : this
+    );
+  },
+
+  countBy: function countBy(grouper, context) {
+    return countByFactory(this, grouper, context);
+  },
+
+  equals: function equals(other) {
+    return deepEqual(this, other);
+  },
+
+  entrySeq: function entrySeq() {
+    var collection = this;
+    if (collection._cache) {
+      // We cache as an entries array, so we can just return the cache!
+      return new ArraySeq(collection._cache);
+    }
+    var entriesSequence = collection.toSeq().map(entryMapper).toIndexedSeq();
+    entriesSequence.fromEntrySeq = function () { return collection.toSeq(); };
+
+    // Entries are plain Array, which do not define toJS, so it must
+    // manually converts keys and values before conversion.
+    entriesSequence.toJS = function() {
+      return this.map(function (entry) { return [toJS(entry[0]), toJS(entry[1])]; }).toJSON();
+    };
+
+    return entriesSequence;
+  },
+
+  filterNot: function filterNot(predicate, context) {
+    return this.filter(not(predicate), context);
+  },
+
+  findEntry: function findEntry(predicate, context, notSetValue) {
+    var found = notSetValue;
+    this.__iterate(function (v, k, c) {
+      if (predicate.call(context, v, k, c)) {
+        found = [k, v];
+        return false;
+      }
+    });
+    return found;
+  },
+
+  findKey: function findKey(predicate, context) {
+    var entry = this.findEntry(predicate, context);
+    return entry && entry[0];
+  },
+
+  findLast: function findLast(predicate, context, notSetValue) {
+    return this.toKeyedSeq().reverse().find(predicate, context, notSetValue);
+  },
+
+  findLastEntry: function findLastEntry(predicate, context, notSetValue) {
+    return this.toKeyedSeq()
+      .reverse()
+      .findEntry(predicate, context, notSetValue);
+  },
+
+  findLastKey: function findLastKey(predicate, context) {
+    return this.toKeyedSeq().reverse().findKey(predicate, context);
+  },
+
+  first: function first() {
+    return this.find(returnTrue);
+  },
+
+  flatMap: function flatMap(mapper, context) {
+    return reify(this, flatMapFactory(this, mapper, context));
+  },
+
+  flatten: function flatten(depth) {
+    return reify(this, flattenFactory(this, depth, true));
+  },
+
+  fromEntrySeq: function fromEntrySeq() {
+    return new FromEntriesSequence(this);
+  },
+
+  get: function get(searchKey, notSetValue) {
+    return this.find(function (_, key) { return is(key, searchKey); }, undefined, notSetValue);
+  },
+
+  getIn: function getIn(searchKeyPath, notSetValue) {
+    var nested = this;
+    var keyPath = coerceKeyPath(searchKeyPath);
+    var i = 0;
+    while (i !== keyPath.length) {
+      if (!nested || !nested.get) {
+        throw new TypeError(
+          'Invalid keyPath: Value at [' +
+            keyPath.slice(0, i).map(quoteString) +
+            '] does not have a .get() method: ' +
+            nested
+        );
+      }
+      nested = nested.get(keyPath[i++], NOT_SET);
+      if (nested === NOT_SET) {
+        return notSetValue;
+      }
+    }
+    return nested;
+    // var step;
+    // while (!(step = iter.next()).done) {
+    //   var key = step.value;
+    //   nested = nested && nested.get ? nested.get(key, NOT_SET) : NOT_SET;
+    //   if (nested === NOT_SET) {
+    //     return notSetValue;
+    //   }
+    // }
+    // return nested;
+  },
+
+  groupBy: function groupBy(grouper, context) {
+    return groupByFactory(this, grouper, context);
+  },
+
+  has: function has(searchKey) {
+    return this.get(searchKey, NOT_SET) !== NOT_SET;
+  },
+
+  hasIn: function hasIn(searchKeyPath) {
+    return this.getIn(searchKeyPath, NOT_SET) !== NOT_SET;
+  },
+
+  isSubset: function isSubset(iter) {
+    iter = typeof iter.includes === 'function' ? iter : Collection(iter);
+    return this.every(function (value) { return iter.includes(value); });
+  },
+
+  isSuperset: function isSuperset(iter) {
+    iter = typeof iter.isSubset === 'function' ? iter : Collection(iter);
+    return iter.isSubset(this);
+  },
+
+  keyOf: function keyOf(searchValue) {
+    return this.findKey(function (value) { return is(value, searchValue); });
+  },
+
+  keySeq: function keySeq() {
+    return this.toSeq().map(keyMapper).toIndexedSeq();
+  },
+
+  last: function last() {
+    return this.toSeq().reverse().first();
+  },
+
+  lastKeyOf: function lastKeyOf(searchValue) {
+    return this.toKeyedSeq().reverse().keyOf(searchValue);
+  },
+
+  max: function max(comparator) {
+    return maxFactory(this, comparator);
+  },
+
+  maxBy: function maxBy(mapper, comparator) {
+    return maxFactory(this, comparator, mapper);
+  },
+
+  min: function min(comparator) {
+    return maxFactory(
+      this,
+      comparator ? neg(comparator) : defaultNegComparator
+    );
+  },
+
+  minBy: function minBy(mapper, comparator) {
+    return maxFactory(
+      this,
+      comparator ? neg(comparator) : defaultNegComparator,
+      mapper
+    );
+  },
+
+  rest: function rest() {
+    return this.slice(1);
+  },
+
+  skip: function skip(amount) {
+    return amount === 0 ? this : this.slice(Math.max(0, amount));
+  },
+
+  skipLast: function skipLast(amount) {
+    return amount === 0 ? this : this.slice(0, -Math.max(0, amount));
+  },
+
+  skipWhile: function skipWhile(predicate, context) {
+    return reify(this, skipWhileFactory(this, predicate, context, true));
+  },
+
+  skipUntil: function skipUntil(predicate, context) {
+    return this.skipWhile(not(predicate), context);
+  },
+
+  sortBy: function sortBy(mapper, comparator) {
+    return reify(this, sortFactory(this, comparator, mapper));
+  },
+
+  take: function take(amount) {
+    return this.slice(0, Math.max(0, amount));
+  },
+
+  takeLast: function takeLast(amount) {
+    return this.slice(-Math.max(0, amount));
+  },
+
+  takeWhile: function takeWhile(predicate, context) {
+    return reify(this, takeWhileFactory(this, predicate, context));
+  },
+
+  takeUntil: function takeUntil(predicate, context) {
+    return this.takeWhile(not(predicate), context);
+  },
+
+  update: function update(fn) {
+    return fn(this);
+  },
+
+  valueSeq: function valueSeq() {
+    return this.toIndexedSeq();
+  },
+
+  // ### Hashable Object
+
+  hashCode: function hashCode() {
+    return this.__hash || (this.__hash = hashCollection(this));
+  }
+
+  // ### Internal
+
+  // abstract __iterate(fn, reverse)
+
+  // abstract __iterator(type, reverse)
+});
+
+var CollectionPrototype = Collection.prototype;
+CollectionPrototype[IS_ITERABLE_SENTINEL] = true;
+CollectionPrototype[ITERATOR_SYMBOL] = CollectionPrototype.values;
+CollectionPrototype.toJSON = CollectionPrototype.toArray;
+CollectionPrototype.__toStringMapper = quoteString;
+CollectionPrototype.inspect = (CollectionPrototype.toSource = function() {
+  return this.toString();
+});
+CollectionPrototype.chain = CollectionPrototype.flatMap;
+CollectionPrototype.contains = CollectionPrototype.includes;
+
+mixin(KeyedCollection, {
+  // ### More sequential methods
+
+  flip: function flip() {
+    return reify(this, flipFactory(this));
+  },
+
+  mapEntries: function mapEntries(mapper, context) {
+    var this$1 = this;
+
+    var iterations = 0;
+    return reify(
+      this,
+      this.toSeq()
+        .map(function (v, k) { return mapper.call(context, [k, v], iterations++, this$1); })
+        .fromEntrySeq()
+    );
+  },
+
+  mapKeys: function mapKeys(mapper, context) {
+    var this$1 = this;
+
+    return reify(
+      this,
+      this.toSeq().flip().map(function (k, v) { return mapper.call(context, k, v, this$1); }).flip()
+    );
+  }
+});
+
+var KeyedCollectionPrototype = KeyedCollection.prototype;
+KeyedCollectionPrototype[IS_KEYED_SENTINEL] = true;
+KeyedCollectionPrototype[ITERATOR_SYMBOL] = CollectionPrototype.entries;
+KeyedCollectionPrototype.toJSON = CollectionPrototype.toObject;
+KeyedCollectionPrototype.__toStringMapper = function (v, k) { return quoteString(k) + ': ' + quoteString(v); };
+
+mixin(IndexedCollection, {
+  // ### Conversion to other types
+
+  toKeyedSeq: function toKeyedSeq() {
+    return new ToKeyedSequence(this, false);
+  },
+
+  // ### ES6 Collection methods (ES6 Array and Map)
+
+  filter: function filter(predicate, context) {
+    return reify(this, filterFactory(this, predicate, context, false));
+  },
+
+  findIndex: function findIndex(predicate, context) {
+    var entry = this.findEntry(predicate, context);
+    return entry ? entry[0] : -1;
+  },
+
+  indexOf: function indexOf(searchValue) {
+    var key = this.keyOf(searchValue);
+    return key === undefined ? -1 : key;
+  },
+
+  lastIndexOf: function lastIndexOf(searchValue) {
+    var key = this.lastKeyOf(searchValue);
+    return key === undefined ? -1 : key;
+  },
+
+  reverse: function reverse() {
+    return reify(this, reverseFactory(this, false));
+  },
+
+  slice: function slice(begin, end) {
+    return reify(this, sliceFactory(this, begin, end, false));
+  },
+
+  splice: function splice(index, removeNum /*, ...values*/) {
+    var numArgs = arguments.length;
+    removeNum = Math.max(removeNum || 0, 0);
+    if (numArgs === 0 || (numArgs === 2 && !removeNum)) {
+      return this;
+    }
+    // If index is negative, it should resolve relative to the size of the
+    // collection. However size may be expensive to compute if not cached, so
+    // only call count() if the number is in fact negative.
+    index = resolveBegin(index, index < 0 ? this.count() : this.size);
+    var spliced = this.slice(0, index);
+    return reify(
+      this,
+      numArgs === 1
+        ? spliced
+        : spliced.concat(arrCopy(arguments, 2), this.slice(index + removeNum))
+    );
+  },
+
+  // ### More collection methods
+
+  findLastIndex: function findLastIndex(predicate, context) {
+    var entry = this.findLastEntry(predicate, context);
+    return entry ? entry[0] : -1;
+  },
+
+  first: function first() {
+    return this.get(0);
+  },
+
+  flatten: function flatten(depth) {
+    return reify(this, flattenFactory(this, depth, false));
+  },
+
+  get: function get(index, notSetValue) {
+    index = wrapIndex(this, index);
+    return index < 0 ||
+      (this.size === Infinity || (this.size !== undefined && index > this.size))
+      ? notSetValue
+      : this.find(function (_, key) { return key === index; }, undefined, notSetValue);
+  },
+
+  has: function has(index) {
+    index = wrapIndex(this, index);
+    return index >= 0 &&
+      (this.size !== undefined
+        ? this.size === Infinity || index < this.size
+        : this.indexOf(index) !== -1);
+  },
+
+  interpose: function interpose(separator) {
+    return reify(this, interposeFactory(this, separator));
+  },
+
+  interleave: function interleave(/*...collections*/) {
+    var collections = [this].concat(arrCopy(arguments));
+    var zipped = zipWithFactory(this.toSeq(), IndexedSeq.of, collections);
+    var interleaved = zipped.flatten(true);
+    if (zipped.size) {
+      interleaved.size = zipped.size * collections.length;
+    }
+    return reify(this, interleaved);
+  },
+
+  keySeq: function keySeq() {
+    return Range(0, this.size);
+  },
+
+  last: function last() {
+    return this.get(-1);
+  },
+
+  skipWhile: function skipWhile(predicate, context) {
+    return reify(this, skipWhileFactory(this, predicate, context, false));
+  },
+
+  zip: function zip(/*, ...collections */) {
+    var collections = [this].concat(arrCopy(arguments));
+    return reify(this, zipWithFactory(this, defaultZipper, collections));
+  },
+
+  zipWith: function zipWith(zipper /*, ...collections */) {
+    var collections = arrCopy(arguments);
+    collections[0] = this;
+    return reify(this, zipWithFactory(this, zipper, collections));
+  }
+});
+
+var IndexedCollectionPrototype = IndexedCollection.prototype;
+IndexedCollectionPrototype[IS_INDEXED_SENTINEL] = true;
+IndexedCollectionPrototype[IS_ORDERED_SENTINEL] = true;
+
+mixin(SetCollection, {
+  // ### ES6 Collection methods (ES6 Array and Map)
+
+  get: function get(value, notSetValue) {
+    return this.has(value) ? value : notSetValue;
+  },
+
+  includes: function includes(value) {
+    return this.has(value);
+  },
+
+  // ### More sequential methods
+
+  keySeq: function keySeq() {
+    return this.valueSeq();
+  }
+});
+
+SetCollection.prototype.has = CollectionPrototype.includes;
+SetCollection.prototype.contains = SetCollection.prototype.includes;
+
+// Mixin subclasses
+
+mixin(KeyedSeq, KeyedCollection.prototype);
+mixin(IndexedSeq, IndexedCollection.prototype);
+mixin(SetSeq, SetCollection.prototype);
+
+// #pragma Helper functions
+
+function reduce(collection, reducer, reduction, context, useFirst, reverse) {
+  assertNotInfinite(collection.size);
+  collection.__iterate(
+    function (v, k, c) {
+      if (useFirst) {
+        useFirst = false;
+        reduction = v;
+      } else {
+        reduction = reducer.call(context, reduction, v, k, c);
+      }
+    },
+    reverse
+  );
+  return reduction;
+}
+
+function keyMapper(v, k) {
+  return k;
+}
+
+function entryMapper(v, k) {
+  return [k, v];
+}
+
+function toJS(value) {
+  return value && typeof value.toJS === 'function' ? value.toJS() : value;
+}
+
+function not(predicate) {
+  return function() {
+    return !predicate.apply(this, arguments);
+  };
+}
+
+function neg(predicate) {
+  return function() {
+    return -predicate.apply(this, arguments);
+  };
+}
+
+function defaultZipper() {
+  return arrCopy(arguments);
+}
+
+function defaultNegComparator(a, b) {
+  return a < b ? 1 : a > b ? -1 : 0;
+}
+
+function hashCollection(collection) {
+  if (collection.size === Infinity) {
+    return 0;
+  }
+  var ordered = isOrdered(collection);
+  var keyed = isKeyed(collection);
+  var h = ordered ? 1 : 0;
+  var size = collection.__iterate(
+    keyed
+      ? ordered
+          ? function (v, k) {
+              h = 31 * h + hashMerge(hash(v), hash(k)) | 0;
+            }
+          : function (v, k) {
+              h = h + hashMerge(hash(v), hash(k)) | 0;
+            }
+      : ordered
+          ? function (v) {
+              h = 31 * h + hash(v) | 0;
+            }
+          : function (v) {
+              h = h + hash(v) | 0;
+            }
+  );
+  return murmurHashOfSize(size, h);
+}
+
+function murmurHashOfSize(size, h) {
+  h = imul(h, 0xcc9e2d51);
+  h = imul(h << 15 | h >>> -15, 0x1b873593);
+  h = imul(h << 13 | h >>> -13, 5);
+  h = (h + 0xe6546b64 | 0) ^ size;
+  h = imul(h ^ h >>> 16, 0x85ebca6b);
+  h = imul(h ^ h >>> 13, 0xc2b2ae35);
+  h = smi(h ^ h >>> 16);
+  return h;
+}
+
+function hashMerge(a, b) {
+  return a ^ b + 0x9e3779b9 + (a << 6) + (a >> 2) | 0; // int
+}
+
+var OrderedSet = (function (Set$$1) {
+  function OrderedSet(value) {
+    return value === null || value === undefined
+      ? emptyOrderedSet()
+      : isOrderedSet(value)
+          ? value
+          : emptyOrderedSet().withMutations(function (set) {
+              var iter = SetCollection(value);
+              assertNotInfinite(iter.size);
+              iter.forEach(function (v) { return set.add(v); });
+            });
+  }
+
+  if ( Set$$1 ) OrderedSet.__proto__ = Set$$1;
+  OrderedSet.prototype = Object.create( Set$$1 && Set$$1.prototype );
+  OrderedSet.prototype.constructor = OrderedSet;
+
+  OrderedSet.of = function of (/*...values*/) {
+    return this(arguments);
+  };
+
+  OrderedSet.fromKeys = function fromKeys (value) {
+    return this(KeyedCollection(value).keySeq());
+  };
+
+  OrderedSet.prototype.toString = function toString () {
+    return this.__toString('OrderedSet {', '}');
+  };
+
+  return OrderedSet;
+}(Set));
+
+function isOrderedSet(maybeOrderedSet) {
+  return isSet(maybeOrderedSet) && isOrdered(maybeOrderedSet);
+}
+
+OrderedSet.isOrderedSet = isOrderedSet;
+
+var OrderedSetPrototype = OrderedSet.prototype;
+OrderedSetPrototype[IS_ORDERED_SENTINEL] = true;
+OrderedSetPrototype.zip = IndexedCollectionPrototype.zip;
+OrderedSetPrototype.zipWith = IndexedCollectionPrototype.zipWith;
+
+OrderedSetPrototype.__empty = emptyOrderedSet;
+OrderedSetPrototype.__make = makeOrderedSet;
+
+function makeOrderedSet(map, ownerID) {
+  var set = Object.create(OrderedSetPrototype);
+  set.size = map ? map.size : 0;
+  set._map = map;
+  set.__ownerID = ownerID;
+  return set;
+}
+
+var EMPTY_ORDERED_SET;
+function emptyOrderedSet() {
+  return EMPTY_ORDERED_SET ||
+    (EMPTY_ORDERED_SET = makeOrderedSet(emptyOrderedMap()));
+}
+
+var Record = function Record(defaultValues, name) {
+  var hasInitialized;
+
+  var RecordType = function Record(values) {
+    var this$1 = this;
+
+    if (values instanceof RecordType) {
+      return values;
+    }
+    if (!(this instanceof RecordType)) {
+      return new RecordType(values);
+    }
+    if (!hasInitialized) {
+      hasInitialized = true;
+      var keys = Object.keys(defaultValues);
+      var indices = (RecordTypePrototype._indices = {});
+      RecordTypePrototype._name = name;
+      RecordTypePrototype._keys = keys;
+      RecordTypePrototype._defaultValues = defaultValues;
+      for (var i = 0; i < keys.length; i++) {
+        var propName = keys[i];
+        indices[propName] = i;
+        if (RecordTypePrototype[propName]) {
+          /* eslint-disable no-console */
+          typeof console === 'object' &&
+            console.warn &&
+            console.warn(
+              'Cannot define ' +
+                recordName(this$1) +
+                ' with property "' +
+                propName +
+                '" since that property name is part of the Record API.'
+            );
+          /* eslint-enable no-console */
+        } else {
+          setProp(RecordTypePrototype, propName);
+        }
+      }
+    }
+    this.__ownerID = undefined;
+    this._values = List().withMutations(function (l) {
+      l.setSize(this$1._keys.length);
+      KeyedCollection(values).forEach(function (v, k) {
+        l.set(this$1._indices[k], v === this$1._defaultValues[k] ? undefined : v);
+      });
+    });
+  };
+
+  var RecordTypePrototype = (RecordType.prototype = Object.create(
+    RecordPrototype
+  ));
+  RecordTypePrototype.constructor = RecordType;
+
+  return RecordType;
+};
+
+Record.prototype.toString = function toString () {
+    var this$1 = this;
+
+  var str = recordName(this) + ' { ';
+  var keys = this._keys;
+  var k;
+  for (var i = 0, l = keys.length; i !== l; i++) {
+    k = keys[i];
+    str += (i ? ', ' : '') + k + ': ' + quoteString(this$1.get(k));
+  }
+  return str + ' }';
+};
+
+Record.prototype.equals = function equals (other) {
+  return this === other ||
+    (this._keys === other._keys && this._values.equals(other._values));
+};
+
+Record.prototype.hashCode = function hashCode () {
+  return this._values.hashCode();
+};
+
+// @pragma Access
+
+Record.prototype.has = function has (k) {
+  return this._indices.hasOwnProperty(k);
+};
+
+Record.prototype.get = function get (k, notSetValue) {
+  if (!this.has(k)) {
+    return notSetValue;
+  }
+  var index = this._indices[k];
+  var value = this._values.get(index);
+  return value === undefined ? this._defaultValues[k] : value;
+};
+
+// @pragma Modification
+
+Record.prototype.set = function set (k, v) {
+  if (this.has(k)) {
+    var newValues = this._values.set(
+      this._indices[k],
+      v === this._defaultValues[k] ? undefined : v
+    );
+    if (newValues !== this._values && !this.__ownerID) {
+      return makeRecord(this, newValues);
+    }
+  }
+  return this;
+};
+
+Record.prototype.wasAltered = function wasAltered () {
+  return this._values.wasAltered();
+};
+
+Record.prototype.toSeq = function toSeq () {
+  return recordSeq(this);
+};
+
+Record.prototype.toJS = function toJS () {
+  return recordSeq(this).toJS();
+};
+
+Record.prototype.__iterator = function __iterator (type, reverse) {
+  return recordSeq(this).__iterator(type, reverse);
+};
+
+Record.prototype.__iterate = function __iterate (fn, reverse) {
+  return recordSeq(this).__iterate(fn, reverse);
+};
+
+Record.prototype.__ensureOwner = function __ensureOwner (ownerID) {
+  if (ownerID === this.__ownerID) {
+    return this;
+  }
+  var newValues = this._values.__ensureOwner(ownerID);
+  if (!ownerID) {
+    this.__ownerID = ownerID;
+    this._values = newValues;
+    return this;
+  }
+  return makeRecord(this, newValues, ownerID);
+};
+
+Record.isRecord = isRecord;
+Record.getDescriptiveName = recordName;
+var RecordPrototype = Record.prototype;
+RecordPrototype[IS_RECORD_SENTINEL] = true;
+RecordPrototype.getIn = CollectionPrototype.getIn;
+RecordPrototype.hasIn = CollectionPrototype.hasIn;
+RecordPrototype.merge = MapPrototype.merge;
+RecordPrototype.mergeWith = MapPrototype.mergeWith;
+RecordPrototype.mergeIn = MapPrototype.mergeIn;
+RecordPrototype.mergeDeep = MapPrototype.mergeDeep;
+RecordPrototype.mergeDeepWith = MapPrototype.mergeDeepWith;
+RecordPrototype.mergeDeepIn = MapPrototype.mergeDeepIn;
+RecordPrototype.setIn = MapPrototype.setIn;
+RecordPrototype.update = MapPrototype.update;
+RecordPrototype.updateIn = MapPrototype.updateIn;
+RecordPrototype.withMutations = MapPrototype.withMutations;
+RecordPrototype.asMutable = MapPrototype.asMutable;
+RecordPrototype.asImmutable = MapPrototype.asImmutable;
+RecordPrototype[ITERATOR_SYMBOL] = CollectionPrototype.entries;
+RecordPrototype.toJSON = (RecordPrototype.toObject = CollectionPrototype.toObject);
+RecordPrototype.inspect = (RecordPrototype.toSource = CollectionPrototype.toSource);
+
+function makeRecord(likeRecord, values, ownerID) {
+  var record = Object.create(Object.getPrototypeOf(likeRecord));
+  record._values = values;
+  record.__ownerID = ownerID;
+  return record;
+}
+
+function recordName(record) {
+  return record._name || record.constructor.name || 'Record';
+}
+
+function recordSeq(record) {
+  return keyedSeqFromValue(record._keys.map(function (k) { return [k, record.get(k)]; }));
+}
+
+function setProp(prototype, name) {
+  try {
+    Object.defineProperty(prototype, name, {
+      get: function() {
+        return this.get(name);
+      },
+      set: function(value) {
+        invariant(this.__ownerID, 'Cannot set on an immutable record.');
+        this.set(name, value);
+      }
+    });
+  } catch (error) {
+    // Object.defineProperty failed. Probably IE8.
+  }
+}
+
+/**
+ * Returns a lazy Seq of `value` repeated `times` times. When `times` is
+ * undefined, returns an infinite sequence of `value`.
+ */
+var Repeat = (function (IndexedSeq$$1) {
+  function Repeat(value, times) {
+    if (!(this instanceof Repeat)) {
+      return new Repeat(value, times);
+    }
+    this._value = value;
+    this.size = times === undefined ? Infinity : Math.max(0, times);
+    if (this.size === 0) {
+      if (EMPTY_REPEAT) {
+        return EMPTY_REPEAT;
+      }
+      EMPTY_REPEAT = this;
+    }
+  }
+
+  if ( IndexedSeq$$1 ) Repeat.__proto__ = IndexedSeq$$1;
+  Repeat.prototype = Object.create( IndexedSeq$$1 && IndexedSeq$$1.prototype );
+  Repeat.prototype.constructor = Repeat;
+
+  Repeat.prototype.toString = function toString () {
+    if (this.size === 0) {
+      return 'Repeat []';
+    }
+    return 'Repeat [ ' + this._value + ' ' + this.size + ' times ]';
+  };
+
+  Repeat.prototype.get = function get (index, notSetValue) {
+    return this.has(index) ? this._value : notSetValue;
+  };
+
+  Repeat.prototype.includes = function includes (searchValue) {
+    return is(this._value, searchValue);
+  };
+
+  Repeat.prototype.slice = function slice (begin, end) {
+    var size = this.size;
+    return wholeSlice(begin, end, size)
+      ? this
+      : new Repeat(
+          this._value,
+          resolveEnd(end, size) - resolveBegin(begin, size)
+        );
+  };
+
+  Repeat.prototype.reverse = function reverse () {
+    return this;
+  };
+
+  Repeat.prototype.indexOf = function indexOf (searchValue) {
+    if (is(this._value, searchValue)) {
+      return 0;
+    }
+    return -1;
+  };
+
+  Repeat.prototype.lastIndexOf = function lastIndexOf (searchValue) {
+    if (is(this._value, searchValue)) {
+      return this.size;
+    }
+    return -1;
+  };
+
+  Repeat.prototype.__iterate = function __iterate (fn, reverse) {
+    var this$1 = this;
+
+    var size = this.size;
+    var i = 0;
+    while (i !== size) {
+      if (fn(this$1._value, reverse ? size - ++i : i++, this$1) === false) {
+        break;
+      }
+    }
+    return i;
+  };
+
+  Repeat.prototype.__iterator = function __iterator (type, reverse) {
+    var this$1 = this;
+
+    var size = this.size;
+    var i = 0;
+    return new Iterator(
+      function () { return i === size
+          ? iteratorDone()
+          : iteratorValue(type, reverse ? size - ++i : i++, this$1._value); }
+    );
+  };
+
+  Repeat.prototype.equals = function equals (other) {
+    return other instanceof Repeat
+      ? is(this._value, other._value)
+      : deepEqual(other);
+  };
+
+  return Repeat;
+}(IndexedSeq));
+
+var EMPTY_REPEAT;
+
+var Immutable = {
+  Collection: Collection,
+  // Note: Iterable is deprecated
+  Iterable: Collection,
+
+  Seq: Seq,
+  Map: Map,
+  OrderedMap: OrderedMap,
+  List: List,
+  Stack: Stack,
+  Set: Set,
+  OrderedSet: OrderedSet,
+
+  Record: Record,
+  Range: Range,
+  Repeat: Repeat,
+
+  is: is,
+  fromJS: fromJS,
+  hash: hash,
+
+  isImmutable: isImmutable,
+  isCollection: isCollection,
+  isKeyed: isKeyed,
+  isIndexed: isIndexed,
+  isAssociative: isAssociative,
+  isOrdered: isOrdered,
+  isValueObject: isValueObject
+};
+
+// Note: Iterable is deprecated
+var Iterable = Collection;
+
+exports['default'] = Immutable;
+exports.Collection = Collection;
+exports.Iterable = Iterable;
+exports.Seq = Seq;
+exports.Map = Map;
+exports.OrderedMap = OrderedMap;
+exports.List = List;
+exports.Stack = Stack;
+exports.Set = Set;
+exports.OrderedSet = OrderedSet;
+exports.Record = Record;
+exports.Range = Range;
+exports.Repeat = Repeat;
+exports.is = is;
+exports.fromJS = fromJS;
+exports.hash = hash;
+exports.isImmutable = isImmutable;
+exports.isCollection = isCollection;
+exports.isKeyed = isKeyed;
+exports.isIndexed = isIndexed;
+exports.isAssociative = isAssociative;
+exports.isOrdered = isOrdered;
+exports.isValueObject = isValueObject;
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+})));
+
+},{}],11:[function(require,module,exports){
 module.exports = {
   F: require('./src/F'),
   T: require('./src/T'),
@@ -480,7 +6515,7 @@ module.exports = {
   zipWith: require('./src/zipWith')
 };
 
-},{"./src/F":5,"./src/T":6,"./src/__":7,"./src/add":8,"./src/addIndex":9,"./src/adjust":10,"./src/all":11,"./src/allPass":12,"./src/always":13,"./src/and":14,"./src/any":15,"./src/anyPass":16,"./src/ap":17,"./src/aperture":18,"./src/append":19,"./src/apply":20,"./src/applySpec":21,"./src/ascend":22,"./src/assoc":23,"./src/assocPath":24,"./src/binary":25,"./src/bind":26,"./src/both":27,"./src/call":28,"./src/chain":29,"./src/clamp":30,"./src/clone":31,"./src/comparator":32,"./src/complement":33,"./src/compose":34,"./src/composeK":35,"./src/composeP":36,"./src/concat":37,"./src/cond":38,"./src/construct":39,"./src/constructN":40,"./src/contains":41,"./src/converge":42,"./src/countBy":43,"./src/curry":44,"./src/curryN":45,"./src/dec":46,"./src/defaultTo":47,"./src/descend":48,"./src/difference":49,"./src/differenceWith":50,"./src/dissoc":51,"./src/dissocPath":52,"./src/divide":53,"./src/drop":54,"./src/dropLast":55,"./src/dropLastWhile":56,"./src/dropRepeats":57,"./src/dropRepeatsWith":58,"./src/dropWhile":59,"./src/either":60,"./src/empty":61,"./src/eqBy":62,"./src/eqProps":63,"./src/equals":64,"./src/evolve":65,"./src/filter":66,"./src/find":67,"./src/findIndex":68,"./src/findLast":69,"./src/findLastIndex":70,"./src/flatten":71,"./src/flip":72,"./src/forEach":73,"./src/forEachObjIndexed":74,"./src/fromPairs":75,"./src/groupBy":76,"./src/groupWith":77,"./src/gt":78,"./src/gte":79,"./src/has":80,"./src/hasIn":81,"./src/head":82,"./src/identical":83,"./src/identity":84,"./src/ifElse":85,"./src/inc":86,"./src/indexBy":87,"./src/indexOf":88,"./src/init":89,"./src/insert":90,"./src/insertAll":91,"./src/intersection":162,"./src/intersectionWith":163,"./src/intersperse":164,"./src/into":165,"./src/invert":166,"./src/invertObj":167,"./src/invoker":168,"./src/is":169,"./src/isArrayLike":170,"./src/isEmpty":171,"./src/isNil":172,"./src/join":173,"./src/juxt":174,"./src/keys":175,"./src/keysIn":176,"./src/last":177,"./src/lastIndexOf":178,"./src/length":179,"./src/lens":180,"./src/lensIndex":181,"./src/lensPath":182,"./src/lensProp":183,"./src/lift":184,"./src/liftN":185,"./src/lt":186,"./src/lte":187,"./src/map":188,"./src/mapAccum":189,"./src/mapAccumRight":190,"./src/mapObjIndexed":191,"./src/match":192,"./src/mathMod":193,"./src/max":194,"./src/maxBy":195,"./src/mean":196,"./src/median":197,"./src/memoize":198,"./src/merge":199,"./src/mergeAll":200,"./src/mergeWith":201,"./src/mergeWithKey":202,"./src/min":203,"./src/minBy":204,"./src/modulo":205,"./src/multiply":206,"./src/nAry":207,"./src/negate":208,"./src/none":209,"./src/not":210,"./src/nth":211,"./src/nthArg":212,"./src/objOf":213,"./src/of":214,"./src/omit":215,"./src/once":216,"./src/or":217,"./src/over":218,"./src/pair":219,"./src/partial":220,"./src/partialRight":221,"./src/partition":222,"./src/path":223,"./src/pathEq":224,"./src/pathOr":225,"./src/pathSatisfies":226,"./src/pick":227,"./src/pickAll":228,"./src/pickBy":229,"./src/pipe":230,"./src/pipeK":231,"./src/pipeP":232,"./src/pluck":233,"./src/prepend":234,"./src/product":235,"./src/project":236,"./src/prop":237,"./src/propEq":238,"./src/propIs":239,"./src/propOr":240,"./src/propSatisfies":241,"./src/props":242,"./src/range":243,"./src/reduce":244,"./src/reduceBy":245,"./src/reduceRight":246,"./src/reduceWhile":247,"./src/reduced":248,"./src/reject":249,"./src/remove":250,"./src/repeat":251,"./src/replace":252,"./src/reverse":253,"./src/scan":254,"./src/sequence":255,"./src/set":256,"./src/slice":257,"./src/sort":258,"./src/sortBy":259,"./src/sortWith":260,"./src/split":261,"./src/splitAt":262,"./src/splitEvery":263,"./src/splitWhen":264,"./src/subtract":265,"./src/sum":266,"./src/symmetricDifference":267,"./src/symmetricDifferenceWith":268,"./src/tail":269,"./src/take":270,"./src/takeLast":271,"./src/takeLastWhile":272,"./src/takeWhile":273,"./src/tap":274,"./src/test":275,"./src/times":276,"./src/toLower":277,"./src/toPairs":278,"./src/toPairsIn":279,"./src/toString":280,"./src/toUpper":281,"./src/transduce":282,"./src/transpose":283,"./src/traverse":284,"./src/trim":285,"./src/tryCatch":286,"./src/type":287,"./src/unapply":288,"./src/unary":289,"./src/uncurryN":290,"./src/unfold":291,"./src/union":292,"./src/unionWith":293,"./src/uniq":294,"./src/uniqBy":295,"./src/uniqWith":296,"./src/unless":297,"./src/unnest":298,"./src/until":299,"./src/update":300,"./src/useWith":301,"./src/values":302,"./src/valuesIn":303,"./src/view":304,"./src/when":305,"./src/where":306,"./src/whereEq":307,"./src/without":308,"./src/xprod":309,"./src/zip":310,"./src/zipObj":311,"./src/zipWith":312}],5:[function(require,module,exports){
+},{"./src/F":12,"./src/T":13,"./src/__":14,"./src/add":15,"./src/addIndex":16,"./src/adjust":17,"./src/all":18,"./src/allPass":19,"./src/always":20,"./src/and":21,"./src/any":22,"./src/anyPass":23,"./src/ap":24,"./src/aperture":25,"./src/append":26,"./src/apply":27,"./src/applySpec":28,"./src/ascend":29,"./src/assoc":30,"./src/assocPath":31,"./src/binary":32,"./src/bind":33,"./src/both":34,"./src/call":35,"./src/chain":36,"./src/clamp":37,"./src/clone":38,"./src/comparator":39,"./src/complement":40,"./src/compose":41,"./src/composeK":42,"./src/composeP":43,"./src/concat":44,"./src/cond":45,"./src/construct":46,"./src/constructN":47,"./src/contains":48,"./src/converge":49,"./src/countBy":50,"./src/curry":51,"./src/curryN":52,"./src/dec":53,"./src/defaultTo":54,"./src/descend":55,"./src/difference":56,"./src/differenceWith":57,"./src/dissoc":58,"./src/dissocPath":59,"./src/divide":60,"./src/drop":61,"./src/dropLast":62,"./src/dropLastWhile":63,"./src/dropRepeats":64,"./src/dropRepeatsWith":65,"./src/dropWhile":66,"./src/either":67,"./src/empty":68,"./src/eqBy":69,"./src/eqProps":70,"./src/equals":71,"./src/evolve":72,"./src/filter":73,"./src/find":74,"./src/findIndex":75,"./src/findLast":76,"./src/findLastIndex":77,"./src/flatten":78,"./src/flip":79,"./src/forEach":80,"./src/forEachObjIndexed":81,"./src/fromPairs":82,"./src/groupBy":83,"./src/groupWith":84,"./src/gt":85,"./src/gte":86,"./src/has":87,"./src/hasIn":88,"./src/head":89,"./src/identical":90,"./src/identity":91,"./src/ifElse":92,"./src/inc":93,"./src/indexBy":94,"./src/indexOf":95,"./src/init":96,"./src/insert":97,"./src/insertAll":98,"./src/intersection":169,"./src/intersectionWith":170,"./src/intersperse":171,"./src/into":172,"./src/invert":173,"./src/invertObj":174,"./src/invoker":175,"./src/is":176,"./src/isArrayLike":177,"./src/isEmpty":178,"./src/isNil":179,"./src/join":180,"./src/juxt":181,"./src/keys":182,"./src/keysIn":183,"./src/last":184,"./src/lastIndexOf":185,"./src/length":186,"./src/lens":187,"./src/lensIndex":188,"./src/lensPath":189,"./src/lensProp":190,"./src/lift":191,"./src/liftN":192,"./src/lt":193,"./src/lte":194,"./src/map":195,"./src/mapAccum":196,"./src/mapAccumRight":197,"./src/mapObjIndexed":198,"./src/match":199,"./src/mathMod":200,"./src/max":201,"./src/maxBy":202,"./src/mean":203,"./src/median":204,"./src/memoize":205,"./src/merge":206,"./src/mergeAll":207,"./src/mergeWith":208,"./src/mergeWithKey":209,"./src/min":210,"./src/minBy":211,"./src/modulo":212,"./src/multiply":213,"./src/nAry":214,"./src/negate":215,"./src/none":216,"./src/not":217,"./src/nth":218,"./src/nthArg":219,"./src/objOf":220,"./src/of":221,"./src/omit":222,"./src/once":223,"./src/or":224,"./src/over":225,"./src/pair":226,"./src/partial":227,"./src/partialRight":228,"./src/partition":229,"./src/path":230,"./src/pathEq":231,"./src/pathOr":232,"./src/pathSatisfies":233,"./src/pick":234,"./src/pickAll":235,"./src/pickBy":236,"./src/pipe":237,"./src/pipeK":238,"./src/pipeP":239,"./src/pluck":240,"./src/prepend":241,"./src/product":242,"./src/project":243,"./src/prop":244,"./src/propEq":245,"./src/propIs":246,"./src/propOr":247,"./src/propSatisfies":248,"./src/props":249,"./src/range":250,"./src/reduce":251,"./src/reduceBy":252,"./src/reduceRight":253,"./src/reduceWhile":254,"./src/reduced":255,"./src/reject":256,"./src/remove":257,"./src/repeat":258,"./src/replace":259,"./src/reverse":260,"./src/scan":261,"./src/sequence":262,"./src/set":263,"./src/slice":264,"./src/sort":265,"./src/sortBy":266,"./src/sortWith":267,"./src/split":268,"./src/splitAt":269,"./src/splitEvery":270,"./src/splitWhen":271,"./src/subtract":272,"./src/sum":273,"./src/symmetricDifference":274,"./src/symmetricDifferenceWith":275,"./src/tail":276,"./src/take":277,"./src/takeLast":278,"./src/takeLastWhile":279,"./src/takeWhile":280,"./src/tap":281,"./src/test":282,"./src/times":283,"./src/toLower":284,"./src/toPairs":285,"./src/toPairsIn":286,"./src/toString":287,"./src/toUpper":288,"./src/transduce":289,"./src/transpose":290,"./src/traverse":291,"./src/trim":292,"./src/tryCatch":293,"./src/type":294,"./src/unapply":295,"./src/unary":296,"./src/uncurryN":297,"./src/unfold":298,"./src/union":299,"./src/unionWith":300,"./src/uniq":301,"./src/uniqBy":302,"./src/uniqWith":303,"./src/unless":304,"./src/unnest":305,"./src/until":306,"./src/update":307,"./src/useWith":308,"./src/values":309,"./src/valuesIn":310,"./src/view":311,"./src/when":312,"./src/where":313,"./src/whereEq":314,"./src/without":315,"./src/xprod":316,"./src/zip":317,"./src/zipObj":318,"./src/zipWith":319}],12:[function(require,module,exports){
 var always = require('./always');
 
 
@@ -501,7 +6536,7 @@ var always = require('./always');
  */
 module.exports = always(false);
 
-},{"./always":13}],6:[function(require,module,exports){
+},{"./always":20}],13:[function(require,module,exports){
 var always = require('./always');
 
 
@@ -522,7 +6557,7 @@ var always = require('./always');
  */
 module.exports = always(true);
 
-},{"./always":13}],7:[function(require,module,exports){
+},{"./always":20}],14:[function(require,module,exports){
 /**
  * A special placeholder value used to specify "gaps" within curried functions,
  * allowing partial application of any combination of arguments, regardless of
@@ -551,7 +6586,7 @@ module.exports = always(true);
  */
 module.exports = {'@@functional/placeholder': true};
 
-},{}],8:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -576,7 +6611,7 @@ module.exports = _curry2(function add(a, b) {
   return Number(a) + Number(b);
 });
 
-},{"./internal/_curry2":106}],9:[function(require,module,exports){
+},{"./internal/_curry2":113}],16:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry1 = require('./internal/_curry1');
 var curryN = require('./curryN');
@@ -621,7 +6656,7 @@ module.exports = _curry1(function addIndex(fn) {
   });
 });
 
-},{"./curryN":45,"./internal/_concat":101,"./internal/_curry1":105}],10:[function(require,module,exports){
+},{"./curryN":52,"./internal/_concat":108,"./internal/_curry1":112}],17:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry3 = require('./internal/_curry3');
 
@@ -662,7 +6697,7 @@ module.exports = _curry3(function adjust(fn, idx, list) {
   return _list;
 });
 
-},{"./internal/_concat":101,"./internal/_curry3":107}],11:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_curry3":114}],18:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xall = require('./internal/_xall');
@@ -703,7 +6738,7 @@ module.exports = _curry2(_dispatchable(['all'], _xall, function all(fn, list) {
   return true;
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xall":142}],12:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xall":149}],19:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var curryN = require('./curryN');
 var max = require('./max');
@@ -750,7 +6785,7 @@ module.exports = _curry1(function allPass(preds) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry1":105,"./max":194,"./pluck":233,"./reduce":244}],13:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry1":112,"./max":201,"./pluck":240,"./reduce":251}],20:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -779,7 +6814,7 @@ module.exports = _curry1(function always(val) {
   };
 });
 
-},{"./internal/_curry1":105}],14:[function(require,module,exports){
+},{"./internal/_curry1":112}],21:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -806,7 +6841,7 @@ module.exports = _curry2(function and(a, b) {
   return a && b;
 });
 
-},{"./internal/_curry2":106}],15:[function(require,module,exports){
+},{"./internal/_curry2":113}],22:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xany = require('./internal/_xany');
@@ -848,7 +6883,7 @@ module.exports = _curry2(_dispatchable(['any'], _xany, function any(fn, list) {
   return false;
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xany":143}],16:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xany":150}],23:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var curryN = require('./curryN');
 var max = require('./max');
@@ -896,7 +6931,7 @@ module.exports = _curry1(function anyPass(preds) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry1":105,"./max":194,"./pluck":233,"./reduce":244}],17:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry1":112,"./max":201,"./pluck":240,"./reduce":251}],24:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry2 = require('./internal/_curry2');
 var _reduce = require('./internal/_reduce');
@@ -935,7 +6970,7 @@ module.exports = _curry2(function ap(applicative, fn) {
   );
 });
 
-},{"./internal/_concat":101,"./internal/_curry2":106,"./internal/_reduce":137,"./map":188}],18:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_curry2":113,"./internal/_reduce":144,"./map":195}],25:[function(require,module,exports){
 var _aperture = require('./internal/_aperture');
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
@@ -965,7 +7000,7 @@ var _xaperture = require('./internal/_xaperture');
  */
 module.exports = _curry2(_dispatchable([], _xaperture, _aperture));
 
-},{"./internal/_aperture":93,"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xaperture":144}],19:[function(require,module,exports){
+},{"./internal/_aperture":100,"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xaperture":151}],26:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry2 = require('./internal/_curry2');
 
@@ -994,7 +7029,7 @@ module.exports = _curry2(function append(el, list) {
   return _concat(list, [el]);
 });
 
-},{"./internal/_concat":101,"./internal/_curry2":106}],20:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_curry2":113}],27:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -1022,7 +7057,7 @@ module.exports = _curry2(function apply(fn, args) {
   return fn.apply(this, args);
 });
 
-},{"./internal/_curry2":106}],21:[function(require,module,exports){
+},{"./internal/_curry2":113}],28:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var apply = require('./apply');
 var curryN = require('./curryN');
@@ -1068,7 +7103,7 @@ module.exports = _curry1(function applySpec(spec) {
                 });
 });
 
-},{"./apply":20,"./curryN":45,"./internal/_curry1":105,"./map":188,"./max":194,"./pluck":233,"./reduce":244,"./values":302}],22:[function(require,module,exports){
+},{"./apply":27,"./curryN":52,"./internal/_curry1":112,"./map":195,"./max":201,"./pluck":240,"./reduce":251,"./values":309}],29:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -1099,7 +7134,7 @@ module.exports = _curry3(function ascend(fn, a, b) {
   return aa < bb ? -1 : aa > bb ? 1 : 0;
 });
 
-},{"./internal/_curry3":107}],23:[function(require,module,exports){
+},{"./internal/_curry3":114}],30:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -1132,7 +7167,7 @@ module.exports = _curry3(function assoc(prop, val, obj) {
   return result;
 });
 
-},{"./internal/_curry3":107}],24:[function(require,module,exports){
+},{"./internal/_curry3":114}],31:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var _has = require('./internal/_has');
 var _isArray = require('./internal/_isArray');
@@ -1182,7 +7217,7 @@ module.exports = _curry3(function assocPath(path, val, obj) {
   }
 });
 
-},{"./assoc":23,"./internal/_curry3":107,"./internal/_has":117,"./internal/_isArray":121,"./internal/_isInteger":123}],25:[function(require,module,exports){
+},{"./assoc":30,"./internal/_curry3":114,"./internal/_has":124,"./internal/_isArray":128,"./internal/_isInteger":130}],32:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var nAry = require('./nAry');
 
@@ -1218,7 +7253,7 @@ module.exports = _curry1(function binary(fn) {
   return nAry(2, fn);
 });
 
-},{"./internal/_curry1":105,"./nAry":207}],26:[function(require,module,exports){
+},{"./internal/_curry1":112,"./nAry":214}],33:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _curry2 = require('./internal/_curry2');
 
@@ -1251,7 +7286,7 @@ module.exports = _curry2(function bind(fn, thisObj) {
   });
 });
 
-},{"./internal/_arity":94,"./internal/_curry2":106}],27:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_curry2":113}],34:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isFunction = require('./internal/_isFunction');
 var and = require('./and');
@@ -1294,7 +7329,7 @@ module.exports = _curry2(function both(f, g) {
     lift(and)(f, g);
 });
 
-},{"./and":14,"./internal/_curry2":106,"./internal/_isFunction":122,"./lift":184}],28:[function(require,module,exports){
+},{"./and":21,"./internal/_curry2":113,"./internal/_isFunction":129,"./lift":191}],35:[function(require,module,exports){
 var curry = require('./curry');
 
 
@@ -1333,7 +7368,7 @@ module.exports = curry(function call(fn) {
   return fn.apply(this, Array.prototype.slice.call(arguments, 1));
 });
 
-},{"./curry":44}],29:[function(require,module,exports){
+},{"./curry":51}],36:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _makeFlat = require('./internal/_makeFlat');
@@ -1370,7 +7405,7 @@ module.exports = _curry2(_dispatchable(['chain'], _xchain, function chain(fn, mo
   return _makeFlat(false)(map(fn, monad));
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_makeFlat":130,"./internal/_xchain":145,"./map":188}],30:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_makeFlat":137,"./internal/_xchain":152,"./map":195}],37:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 /**
@@ -1402,7 +7437,7 @@ module.exports = _curry3(function clamp(min, max, value) {
          value;
 });
 
-},{"./internal/_curry3":107}],31:[function(require,module,exports){
+},{"./internal/_curry3":114}],38:[function(require,module,exports){
 var _clone = require('./internal/_clone');
 var _curry1 = require('./internal/_curry1');
 
@@ -1434,7 +7469,7 @@ module.exports = _curry1(function clone(value) {
     _clone(value, [], [], true);
 });
 
-},{"./internal/_clone":98,"./internal/_curry1":105}],32:[function(require,module,exports){
+},{"./internal/_clone":105,"./internal/_curry1":112}],39:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -1464,7 +7499,7 @@ module.exports = _curry1(function comparator(pred) {
   };
 });
 
-},{"./internal/_curry1":105}],33:[function(require,module,exports){
+},{"./internal/_curry1":112}],40:[function(require,module,exports){
 var lift = require('./lift');
 var not = require('./not');
 
@@ -1493,7 +7528,7 @@ var not = require('./not');
  */
 module.exports = lift(not);
 
-},{"./lift":184,"./not":210}],34:[function(require,module,exports){
+},{"./lift":191,"./not":217}],41:[function(require,module,exports){
 var pipe = require('./pipe');
 var reverse = require('./reverse');
 
@@ -1529,7 +7564,7 @@ module.exports = function compose() {
   return pipe.apply(this, reverse(arguments));
 };
 
-},{"./pipe":230,"./reverse":253}],35:[function(require,module,exports){
+},{"./pipe":237,"./reverse":260}],42:[function(require,module,exports){
 var chain = require('./chain');
 var compose = require('./compose');
 var map = require('./map');
@@ -1574,7 +7609,7 @@ module.exports = function composeK() {
   return compose(compose.apply(this, map(chain, init)), last);
 };
 
-},{"./chain":29,"./compose":34,"./map":188}],36:[function(require,module,exports){
+},{"./chain":36,"./compose":41,"./map":195}],43:[function(require,module,exports){
 var pipeP = require('./pipeP');
 var reverse = require('./reverse');
 
@@ -1620,7 +7655,7 @@ module.exports = function composeP() {
   return pipeP.apply(this, reverse(arguments));
 };
 
-},{"./pipeP":232,"./reverse":253}],37:[function(require,module,exports){
+},{"./pipeP":239,"./reverse":260}],44:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isArray = require('./internal/_isArray');
 var _isFunction = require('./internal/_isFunction');
@@ -1663,7 +7698,7 @@ module.exports = _curry2(function concat(a, b) {
   return a.concat(b);
 });
 
-},{"./internal/_curry2":106,"./internal/_isArray":121,"./internal/_isFunction":122,"./toString":280}],38:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_isArray":128,"./internal/_isFunction":129,"./toString":287}],45:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _curry1 = require('./internal/_curry1');
 var map = require('./map');
@@ -1712,7 +7747,7 @@ module.exports = _curry1(function cond(pairs) {
   });
 });
 
-},{"./internal/_arity":94,"./internal/_curry1":105,"./map":188,"./max":194,"./reduce":244}],39:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_curry1":112,"./map":195,"./max":201,"./reduce":251}],46:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var constructN = require('./constructN');
 
@@ -1752,7 +7787,7 @@ module.exports = _curry1(function construct(Fn) {
   return constructN(Fn.length, Fn);
 });
 
-},{"./constructN":40,"./internal/_curry1":105}],40:[function(require,module,exports){
+},{"./constructN":47,"./internal/_curry1":112}],47:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var curry = require('./curry');
 var nAry = require('./nAry');
@@ -1816,7 +7851,7 @@ module.exports = _curry2(function constructN(n, Fn) {
   }));
 });
 
-},{"./curry":44,"./internal/_curry2":106,"./nAry":207}],41:[function(require,module,exports){
+},{"./curry":51,"./internal/_curry2":113,"./nAry":214}],48:[function(require,module,exports){
 var _contains = require('./internal/_contains');
 var _curry2 = require('./internal/_curry2');
 
@@ -1843,7 +7878,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(_contains);
 
-},{"./internal/_contains":102,"./internal/_curry2":106}],42:[function(require,module,exports){
+},{"./internal/_contains":109,"./internal/_curry2":113}],49:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _map = require('./internal/_map');
 var curryN = require('./curryN');
@@ -1889,7 +7924,7 @@ module.exports = _curry2(function converge(after, fns) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry2":106,"./internal/_map":131,"./max":194,"./pluck":233,"./reduce":244}],43:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry2":113,"./internal/_map":138,"./max":201,"./pluck":240,"./reduce":251}],50:[function(require,module,exports){
 var reduceBy = require('./reduceBy');
 
 
@@ -1919,7 +7954,7 @@ var reduceBy = require('./reduceBy');
  */
 module.exports = reduceBy(function(acc, elem) { return acc + 1; }, 0);
 
-},{"./reduceBy":245}],44:[function(require,module,exports){
+},{"./reduceBy":252}],51:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var curryN = require('./curryN');
 
@@ -1969,7 +8004,7 @@ module.exports = _curry1(function curry(fn) {
   return curryN(fn.length, fn);
 });
 
-},{"./curryN":45,"./internal/_curry1":105}],45:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry1":112}],52:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _curry1 = require('./internal/_curry1');
 var _curry2 = require('./internal/_curry2');
@@ -2025,7 +8060,7 @@ module.exports = _curry2(function curryN(length, fn) {
   return _arity(length, _curryN(length, [], fn));
 });
 
-},{"./internal/_arity":94,"./internal/_curry1":105,"./internal/_curry2":106,"./internal/_curryN":108}],46:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_curry1":112,"./internal/_curry2":113,"./internal/_curryN":115}],53:[function(require,module,exports){
 var add = require('./add');
 
 
@@ -2046,7 +8081,7 @@ var add = require('./add');
  */
 module.exports = add(-1);
 
-},{"./add":8}],47:[function(require,module,exports){
+},{"./add":15}],54:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -2076,7 +8111,7 @@ module.exports = _curry2(function defaultTo(d, v) {
   return v == null || v !== v ? d : v;
 });
 
-},{"./internal/_curry2":106}],48:[function(require,module,exports){
+},{"./internal/_curry2":113}],55:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -2107,7 +8142,7 @@ module.exports = _curry3(function descend(fn, a, b) {
   return aa > bb ? -1 : aa < bb ? 1 : 0;
 });
 
-},{"./internal/_curry3":107}],49:[function(require,module,exports){
+},{"./internal/_curry3":114}],56:[function(require,module,exports){
 var _contains = require('./internal/_contains');
 var _curry2 = require('./internal/_curry2');
 
@@ -2145,7 +8180,7 @@ module.exports = _curry2(function difference(first, second) {
   return out;
 });
 
-},{"./internal/_contains":102,"./internal/_curry2":106}],50:[function(require,module,exports){
+},{"./internal/_contains":109,"./internal/_curry2":113}],57:[function(require,module,exports){
 var _containsWith = require('./internal/_containsWith');
 var _curry3 = require('./internal/_curry3');
 
@@ -2186,7 +8221,7 @@ module.exports = _curry3(function differenceWith(pred, first, second) {
   return out;
 });
 
-},{"./internal/_containsWith":103,"./internal/_curry3":107}],51:[function(require,module,exports){
+},{"./internal/_containsWith":110,"./internal/_curry3":114}],58:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -2215,7 +8250,7 @@ module.exports = _curry2(function dissoc(prop, obj) {
   return result;
 });
 
-},{"./internal/_curry2":106}],52:[function(require,module,exports){
+},{"./internal/_curry2":113}],59:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var assoc = require('./assoc');
 var dissoc = require('./dissoc');
@@ -2252,7 +8287,7 @@ module.exports = _curry2(function dissocPath(path, obj) {
   }
 });
 
-},{"./assoc":23,"./dissoc":51,"./internal/_curry2":106}],53:[function(require,module,exports){
+},{"./assoc":30,"./dissoc":58,"./internal/_curry2":113}],60:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -2280,7 +8315,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function divide(a, b) { return a / b; });
 
-},{"./internal/_curry2":106}],54:[function(require,module,exports){
+},{"./internal/_curry2":113}],61:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xdrop = require('./internal/_xdrop');
@@ -2315,7 +8350,7 @@ module.exports = _curry2(_dispatchable(['drop'], _xdrop, function drop(n, xs) {
   return slice(Math.max(0, n), Infinity, xs);
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xdrop":146,"./slice":257}],55:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xdrop":153,"./slice":264}],62:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _dropLast = require('./internal/_dropLast');
@@ -2345,7 +8380,7 @@ var _xdropLast = require('./internal/_xdropLast');
  */
 module.exports = _curry2(_dispatchable([], _xdropLast, _dropLast));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_dropLast":110,"./internal/_xdropLast":147}],56:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_dropLast":117,"./internal/_xdropLast":154}],63:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _dropLastWhile = require('./internal/_dropLastWhile');
@@ -2376,7 +8411,7 @@ var _xdropLastWhile = require('./internal/_xdropLastWhile');
  */
 module.exports = _curry2(_dispatchable([], _xdropLastWhile, _dropLastWhile));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_dropLastWhile":111,"./internal/_xdropLastWhile":148}],57:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_dropLastWhile":118,"./internal/_xdropLastWhile":155}],64:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _dispatchable = require('./internal/_dispatchable');
 var _xdropRepeatsWith = require('./internal/_xdropRepeatsWith');
@@ -2404,7 +8439,7 @@ var equals = require('./equals');
  */
 module.exports = _curry1(_dispatchable([], _xdropRepeatsWith(equals), dropRepeatsWith(equals)));
 
-},{"./dropRepeatsWith":58,"./equals":64,"./internal/_curry1":105,"./internal/_dispatchable":109,"./internal/_xdropRepeatsWith":149}],58:[function(require,module,exports){
+},{"./dropRepeatsWith":65,"./equals":71,"./internal/_curry1":112,"./internal/_dispatchable":116,"./internal/_xdropRepeatsWith":156}],65:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xdropRepeatsWith = require('./internal/_xdropRepeatsWith');
@@ -2449,7 +8484,7 @@ module.exports = _curry2(_dispatchable([], _xdropRepeatsWith, function dropRepea
 }));
 
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xdropRepeatsWith":149,"./last":177}],59:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xdropRepeatsWith":156,"./last":184}],66:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xdropWhile = require('./internal/_xdropWhile');
@@ -2489,7 +8524,7 @@ module.exports = _curry2(_dispatchable(['dropWhile'], _xdropWhile, function drop
   return Array.prototype.slice.call(list, idx);
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xdropWhile":150}],60:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xdropWhile":157}],67:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isFunction = require('./internal/_isFunction');
 var lift = require('./lift');
@@ -2531,7 +8566,7 @@ module.exports = _curry2(function either(f, g) {
     lift(or)(f, g);
 });
 
-},{"./internal/_curry2":106,"./internal/_isFunction":122,"./lift":184,"./or":217}],61:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_isFunction":129,"./lift":191,"./or":224}],68:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _isArguments = require('./internal/_isArguments');
 var _isArray = require('./internal/_isArray');
@@ -2580,7 +8615,7 @@ module.exports = _curry1(function empty(x) {
   );
 });
 
-},{"./internal/_curry1":105,"./internal/_isArguments":120,"./internal/_isArray":121,"./internal/_isObject":125,"./internal/_isString":128}],62:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_isArguments":127,"./internal/_isArray":128,"./internal/_isObject":132,"./internal/_isString":135}],69:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var equals = require('./equals');
 
@@ -2606,7 +8641,7 @@ module.exports = _curry3(function eqBy(f, x, y) {
   return equals(f(x), f(y));
 });
 
-},{"./equals":64,"./internal/_curry3":107}],63:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry3":114}],70:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var equals = require('./equals');
 
@@ -2636,7 +8671,7 @@ module.exports = _curry3(function eqProps(prop, obj1, obj2) {
   return equals(obj1[prop], obj2[prop]);
 });
 
-},{"./equals":64,"./internal/_curry3":107}],64:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry3":114}],71:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _equals = require('./internal/_equals');
 
@@ -2670,7 +8705,7 @@ module.exports = _curry2(function equals(a, b) {
   return _equals(a, b, [], []);
 });
 
-},{"./internal/_curry2":106,"./internal/_equals":112}],65:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_equals":119}],72:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -2714,7 +8749,7 @@ module.exports = _curry2(function evolve(transformations, object) {
   return result;
 });
 
-},{"./internal/_curry2":106}],66:[function(require,module,exports){
+},{"./internal/_curry2":113}],73:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _filter = require('./internal/_filter');
@@ -2764,7 +8799,7 @@ module.exports = _curry2(_dispatchable(['filter'], _xfilter, function(pred, filt
   );
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_filter":113,"./internal/_isObject":125,"./internal/_reduce":137,"./internal/_xfilter":152,"./keys":175}],67:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_filter":120,"./internal/_isObject":132,"./internal/_reduce":144,"./internal/_xfilter":159,"./keys":182}],74:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xfind = require('./internal/_xfind');
@@ -2805,7 +8840,7 @@ module.exports = _curry2(_dispatchable(['find'], _xfind, function find(fn, list)
   }
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xfind":153}],68:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xfind":160}],75:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xfindIndex = require('./internal/_xfindIndex');
@@ -2845,7 +8880,7 @@ module.exports = _curry2(_dispatchable([], _xfindIndex, function findIndex(fn, l
   return -1;
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xfindIndex":154}],69:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xfindIndex":161}],76:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xfindLast = require('./internal/_xfindLast');
@@ -2883,7 +8918,7 @@ module.exports = _curry2(_dispatchable([], _xfindLast, function findLast(fn, lis
   }
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xfindLast":155}],70:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xfindLast":162}],77:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xfindLastIndex = require('./internal/_xfindLastIndex');
@@ -2922,7 +8957,7 @@ module.exports = _curry2(_dispatchable([], _xfindLastIndex, function findLastInd
   return -1;
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xfindLastIndex":156}],71:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xfindLastIndex":163}],78:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _makeFlat = require('./internal/_makeFlat');
 
@@ -2946,7 +8981,7 @@ var _makeFlat = require('./internal/_makeFlat');
  */
 module.exports = _curry1(_makeFlat(true));
 
-},{"./internal/_curry1":105,"./internal/_makeFlat":130}],72:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_makeFlat":137}],79:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var curry = require('./curry');
 
@@ -2980,7 +9015,7 @@ module.exports = _curry1(function flip(fn) {
   });
 });
 
-},{"./curry":44,"./internal/_curry1":105}],73:[function(require,module,exports){
+},{"./curry":51,"./internal/_curry1":112}],80:[function(require,module,exports){
 var _checkForMethod = require('./internal/_checkForMethod');
 var _curry2 = require('./internal/_curry2');
 
@@ -3029,7 +9064,7 @@ module.exports = _curry2(_checkForMethod('forEach', function forEach(fn, list) {
   return list;
 }));
 
-},{"./internal/_checkForMethod":97,"./internal/_curry2":106}],74:[function(require,module,exports){
+},{"./internal/_checkForMethod":104,"./internal/_curry2":113}],81:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var keys = require('./keys');
 
@@ -3067,7 +9102,7 @@ module.exports = _curry2(function forEachObjIndexed(fn, obj) {
   return obj;
 });
 
-},{"./internal/_curry2":106,"./keys":175}],75:[function(require,module,exports){
+},{"./internal/_curry2":113,"./keys":182}],82:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -3097,7 +9132,7 @@ module.exports = _curry1(function fromPairs(pairs) {
   return result;
 });
 
-},{"./internal/_curry1":105}],76:[function(require,module,exports){
+},{"./internal/_curry1":112}],83:[function(require,module,exports){
 var _checkForMethod = require('./internal/_checkForMethod');
 var _curry2 = require('./internal/_curry2');
 var reduceBy = require('./reduceBy');
@@ -3150,7 +9185,7 @@ module.exports = _curry2(_checkForMethod('groupBy', reduceBy(function(acc, item)
   return acc;
 }, null)));
 
-},{"./internal/_checkForMethod":97,"./internal/_curry2":106,"./reduceBy":245}],77:[function(require,module,exports){
+},{"./internal/_checkForMethod":104,"./internal/_curry2":113,"./reduceBy":252}],84:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 /**
@@ -3194,7 +9229,7 @@ module.exports = _curry2(function(fn, list) {
   return res;
 });
 
-},{"./internal/_curry2":106}],78:[function(require,module,exports){
+},{"./internal/_curry2":113}],85:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -3221,7 +9256,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function gt(a, b) { return a > b; });
 
-},{"./internal/_curry2":106}],79:[function(require,module,exports){
+},{"./internal/_curry2":113}],86:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -3248,7 +9283,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function gte(a, b) { return a >= b; });
 
-},{"./internal/_curry2":106}],80:[function(require,module,exports){
+},{"./internal/_curry2":113}],87:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _has = require('./internal/_has');
 
@@ -3279,7 +9314,7 @@ var _has = require('./internal/_has');
  */
 module.exports = _curry2(_has);
 
-},{"./internal/_curry2":106,"./internal/_has":117}],81:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_has":124}],88:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -3313,7 +9348,7 @@ module.exports = _curry2(function hasIn(prop, obj) {
   return prop in obj;
 });
 
-},{"./internal/_curry2":106}],82:[function(require,module,exports){
+},{"./internal/_curry2":113}],89:[function(require,module,exports){
 var nth = require('./nth');
 
 
@@ -3340,7 +9375,7 @@ var nth = require('./nth');
  */
 module.exports = nth(0);
 
-},{"./nth":211}],83:[function(require,module,exports){
+},{"./nth":218}],90:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -3378,7 +9413,7 @@ module.exports = _curry2(function identical(a, b) {
   }
 });
 
-},{"./internal/_curry2":106}],84:[function(require,module,exports){
+},{"./internal/_curry2":113}],91:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _identity = require('./internal/_identity');
 
@@ -3404,7 +9439,7 @@ var _identity = require('./internal/_identity');
  */
 module.exports = _curry1(_identity);
 
-},{"./internal/_curry1":105,"./internal/_identity":118}],85:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_identity":125}],92:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var curryN = require('./curryN');
 
@@ -3442,7 +9477,7 @@ module.exports = _curry3(function ifElse(condition, onTrue, onFalse) {
   );
 });
 
-},{"./curryN":45,"./internal/_curry3":107}],86:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry3":114}],93:[function(require,module,exports){
 var add = require('./add');
 
 
@@ -3463,7 +9498,7 @@ var add = require('./add');
  */
 module.exports = add(1);
 
-},{"./add":8}],87:[function(require,module,exports){
+},{"./add":15}],94:[function(require,module,exports){
 var reduceBy = require('./reduceBy');
 
 
@@ -3491,7 +9526,7 @@ var reduceBy = require('./reduceBy');
  */
 module.exports = reduceBy(function(acc, elem) { return elem; }, null);
 
-},{"./reduceBy":245}],88:[function(require,module,exports){
+},{"./reduceBy":252}],95:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _indexOf = require('./internal/_indexOf');
 var _isArray = require('./internal/_isArray');
@@ -3522,7 +9557,7 @@ module.exports = _curry2(function indexOf(target, xs) {
     _indexOf(xs, target, 0);
 });
 
-},{"./internal/_curry2":106,"./internal/_indexOf":119,"./internal/_isArray":121}],89:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_indexOf":126,"./internal/_isArray":128}],96:[function(require,module,exports){
 var slice = require('./slice');
 
 
@@ -3552,7 +9587,7 @@ var slice = require('./slice');
  */
 module.exports = slice(0, -1);
 
-},{"./slice":257}],90:[function(require,module,exports){
+},{"./slice":264}],97:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -3581,7 +9616,7 @@ module.exports = _curry3(function insert(idx, elt, list) {
   return result;
 });
 
-},{"./internal/_curry3":107}],91:[function(require,module,exports){
+},{"./internal/_curry3":114}],98:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -3610,7 +9645,7 @@ module.exports = _curry3(function insertAll(idx, elts, list) {
                    Array.prototype.slice.call(list, idx));
 });
 
-},{"./internal/_curry3":107}],92:[function(require,module,exports){
+},{"./internal/_curry3":114}],99:[function(require,module,exports){
 var _contains = require('./_contains');
 
 
@@ -3783,7 +9818,7 @@ module.exports = (function() {
   return _Set;
 }());
 
-},{"./_contains":102}],93:[function(require,module,exports){
+},{"./_contains":109}],100:[function(require,module,exports){
 module.exports = function _aperture(n, list) {
   var idx = 0;
   var limit = list.length - (n - 1);
@@ -3795,7 +9830,7 @@ module.exports = function _aperture(n, list) {
   return acc;
 };
 
-},{}],94:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 module.exports = function _arity(n, fn) {
   /* eslint-disable no-unused-vars */
   switch (n) {
@@ -3814,7 +9849,7 @@ module.exports = function _arity(n, fn) {
   }
 };
 
-},{}],95:[function(require,module,exports){
+},{}],102:[function(require,module,exports){
 module.exports = function _arrayFromIterator(iter) {
   var list = [];
   var next;
@@ -3824,13 +9859,13 @@ module.exports = function _arrayFromIterator(iter) {
   return list;
 };
 
-},{}],96:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 var _objectAssign = require('./_objectAssign');
 
 module.exports =
   typeof Object.assign === 'function' ? Object.assign : _objectAssign;
 
-},{"./_objectAssign":132}],97:[function(require,module,exports){
+},{"./_objectAssign":139}],104:[function(require,module,exports){
 var _isArray = require('./_isArray');
 
 
@@ -3857,7 +9892,7 @@ module.exports = function _checkForMethod(methodname, fn) {
   };
 };
 
-},{"./_isArray":121}],98:[function(require,module,exports){
+},{"./_isArray":128}],105:[function(require,module,exports){
 var _cloneRegExp = require('./_cloneRegExp');
 var type = require('../type');
 
@@ -3899,7 +9934,7 @@ module.exports = function _clone(value, refFrom, refTo, deep) {
   }
 };
 
-},{"../type":287,"./_cloneRegExp":99}],99:[function(require,module,exports){
+},{"../type":294,"./_cloneRegExp":106}],106:[function(require,module,exports){
 module.exports = function _cloneRegExp(pattern) {
   return new RegExp(pattern.source, (pattern.global     ? 'g' : '') +
                                     (pattern.ignoreCase ? 'i' : '') +
@@ -3908,14 +9943,14 @@ module.exports = function _cloneRegExp(pattern) {
                                     (pattern.unicode    ? 'u' : ''));
 };
 
-},{}],100:[function(require,module,exports){
+},{}],107:[function(require,module,exports){
 module.exports = function _complement(f) {
   return function() {
     return !f.apply(this, arguments);
   };
 };
 
-},{}],101:[function(require,module,exports){
+},{}],108:[function(require,module,exports){
 /**
  * Private `concat` function to merge two array-like objects.
  *
@@ -3948,7 +9983,7 @@ module.exports = function _concat(set1, set2) {
   return result;
 };
 
-},{}],102:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 var _indexOf = require('./_indexOf');
 
 
@@ -3956,7 +9991,7 @@ module.exports = function _contains(a, list) {
   return _indexOf(list, a, 0) >= 0;
 };
 
-},{"./_indexOf":119}],103:[function(require,module,exports){
+},{"./_indexOf":126}],110:[function(require,module,exports){
 module.exports = function _containsWith(pred, x, list) {
   var idx = 0;
   var len = list.length;
@@ -3970,7 +10005,7 @@ module.exports = function _containsWith(pred, x, list) {
   return false;
 };
 
-},{}],104:[function(require,module,exports){
+},{}],111:[function(require,module,exports){
 var _arity = require('./_arity');
 var _curry2 = require('./_curry2');
 
@@ -3983,7 +10018,7 @@ module.exports = function _createPartialApplicator(concat) {
   });
 };
 
-},{"./_arity":94,"./_curry2":106}],105:[function(require,module,exports){
+},{"./_arity":101,"./_curry2":113}],112:[function(require,module,exports){
 var _isPlaceholder = require('./_isPlaceholder');
 
 
@@ -4005,7 +10040,7 @@ module.exports = function _curry1(fn) {
   };
 };
 
-},{"./_isPlaceholder":126}],106:[function(require,module,exports){
+},{"./_isPlaceholder":133}],113:[function(require,module,exports){
 var _curry1 = require('./_curry1');
 var _isPlaceholder = require('./_isPlaceholder');
 
@@ -4035,7 +10070,7 @@ module.exports = function _curry2(fn) {
   };
 };
 
-},{"./_curry1":105,"./_isPlaceholder":126}],107:[function(require,module,exports){
+},{"./_curry1":112,"./_isPlaceholder":133}],114:[function(require,module,exports){
 var _curry1 = require('./_curry1');
 var _curry2 = require('./_curry2');
 var _isPlaceholder = require('./_isPlaceholder');
@@ -4075,7 +10110,7 @@ module.exports = function _curry3(fn) {
   };
 };
 
-},{"./_curry1":105,"./_curry2":106,"./_isPlaceholder":126}],108:[function(require,module,exports){
+},{"./_curry1":112,"./_curry2":113,"./_isPlaceholder":133}],115:[function(require,module,exports){
 var _arity = require('./_arity');
 var _isPlaceholder = require('./_isPlaceholder');
 
@@ -4117,7 +10152,7 @@ module.exports = function _curryN(length, received, fn) {
   };
 };
 
-},{"./_arity":94,"./_isPlaceholder":126}],109:[function(require,module,exports){
+},{"./_arity":101,"./_isPlaceholder":133}],116:[function(require,module,exports){
 var _isArray = require('./_isArray');
 var _isTransformer = require('./_isTransformer');
 
@@ -4160,14 +10195,14 @@ module.exports = function _dispatchable(methodNames, xf, fn) {
   };
 };
 
-},{"./_isArray":121,"./_isTransformer":129}],110:[function(require,module,exports){
+},{"./_isArray":128,"./_isTransformer":136}],117:[function(require,module,exports){
 var take = require('../take');
 
 module.exports = function dropLast(n, xs) {
   return take(n < xs.length ? xs.length - n : 0, xs);
 };
 
-},{"../take":270}],111:[function(require,module,exports){
+},{"../take":277}],118:[function(require,module,exports){
 module.exports = function dropLastWhile(pred, list) {
   var idx = list.length - 1;
   while (idx >= 0 && pred(list[idx])) {
@@ -4176,7 +10211,7 @@ module.exports = function dropLastWhile(pred, list) {
   return Array.prototype.slice.call(list, 0, idx + 1);
 };
 
-},{}],112:[function(require,module,exports){
+},{}],119:[function(require,module,exports){
 var _arrayFromIterator = require('./_arrayFromIterator');
 var _functionName = require('./_functionName');
 var _has = require('./_has');
@@ -4287,7 +10322,7 @@ module.exports = function _equals(a, b, stackA, stackB) {
   return true;
 };
 
-},{"../identical":83,"../keys":175,"../type":287,"./_arrayFromIterator":95,"./_functionName":116,"./_has":117}],113:[function(require,module,exports){
+},{"../identical":90,"../keys":182,"../type":294,"./_arrayFromIterator":102,"./_functionName":123,"./_has":124}],120:[function(require,module,exports){
 module.exports = function _filter(fn, list) {
   var idx = 0;
   var len = list.length;
@@ -4302,7 +10337,7 @@ module.exports = function _filter(fn, list) {
   return result;
 };
 
-},{}],114:[function(require,module,exports){
+},{}],121:[function(require,module,exports){
 var _forceReduced = require('./_forceReduced');
 var _reduce = require('./_reduce');
 var _xfBase = require('./_xfBase');
@@ -4336,7 +10371,7 @@ module.exports = (function() {
   };
 }());
 
-},{"../isArrayLike":170,"./_forceReduced":115,"./_reduce":137,"./_xfBase":151}],115:[function(require,module,exports){
+},{"../isArrayLike":177,"./_forceReduced":122,"./_reduce":144,"./_xfBase":158}],122:[function(require,module,exports){
 module.exports = function _forceReduced(x) {
   return {
     '@@transducer/value': x,
@@ -4344,22 +10379,22 @@ module.exports = function _forceReduced(x) {
   };
 };
 
-},{}],116:[function(require,module,exports){
+},{}],123:[function(require,module,exports){
 module.exports = function _functionName(f) {
   // String(x => x) evaluates to "x => x", so the pattern may not match.
   var match = String(f).match(/^function (\w*)/);
   return match == null ? '' : match[1];
 };
 
-},{}],117:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 module.exports = function _has(prop, obj) {
   return Object.prototype.hasOwnProperty.call(obj, prop);
 };
 
-},{}],118:[function(require,module,exports){
+},{}],125:[function(require,module,exports){
 module.exports = function _identity(x) { return x; };
 
-},{}],119:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
 var equals = require('../equals');
 
 
@@ -4418,7 +10453,7 @@ module.exports = function _indexOf(list, a, idx) {
   return -1;
 };
 
-},{"../equals":64}],120:[function(require,module,exports){
+},{"../equals":71}],127:[function(require,module,exports){
 var _has = require('./_has');
 
 
@@ -4429,7 +10464,7 @@ module.exports = (function() {
     function _isArguments(x) { return _has('callee', x); };
 }());
 
-},{"./_has":117}],121:[function(require,module,exports){
+},{"./_has":124}],128:[function(require,module,exports){
 /**
  * Tests whether or not an object is an array.
  *
@@ -4448,12 +10483,12 @@ module.exports = Array.isArray || function _isArray(val) {
           Object.prototype.toString.call(val) === '[object Array]');
 };
 
-},{}],122:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 module.exports = function _isFunction(x) {
   return Object.prototype.toString.call(x) === '[object Function]';
 };
 
-},{}],123:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 /**
  * Determine if the passed argument is an integer.
  *
@@ -4466,39 +10501,39 @@ module.exports = Number.isInteger || function _isInteger(n) {
   return (n << 0) === n;
 };
 
-},{}],124:[function(require,module,exports){
+},{}],131:[function(require,module,exports){
 module.exports = function _isNumber(x) {
   return Object.prototype.toString.call(x) === '[object Number]';
 };
 
-},{}],125:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 module.exports = function _isObject(x) {
   return Object.prototype.toString.call(x) === '[object Object]';
 };
 
-},{}],126:[function(require,module,exports){
+},{}],133:[function(require,module,exports){
 module.exports = function _isPlaceholder(a) {
   return a != null &&
          typeof a === 'object' &&
          a['@@functional/placeholder'] === true;
 };
 
-},{}],127:[function(require,module,exports){
+},{}],134:[function(require,module,exports){
 module.exports = function _isRegExp(x) {
   return Object.prototype.toString.call(x) === '[object RegExp]';
 };
 
-},{}],128:[function(require,module,exports){
+},{}],135:[function(require,module,exports){
 module.exports = function _isString(x) {
   return Object.prototype.toString.call(x) === '[object String]';
 };
 
-},{}],129:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 module.exports = function _isTransformer(obj) {
   return typeof obj['@@transducer/step'] === 'function';
 };
 
-},{}],130:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 var isArrayLike = require('../isArrayLike');
 
 
@@ -4533,7 +10568,7 @@ module.exports = function _makeFlat(recursive) {
   };
 };
 
-},{"../isArrayLike":170}],131:[function(require,module,exports){
+},{"../isArrayLike":177}],138:[function(require,module,exports){
 module.exports = function _map(fn, functor) {
   var idx = 0;
   var len = functor.length;
@@ -4545,7 +10580,7 @@ module.exports = function _map(fn, functor) {
   return result;
 };
 
-},{}],132:[function(require,module,exports){
+},{}],139:[function(require,module,exports){
 var _has = require('./_has');
 
 // Based on https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
@@ -4571,17 +10606,17 @@ module.exports = function _objectAssign(target) {
   return output;
 };
 
-},{"./_has":117}],133:[function(require,module,exports){
+},{"./_has":124}],140:[function(require,module,exports){
 module.exports = function _of(x) { return [x]; };
 
-},{}],134:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
 module.exports = function _pipe(f, g) {
   return function() {
     return g.call(this, f.apply(this, arguments));
   };
 };
 
-},{}],135:[function(require,module,exports){
+},{}],142:[function(require,module,exports){
 module.exports = function _pipeP(f, g) {
   return function() {
     var ctx = this;
@@ -4591,7 +10626,7 @@ module.exports = function _pipeP(f, g) {
   };
 };
 
-},{}],136:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 module.exports = function _quote(s) {
   var escaped = s
     .replace(/\\/g, '\\\\')
@@ -4606,7 +10641,7 @@ module.exports = function _quote(s) {
   return '"' + escaped.replace(/"/g, '\\"') + '"';
 };
 
-},{}],137:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 var _xwrap = require('./_xwrap');
 var bind = require('../bind');
 var isArrayLike = require('../isArrayLike');
@@ -4665,7 +10700,7 @@ module.exports = (function() {
   };
 }());
 
-},{"../bind":26,"../isArrayLike":170,"./_xwrap":161}],138:[function(require,module,exports){
+},{"../bind":33,"../isArrayLike":177,"./_xwrap":168}],145:[function(require,module,exports){
 module.exports = function _reduced(x) {
   return x && x['@@transducer/reduced'] ? x :
     {
@@ -4674,7 +10709,7 @@ module.exports = function _reduced(x) {
     };
 };
 
-},{}],139:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 var _assign = require('./_assign');
 var _identity = require('./_identity');
 var _isTransformer = require('./_isTransformer');
@@ -4724,7 +10759,7 @@ module.exports = (function() {
   };
 }());
 
-},{"../isArrayLike":170,"../objOf":213,"./_assign":96,"./_identity":118,"./_isTransformer":129}],140:[function(require,module,exports){
+},{"../isArrayLike":177,"../objOf":220,"./_assign":103,"./_identity":125,"./_isTransformer":136}],147:[function(require,module,exports){
 /**
  * Polyfill from <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString>.
  */
@@ -4748,7 +10783,7 @@ module.exports = (function() {
     };
 }());
 
-},{}],141:[function(require,module,exports){
+},{}],148:[function(require,module,exports){
 var _contains = require('./_contains');
 var _map = require('./_map');
 var _quote = require('./_quote');
@@ -4796,7 +10831,7 @@ module.exports = function _toString(x, seen) {
   }
 };
 
-},{"../keys":175,"../reject":249,"./_contains":102,"./_map":131,"./_quote":136,"./_toISOString":140}],142:[function(require,module,exports){
+},{"../keys":182,"../reject":256,"./_contains":109,"./_map":138,"./_quote":143,"./_toISOString":147}],149:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -4826,7 +10861,7 @@ module.exports = (function() {
   return _curry2(function _xall(f, xf) { return new XAll(f, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],143:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],150:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -4856,7 +10891,7 @@ module.exports = (function() {
   return _curry2(function _xany(f, xf) { return new XAny(f, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],144:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],151:[function(require,module,exports){
 var _concat = require('./_concat');
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
@@ -4894,7 +10929,7 @@ module.exports = (function() {
   return _curry2(function _xaperture(n, xf) { return new XAperture(n, xf); });
 }());
 
-},{"./_concat":101,"./_curry2":106,"./_xfBase":151}],145:[function(require,module,exports){
+},{"./_concat":108,"./_curry2":113,"./_xfBase":158}],152:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _flatCat = require('./_flatCat');
 var map = require('../map');
@@ -4904,7 +10939,7 @@ module.exports = _curry2(function _xchain(f, xf) {
   return map(f, _flatCat(xf));
 });
 
-},{"../map":188,"./_curry2":106,"./_flatCat":114}],146:[function(require,module,exports){
+},{"../map":195,"./_curry2":113,"./_flatCat":121}],153:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -4927,7 +10962,7 @@ module.exports = (function() {
   return _curry2(function _xdrop(n, xf) { return new XDrop(n, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],147:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],154:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -4963,7 +10998,7 @@ module.exports = (function() {
   return _curry2(function _xdropLast(n, xf) { return new XDropLast(n, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],148:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],155:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduce = require('./_reduce');
 var _xfBase = require('./_xfBase');
@@ -5000,7 +11035,7 @@ module.exports = (function() {
   return _curry2(function _xdropLastWhile(fn, xf) { return new XDropLastWhile(fn, xf); });
 }());
 
-},{"./_curry2":106,"./_reduce":137,"./_xfBase":151}],149:[function(require,module,exports){
+},{"./_curry2":113,"./_reduce":144,"./_xfBase":158}],156:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5029,7 +11064,7 @@ module.exports = (function() {
   return _curry2(function _xdropRepeatsWith(pred, xf) { return new XDropRepeatsWith(pred, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],150:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],157:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5054,7 +11089,7 @@ module.exports = (function() {
   return _curry2(function _xdropWhile(f, xf) { return new XDropWhile(f, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],151:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],158:[function(require,module,exports){
 module.exports = {
   init: function() {
     return this.xf['@@transducer/init']();
@@ -5064,7 +11099,7 @@ module.exports = {
   }
 };
 
-},{}],152:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5083,7 +11118,7 @@ module.exports = (function() {
   return _curry2(function _xfilter(f, xf) { return new XFilter(f, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],153:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],160:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -5113,7 +11148,7 @@ module.exports = (function() {
   return _curry2(function _xfind(f, xf) { return new XFind(f, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],154:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],161:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -5145,7 +11180,7 @@ module.exports = (function() {
   return _curry2(function _xfindIndex(f, xf) { return new XFindIndex(f, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],155:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],162:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5169,7 +11204,7 @@ module.exports = (function() {
   return _curry2(function _xfindLast(f, xf) { return new XFindLast(f, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],156:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],163:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5196,7 +11231,7 @@ module.exports = (function() {
   return _curry2(function _xfindLastIndex(f, xf) { return new XFindLastIndex(f, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],157:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],164:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _xfBase = require('./_xfBase');
 
@@ -5215,7 +11250,7 @@ module.exports = (function() {
   return _curry2(function _xmap(f, xf) { return new XMap(f, xf); });
 }());
 
-},{"./_curry2":106,"./_xfBase":151}],158:[function(require,module,exports){
+},{"./_curry2":113,"./_xfBase":158}],165:[function(require,module,exports){
 var _curryN = require('./_curryN');
 var _has = require('./_has');
 var _xfBase = require('./_xfBase');
@@ -5257,7 +11292,7 @@ module.exports = (function() {
                  });
 }());
 
-},{"./_curryN":108,"./_has":117,"./_xfBase":151}],159:[function(require,module,exports){
+},{"./_curryN":115,"./_has":124,"./_xfBase":158}],166:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -5279,7 +11314,7 @@ module.exports = (function() {
   return _curry2(function _xtake(n, xf) { return new XTake(n, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],160:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],167:[function(require,module,exports){
 var _curry2 = require('./_curry2');
 var _reduced = require('./_reduced');
 var _xfBase = require('./_xfBase');
@@ -5299,7 +11334,7 @@ module.exports = (function() {
   return _curry2(function _xtakeWhile(f, xf) { return new XTakeWhile(f, xf); });
 }());
 
-},{"./_curry2":106,"./_reduced":138,"./_xfBase":151}],161:[function(require,module,exports){
+},{"./_curry2":113,"./_reduced":145,"./_xfBase":158}],168:[function(require,module,exports){
 module.exports = (function() {
   function XWrap(fn) {
     this.f = fn;
@@ -5315,7 +11350,7 @@ module.exports = (function() {
   return function _xwrap(fn) { return new XWrap(fn); };
 }());
 
-},{}],162:[function(require,module,exports){
+},{}],169:[function(require,module,exports){
 var _contains = require('./internal/_contains');
 var _curry2 = require('./internal/_curry2');
 var _filter = require('./internal/_filter');
@@ -5352,7 +11387,7 @@ module.exports = _curry2(function intersection(list1, list2) {
   return uniq(_filter(flip(_contains)(lookupList), filteredList));
 });
 
-},{"./flip":72,"./internal/_contains":102,"./internal/_curry2":106,"./internal/_filter":113,"./uniq":294}],163:[function(require,module,exports){
+},{"./flip":79,"./internal/_contains":109,"./internal/_curry2":113,"./internal/_filter":120,"./uniq":301}],170:[function(require,module,exports){
 var _containsWith = require('./internal/_containsWith');
 var _curry3 = require('./internal/_curry3');
 var uniqWith = require('./uniqWith');
@@ -5413,7 +11448,7 @@ module.exports = _curry3(function intersectionWith(pred, list1, list2) {
   return uniqWith(pred, results);
 });
 
-},{"./internal/_containsWith":103,"./internal/_curry3":107,"./uniqWith":296}],164:[function(require,module,exports){
+},{"./internal/_containsWith":110,"./internal/_curry3":114,"./uniqWith":303}],171:[function(require,module,exports){
 var _checkForMethod = require('./internal/_checkForMethod');
 var _curry2 = require('./internal/_curry2');
 
@@ -5450,7 +11485,7 @@ module.exports = _curry2(_checkForMethod('intersperse', function intersperse(sep
   return out;
 }));
 
-},{"./internal/_checkForMethod":97,"./internal/_curry2":106}],165:[function(require,module,exports){
+},{"./internal/_checkForMethod":104,"./internal/_curry2":113}],172:[function(require,module,exports){
 var _clone = require('./internal/_clone');
 var _curry3 = require('./internal/_curry3');
 var _isTransformer = require('./internal/_isTransformer');
@@ -5501,7 +11536,7 @@ module.exports = _curry3(function into(acc, xf, list) {
     _reduce(xf(_stepCat(acc)), _clone(acc, [], [], false), list);
 });
 
-},{"./internal/_clone":98,"./internal/_curry3":107,"./internal/_isTransformer":129,"./internal/_reduce":137,"./internal/_stepCat":139}],166:[function(require,module,exports){
+},{"./internal/_clone":105,"./internal/_curry3":114,"./internal/_isTransformer":136,"./internal/_reduce":144,"./internal/_stepCat":146}],173:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _has = require('./internal/_has');
 var keys = require('./keys');
@@ -5545,7 +11580,7 @@ module.exports = _curry1(function invert(obj) {
   return out;
 });
 
-},{"./internal/_curry1":105,"./internal/_has":117,"./keys":175}],167:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_has":124,"./keys":182}],174:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var keys = require('./keys');
 
@@ -5590,7 +11625,7 @@ module.exports = _curry1(function invertObj(obj) {
   return out;
 });
 
-},{"./internal/_curry1":105,"./keys":175}],168:[function(require,module,exports){
+},{"./internal/_curry1":112,"./keys":182}],175:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isFunction = require('./internal/_isFunction');
 var curryN = require('./curryN');
@@ -5633,7 +11668,7 @@ module.exports = _curry2(function invoker(arity, method) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry2":106,"./internal/_isFunction":122,"./toString":280}],169:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry2":113,"./internal/_isFunction":129,"./toString":287}],176:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -5664,7 +11699,7 @@ module.exports = _curry2(function is(Ctor, val) {
   return val != null && val.constructor === Ctor || val instanceof Ctor;
 });
 
-},{"./internal/_curry2":106}],170:[function(require,module,exports){
+},{"./internal/_curry2":113}],177:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _isArray = require('./internal/_isArray');
 var _isString = require('./internal/_isString');
@@ -5703,7 +11738,7 @@ module.exports = _curry1(function isArrayLike(x) {
   return false;
 });
 
-},{"./internal/_curry1":105,"./internal/_isArray":121,"./internal/_isString":128}],171:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_isArray":128,"./internal/_isString":135}],178:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var empty = require('./empty');
 var equals = require('./equals');
@@ -5734,7 +11769,7 @@ module.exports = _curry1(function isEmpty(x) {
   return x != null && equals(x, empty(x));
 });
 
-},{"./empty":61,"./equals":64,"./internal/_curry1":105}],172:[function(require,module,exports){
+},{"./empty":68,"./equals":71,"./internal/_curry1":112}],179:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -5757,7 +11792,7 @@ var _curry1 = require('./internal/_curry1');
  */
 module.exports = _curry1(function isNil(x) { return x == null; });
 
-},{"./internal/_curry1":105}],173:[function(require,module,exports){
+},{"./internal/_curry1":112}],180:[function(require,module,exports){
 var invoker = require('./invoker');
 
 
@@ -5782,7 +11817,7 @@ var invoker = require('./invoker');
  */
 module.exports = invoker(1, 'join');
 
-},{"./invoker":168}],174:[function(require,module,exports){
+},{"./invoker":175}],181:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var converge = require('./converge');
 
@@ -5808,7 +11843,7 @@ module.exports = _curry1(function juxt(fns) {
   return converge(function() { return Array.prototype.slice.call(arguments, 0); }, fns);
 });
 
-},{"./converge":42,"./internal/_curry1":105}],175:[function(require,module,exports){
+},{"./converge":49,"./internal/_curry1":112}],182:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _has = require('./internal/_has');
 var _isArguments = require('./internal/_isArguments');
@@ -5883,7 +11918,7 @@ module.exports = (function() {
     });
 }());
 
-},{"./internal/_curry1":105,"./internal/_has":117,"./internal/_isArguments":120}],176:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_has":124,"./internal/_isArguments":127}],183:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -5916,7 +11951,7 @@ module.exports = _curry1(function keysIn(obj) {
   return ks;
 });
 
-},{"./internal/_curry1":105}],177:[function(require,module,exports){
+},{"./internal/_curry1":112}],184:[function(require,module,exports){
 var nth = require('./nth');
 
 
@@ -5942,7 +11977,7 @@ var nth = require('./nth');
  */
 module.exports = nth(-1);
 
-},{"./nth":211}],178:[function(require,module,exports){
+},{"./nth":218}],185:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isArray = require('./internal/_isArray');
 var equals = require('./equals');
@@ -5982,7 +12017,7 @@ module.exports = _curry2(function lastIndexOf(target, xs) {
   }
 });
 
-},{"./equals":64,"./internal/_curry2":106,"./internal/_isArray":121}],179:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry2":113,"./internal/_isArray":128}],186:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _isNumber = require('./internal/_isNumber');
 
@@ -6006,7 +12041,7 @@ module.exports = _curry1(function length(list) {
   return list != null && _isNumber(list.length) ? list.length : NaN;
 });
 
-},{"./internal/_curry1":105,"./internal/_isNumber":124}],180:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_isNumber":131}],187:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var map = require('./map');
 
@@ -6047,7 +12082,7 @@ module.exports = _curry2(function lens(getter, setter) {
   };
 });
 
-},{"./internal/_curry2":106,"./map":188}],181:[function(require,module,exports){
+},{"./internal/_curry2":113,"./map":195}],188:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var lens = require('./lens');
 var nth = require('./nth');
@@ -6078,7 +12113,7 @@ module.exports = _curry1(function lensIndex(n) {
   return lens(nth(n), update(n));
 });
 
-},{"./internal/_curry1":105,"./lens":180,"./nth":211,"./update":300}],182:[function(require,module,exports){
+},{"./internal/_curry1":112,"./lens":187,"./nth":218,"./update":307}],189:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var assocPath = require('./assocPath');
 var lens = require('./lens');
@@ -6113,7 +12148,7 @@ module.exports = _curry1(function lensPath(p) {
   return lens(path(p), assocPath(p));
 });
 
-},{"./assocPath":24,"./internal/_curry1":105,"./lens":180,"./path":223}],183:[function(require,module,exports){
+},{"./assocPath":31,"./internal/_curry1":112,"./lens":187,"./path":230}],190:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var assoc = require('./assoc');
 var lens = require('./lens');
@@ -6144,7 +12179,7 @@ module.exports = _curry1(function lensProp(k) {
   return lens(prop(k), assoc(k));
 });
 
-},{"./assoc":23,"./internal/_curry1":105,"./lens":180,"./prop":237}],184:[function(require,module,exports){
+},{"./assoc":30,"./internal/_curry1":112,"./lens":187,"./prop":244}],191:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var liftN = require('./liftN');
 
@@ -6175,7 +12210,7 @@ module.exports = _curry1(function lift(fn) {
   return liftN(fn.length, fn);
 });
 
-},{"./internal/_curry1":105,"./liftN":185}],185:[function(require,module,exports){
+},{"./internal/_curry1":112,"./liftN":192}],192:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _reduce = require('./internal/_reduce');
 var ap = require('./ap');
@@ -6207,7 +12242,7 @@ module.exports = _curry2(function liftN(arity, fn) {
   });
 });
 
-},{"./ap":17,"./curryN":45,"./internal/_curry2":106,"./internal/_reduce":137,"./map":188}],186:[function(require,module,exports){
+},{"./ap":24,"./curryN":52,"./internal/_curry2":113,"./internal/_reduce":144,"./map":195}],193:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6234,7 +12269,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function lt(a, b) { return a < b; });
 
-},{"./internal/_curry2":106}],187:[function(require,module,exports){
+},{"./internal/_curry2":113}],194:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6261,7 +12296,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function lte(a, b) { return a <= b; });
 
-},{"./internal/_curry2":106}],188:[function(require,module,exports){
+},{"./internal/_curry2":113}],195:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _map = require('./internal/_map');
@@ -6322,7 +12357,7 @@ module.exports = _curry2(_dispatchable(['map'], _xmap, function map(fn, functor)
   }
 }));
 
-},{"./curryN":45,"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_map":131,"./internal/_reduce":137,"./internal/_xmap":157,"./keys":175}],189:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_map":138,"./internal/_reduce":144,"./internal/_xmap":164,"./keys":182}],196:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -6373,7 +12408,7 @@ module.exports = _curry3(function mapAccum(fn, acc, list) {
   return [tuple[0], result];
 });
 
-},{"./internal/_curry3":107}],190:[function(require,module,exports){
+},{"./internal/_curry3":114}],197:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -6426,7 +12461,7 @@ module.exports = _curry3(function mapAccumRight(fn, acc, list) {
   return [result, tuple[0]];
 });
 
-},{"./internal/_curry3":107}],191:[function(require,module,exports){
+},{"./internal/_curry3":114}],198:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _reduce = require('./internal/_reduce');
 var keys = require('./keys');
@@ -6460,7 +12495,7 @@ module.exports = _curry2(function mapObjIndexed(fn, obj) {
   }, {}, keys(obj));
 });
 
-},{"./internal/_curry2":106,"./internal/_reduce":137,"./keys":175}],192:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_reduce":144,"./keys":182}],199:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6489,7 +12524,7 @@ module.exports = _curry2(function match(rx, str) {
   return str.match(rx) || [];
 });
 
-},{"./internal/_curry2":106}],193:[function(require,module,exports){
+},{"./internal/_curry2":113}],200:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isInteger = require('./internal/_isInteger');
 
@@ -6532,7 +12567,7 @@ module.exports = _curry2(function mathMod(m, p) {
   return ((m % p) + p) % p;
 });
 
-},{"./internal/_curry2":106,"./internal/_isInteger":123}],194:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_isInteger":130}],201:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6555,7 +12590,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function max(a, b) { return b > a ? b : a; });
 
-},{"./internal/_curry2":106}],195:[function(require,module,exports){
+},{"./internal/_curry2":113}],202:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -6587,7 +12622,7 @@ module.exports = _curry3(function maxBy(f, a, b) {
   return f(b) > f(a) ? b : a;
 });
 
-},{"./internal/_curry3":107}],196:[function(require,module,exports){
+},{"./internal/_curry3":114}],203:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var sum = require('./sum');
 
@@ -6611,7 +12646,7 @@ module.exports = _curry1(function mean(list) {
   return sum(list) / list.length;
 });
 
-},{"./internal/_curry1":105,"./sum":266}],197:[function(require,module,exports){
+},{"./internal/_curry1":112,"./sum":273}],204:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var mean = require('./mean');
 
@@ -6644,7 +12679,7 @@ module.exports = _curry1(function median(list) {
   }).slice(idx, idx + width));
 });
 
-},{"./internal/_curry1":105,"./mean":196}],198:[function(require,module,exports){
+},{"./internal/_curry1":112,"./mean":203}],205:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _curry1 = require('./internal/_curry1');
 var _has = require('./internal/_has');
@@ -6688,7 +12723,7 @@ module.exports = _curry1(function memoize(fn) {
   });
 });
 
-},{"./internal/_arity":94,"./internal/_curry1":105,"./internal/_has":117,"./toString":280}],199:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_curry1":112,"./internal/_has":124,"./toString":287}],206:[function(require,module,exports){
 var _assign = require('./internal/_assign');
 var _curry2 = require('./internal/_curry2');
 
@@ -6720,7 +12755,7 @@ module.exports = _curry2(function merge(l, r) {
   return _assign({}, l, r);
 });
 
-},{"./internal/_assign":96,"./internal/_curry2":106}],200:[function(require,module,exports){
+},{"./internal/_assign":103,"./internal/_curry2":113}],207:[function(require,module,exports){
 var _assign = require('./internal/_assign');
 var _curry1 = require('./internal/_curry1');
 
@@ -6746,7 +12781,7 @@ module.exports = _curry1(function mergeAll(list) {
   return _assign.apply(null, [{}].concat(list));
 });
 
-},{"./internal/_assign":96,"./internal/_curry1":105}],201:[function(require,module,exports){
+},{"./internal/_assign":103,"./internal/_curry1":112}],208:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var mergeWithKey = require('./mergeWithKey');
 
@@ -6781,7 +12816,7 @@ module.exports = _curry3(function mergeWith(fn, l, r) {
   }, l, r);
 });
 
-},{"./internal/_curry3":107,"./mergeWithKey":202}],202:[function(require,module,exports){
+},{"./internal/_curry3":114,"./mergeWithKey":209}],209:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var _has = require('./internal/_has');
 
@@ -6832,7 +12867,7 @@ module.exports = _curry3(function mergeWithKey(fn, l, r) {
   return result;
 });
 
-},{"./internal/_curry3":107,"./internal/_has":117}],203:[function(require,module,exports){
+},{"./internal/_curry3":114,"./internal/_has":124}],210:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6855,7 +12890,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function min(a, b) { return b < a ? b : a; });
 
-},{"./internal/_curry2":106}],204:[function(require,module,exports){
+},{"./internal/_curry2":113}],211:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -6887,7 +12922,7 @@ module.exports = _curry3(function minBy(f, a, b) {
   return f(b) < f(a) ? b : a;
 });
 
-},{"./internal/_curry3":107}],205:[function(require,module,exports){
+},{"./internal/_curry3":114}],212:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6918,7 +12953,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function modulo(a, b) { return a % b; });
 
-},{"./internal/_curry2":106}],206:[function(require,module,exports){
+},{"./internal/_curry2":113}],213:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6944,7 +12979,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function multiply(a, b) { return a * b; });
 
-},{"./internal/_curry2":106}],207:[function(require,module,exports){
+},{"./internal/_curry2":113}],214:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -6994,7 +13029,7 @@ module.exports = _curry2(function nAry(n, fn) {
   }
 });
 
-},{"./internal/_curry2":106}],208:[function(require,module,exports){
+},{"./internal/_curry2":113}],215:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -7014,7 +13049,7 @@ var _curry1 = require('./internal/_curry1');
  */
 module.exports = _curry1(function negate(n) { return -n; });
 
-},{"./internal/_curry1":105}],209:[function(require,module,exports){
+},{"./internal/_curry1":112}],216:[function(require,module,exports){
 var _complement = require('./internal/_complement');
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
@@ -7046,7 +13081,7 @@ var any = require('./any');
  */
 module.exports = _curry2(_complement(_dispatchable(['any'], _xany, any)));
 
-},{"./any":15,"./internal/_complement":100,"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xany":143}],210:[function(require,module,exports){
+},{"./any":22,"./internal/_complement":107,"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xany":150}],217:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -7073,7 +13108,7 @@ module.exports = _curry1(function not(a) {
   return !a;
 });
 
-},{"./internal/_curry1":105}],211:[function(require,module,exports){
+},{"./internal/_curry1":112}],218:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isString = require('./internal/_isString');
 
@@ -7109,7 +13144,7 @@ module.exports = _curry2(function nth(offset, list) {
   return _isString(list) ? list.charAt(idx) : list[idx];
 });
 
-},{"./internal/_curry2":106,"./internal/_isString":128}],212:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_isString":135}],219:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var curryN = require('./curryN');
 var nth = require('./nth');
@@ -7140,7 +13175,7 @@ module.exports = _curry1(function nthArg(n) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry1":105,"./nth":211}],213:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry1":112,"./nth":218}],220:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7170,7 +13205,7 @@ module.exports = _curry2(function objOf(key, val) {
   return obj;
 });
 
-},{"./internal/_curry2":106}],214:[function(require,module,exports){
+},{"./internal/_curry2":113}],221:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _of = require('./internal/_of');
 
@@ -7195,7 +13230,7 @@ var _of = require('./internal/_of');
  */
 module.exports = _curry1(_of);
 
-},{"./internal/_curry1":105,"./internal/_of":133}],215:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_of":140}],222:[function(require,module,exports){
 var _contains = require('./internal/_contains');
 var _curry2 = require('./internal/_curry2');
 
@@ -7226,7 +13261,7 @@ module.exports = _curry2(function omit(names, obj) {
   return result;
 });
 
-},{"./internal/_contains":102,"./internal/_curry2":106}],216:[function(require,module,exports){
+},{"./internal/_contains":109,"./internal/_curry2":113}],223:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _curry1 = require('./internal/_curry1');
 
@@ -7263,7 +13298,7 @@ module.exports = _curry1(function once(fn) {
   });
 });
 
-},{"./internal/_arity":94,"./internal/_curry1":105}],217:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_curry1":112}],224:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7291,7 +13326,7 @@ module.exports = _curry2(function or(a, b) {
   return a || b;
 });
 
-},{"./internal/_curry2":106}],218:[function(require,module,exports){
+},{"./internal/_curry2":113}],225:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -7332,7 +13367,7 @@ module.exports = (function() {
   });
 }());
 
-},{"./internal/_curry3":107}],219:[function(require,module,exports){
+},{"./internal/_curry3":114}],226:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7354,7 +13389,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function pair(fst, snd) { return [fst, snd]; });
 
-},{"./internal/_curry2":106}],220:[function(require,module,exports){
+},{"./internal/_curry2":113}],227:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _createPartialApplicator = require('./internal/_createPartialApplicator');
 
@@ -7389,7 +13424,7 @@ var _createPartialApplicator = require('./internal/_createPartialApplicator');
  */
 module.exports = _createPartialApplicator(_concat);
 
-},{"./internal/_concat":101,"./internal/_createPartialApplicator":104}],221:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_createPartialApplicator":111}],228:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _createPartialApplicator = require('./internal/_createPartialApplicator');
 var flip = require('./flip');
@@ -7421,7 +13456,7 @@ var flip = require('./flip');
  */
 module.exports = _createPartialApplicator(flip(_concat));
 
-},{"./flip":72,"./internal/_concat":101,"./internal/_createPartialApplicator":104}],222:[function(require,module,exports){
+},{"./flip":79,"./internal/_concat":108,"./internal/_createPartialApplicator":111}],229:[function(require,module,exports){
 var filter = require('./filter');
 var juxt = require('./juxt');
 var reject = require('./reject');
@@ -7452,7 +13487,7 @@ var reject = require('./reject');
  */
 module.exports = juxt([filter, reject]);
 
-},{"./filter":66,"./juxt":174,"./reject":249}],223:[function(require,module,exports){
+},{"./filter":73,"./juxt":181,"./reject":256}],230:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7487,7 +13522,7 @@ module.exports = _curry2(function path(paths, obj) {
   return val;
 });
 
-},{"./internal/_curry2":106}],224:[function(require,module,exports){
+},{"./internal/_curry2":113}],231:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var equals = require('./equals');
 var path = require('./path');
@@ -7521,7 +13556,7 @@ module.exports = _curry3(function pathEq(_path, val, obj) {
   return equals(path(_path, obj), val);
 });
 
-},{"./equals":64,"./internal/_curry3":107,"./path":223}],225:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry3":114,"./path":230}],232:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var defaultTo = require('./defaultTo');
 var path = require('./path');
@@ -7550,7 +13585,7 @@ module.exports = _curry3(function pathOr(d, p, obj) {
   return defaultTo(d, path(p, obj));
 });
 
-},{"./defaultTo":47,"./internal/_curry3":107,"./path":223}],226:[function(require,module,exports){
+},{"./defaultTo":54,"./internal/_curry3":114,"./path":230}],233:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var path = require('./path');
 
@@ -7578,7 +13613,7 @@ module.exports = _curry3(function pathSatisfies(pred, propPath, obj) {
   return propPath.length > 0 && pred(path(propPath, obj));
 });
 
-},{"./internal/_curry3":107,"./path":223}],227:[function(require,module,exports){
+},{"./internal/_curry3":114,"./path":230}],234:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7612,7 +13647,7 @@ module.exports = _curry2(function pick(names, obj) {
   return result;
 });
 
-},{"./internal/_curry2":106}],228:[function(require,module,exports){
+},{"./internal/_curry2":113}],235:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7646,7 +13681,7 @@ module.exports = _curry2(function pickAll(names, obj) {
   return result;
 });
 
-},{"./internal/_curry2":106}],229:[function(require,module,exports){
+},{"./internal/_curry2":113}],236:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7680,7 +13715,7 @@ module.exports = _curry2(function pickBy(test, obj) {
   return result;
 });
 
-},{"./internal/_curry2":106}],230:[function(require,module,exports){
+},{"./internal/_curry2":113}],237:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _pipe = require('./internal/_pipe');
 var reduce = require('./reduce');
@@ -7718,7 +13753,7 @@ module.exports = function pipe() {
                 reduce(_pipe, arguments[0], tail(arguments)));
 };
 
-},{"./internal/_arity":94,"./internal/_pipe":134,"./reduce":244,"./tail":269}],231:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_pipe":141,"./reduce":251,"./tail":276}],238:[function(require,module,exports){
 var composeK = require('./composeK');
 var reverse = require('./reverse');
 
@@ -7763,7 +13798,7 @@ module.exports = function pipeK() {
   return composeK.apply(this, reverse(arguments));
 };
 
-},{"./composeK":35,"./reverse":253}],232:[function(require,module,exports){
+},{"./composeK":42,"./reverse":260}],239:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _pipeP = require('./internal/_pipeP');
 var reduce = require('./reduce');
@@ -7796,7 +13831,7 @@ module.exports = function pipeP() {
                 reduce(_pipeP, arguments[0], tail(arguments)));
 };
 
-},{"./internal/_arity":94,"./internal/_pipeP":135,"./reduce":244,"./tail":269}],233:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_pipeP":142,"./reduce":251,"./tail":276}],240:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var map = require('./map');
 var prop = require('./prop');
@@ -7826,7 +13861,7 @@ module.exports = _curry2(function pluck(p, list) {
   return map(prop(p), list);
 });
 
-},{"./internal/_curry2":106,"./map":188,"./prop":237}],234:[function(require,module,exports){
+},{"./internal/_curry2":113,"./map":195,"./prop":244}],241:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry2 = require('./internal/_curry2');
 
@@ -7852,7 +13887,7 @@ module.exports = _curry2(function prepend(el, list) {
   return _concat([el], list);
 });
 
-},{"./internal/_concat":101,"./internal/_curry2":106}],235:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_curry2":113}],242:[function(require,module,exports){
 var multiply = require('./multiply');
 var reduce = require('./reduce');
 
@@ -7874,7 +13909,7 @@ var reduce = require('./reduce');
  */
 module.exports = reduce(multiply, 1);
 
-},{"./multiply":206,"./reduce":244}],236:[function(require,module,exports){
+},{"./multiply":213,"./reduce":251}],243:[function(require,module,exports){
 var _map = require('./internal/_map');
 var identity = require('./identity');
 var pickAll = require('./pickAll');
@@ -7902,7 +13937,7 @@ var useWith = require('./useWith');
  */
 module.exports = useWith(_map, [pickAll, identity]); // passing `identity` gives correct arity
 
-},{"./identity":84,"./internal/_map":131,"./pickAll":228,"./useWith":301}],237:[function(require,module,exports){
+},{"./identity":91,"./internal/_map":138,"./pickAll":235,"./useWith":308}],244:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -7926,7 +13961,7 @@ var _curry2 = require('./internal/_curry2');
  */
 module.exports = _curry2(function prop(p, obj) { return obj[p]; });
 
-},{"./internal/_curry2":106}],238:[function(require,module,exports){
+},{"./internal/_curry2":113}],245:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var equals = require('./equals');
 
@@ -7959,7 +13994,7 @@ module.exports = _curry3(function propEq(name, val, obj) {
   return equals(val, obj[name]);
 });
 
-},{"./equals":64,"./internal/_curry3":107}],239:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry3":114}],246:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var is = require('./is');
 
@@ -7988,7 +14023,7 @@ module.exports = _curry3(function propIs(type, name, obj) {
   return is(type, obj[name]);
 });
 
-},{"./internal/_curry3":107,"./is":169}],240:[function(require,module,exports){
+},{"./internal/_curry3":114,"./is":176}],247:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var _has = require('./internal/_has');
 
@@ -8023,7 +14058,7 @@ module.exports = _curry3(function propOr(val, p, obj) {
   return (obj != null && _has(p, obj)) ? obj[p] : val;
 });
 
-},{"./internal/_curry3":107,"./internal/_has":117}],241:[function(require,module,exports){
+},{"./internal/_curry3":114,"./internal/_has":124}],248:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -8049,7 +14084,7 @@ module.exports = _curry3(function propSatisfies(pred, name, obj) {
   return pred(obj[name]);
 });
 
-},{"./internal/_curry3":107}],242:[function(require,module,exports){
+},{"./internal/_curry3":114}],249:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8086,7 +14121,7 @@ module.exports = _curry2(function props(ps, obj) {
   return out;
 });
 
-},{"./internal/_curry2":106}],243:[function(require,module,exports){
+},{"./internal/_curry2":113}],250:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _isNumber = require('./internal/_isNumber');
 
@@ -8120,7 +14155,7 @@ module.exports = _curry2(function range(from, to) {
   return result;
 });
 
-},{"./internal/_curry2":106,"./internal/_isNumber":124}],244:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_isNumber":131}],251:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var _reduce = require('./internal/_reduce');
 
@@ -8170,7 +14205,7 @@ var _reduce = require('./internal/_reduce');
  */
 module.exports = _curry3(_reduce);
 
-},{"./internal/_curry3":107,"./internal/_reduce":137}],245:[function(require,module,exports){
+},{"./internal/_curry3":114,"./internal/_reduce":144}],252:[function(require,module,exports){
 var _curryN = require('./internal/_curryN');
 var _dispatchable = require('./internal/_dispatchable');
 var _has = require('./internal/_has');
@@ -8231,7 +14266,7 @@ module.exports = _curryN(4, [], _dispatchable([], _xreduceBy,
     }, {}, list);
   }));
 
-},{"./internal/_curryN":108,"./internal/_dispatchable":109,"./internal/_has":117,"./internal/_reduce":137,"./internal/_xreduceBy":158}],246:[function(require,module,exports){
+},{"./internal/_curryN":115,"./internal/_dispatchable":116,"./internal/_has":124,"./internal/_reduce":144,"./internal/_xreduceBy":165}],253:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -8286,7 +14321,7 @@ module.exports = _curry3(function reduceRight(fn, acc, list) {
   return acc;
 });
 
-},{"./internal/_curry3":107}],247:[function(require,module,exports){
+},{"./internal/_curry3":114}],254:[function(require,module,exports){
 var _curryN = require('./internal/_curryN');
 var _reduce = require('./internal/_reduce');
 var _reduced = require('./internal/_reduced');
@@ -8327,7 +14362,7 @@ module.exports = _curryN(4, [], function _reduceWhile(pred, fn, a, list) {
   }, a, list);
 });
 
-},{"./internal/_curryN":108,"./internal/_reduce":137,"./internal/_reduced":138}],248:[function(require,module,exports){
+},{"./internal/_curryN":115,"./internal/_reduce":144,"./internal/_reduced":145}],255:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _reduced = require('./internal/_reduced');
 
@@ -8357,7 +14392,7 @@ var _reduced = require('./internal/_reduced');
 
 module.exports = _curry1(_reduced);
 
-},{"./internal/_curry1":105,"./internal/_reduced":138}],249:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_reduced":145}],256:[function(require,module,exports){
 var _complement = require('./internal/_complement');
 var _curry2 = require('./internal/_curry2');
 var filter = require('./filter');
@@ -8389,7 +14424,7 @@ module.exports = _curry2(function reject(pred, filterable) {
   return filter(_complement(pred), filterable);
 });
 
-},{"./filter":66,"./internal/_complement":100,"./internal/_curry2":106}],250:[function(require,module,exports){
+},{"./filter":73,"./internal/_complement":107,"./internal/_curry2":113}],257:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -8418,7 +14453,7 @@ module.exports = _curry3(function remove(start, count, list) {
   return result;
 });
 
-},{"./internal/_curry3":107}],251:[function(require,module,exports){
+},{"./internal/_curry3":114}],258:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var always = require('./always');
 var times = require('./times');
@@ -8450,7 +14485,7 @@ module.exports = _curry2(function repeat(value, n) {
   return times(always(value), n);
 });
 
-},{"./always":13,"./internal/_curry2":106,"./times":276}],252:[function(require,module,exports){
+},{"./always":20,"./internal/_curry2":113,"./times":283}],259:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -8478,7 +14513,7 @@ module.exports = _curry3(function replace(regex, replacement, str) {
   return str.replace(regex, replacement);
 });
 
-},{"./internal/_curry3":107}],253:[function(require,module,exports){
+},{"./internal/_curry3":114}],260:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _isString = require('./internal/_isString');
 
@@ -8512,7 +14547,7 @@ module.exports = _curry1(function reverse(list) {
                            Array.prototype.slice.call(list, 0).reverse();
 });
 
-},{"./internal/_curry1":105,"./internal/_isString":128}],254:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_isString":135}],261:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -8548,7 +14583,7 @@ module.exports = _curry3(function scan(fn, acc, list) {
   return result;
 });
 
-},{"./internal/_curry3":107}],255:[function(require,module,exports){
+},{"./internal/_curry3":114}],262:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var ap = require('./ap');
 var map = require('./map');
@@ -8588,7 +14623,7 @@ module.exports = _curry2(function sequence(of, traversable) {
                 traversable);
 });
 
-},{"./ap":17,"./internal/_curry2":106,"./map":188,"./prepend":234,"./reduceRight":246}],256:[function(require,module,exports){
+},{"./ap":24,"./internal/_curry2":113,"./map":195,"./prepend":241,"./reduceRight":253}],263:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var always = require('./always');
 var over = require('./over');
@@ -8620,7 +14655,7 @@ module.exports = _curry3(function set(lens, v, x) {
   return over(lens, always(v), x);
 });
 
-},{"./always":13,"./internal/_curry3":107,"./over":218}],257:[function(require,module,exports){
+},{"./always":20,"./internal/_curry3":114,"./over":225}],264:[function(require,module,exports){
 var _checkForMethod = require('./internal/_checkForMethod');
 var _curry3 = require('./internal/_curry3');
 
@@ -8653,7 +14688,7 @@ module.exports = _curry3(_checkForMethod('slice', function slice(fromIndex, toIn
   return Array.prototype.slice.call(list, fromIndex, toIndex);
 }));
 
-},{"./internal/_checkForMethod":97,"./internal/_curry3":107}],258:[function(require,module,exports){
+},{"./internal/_checkForMethod":104,"./internal/_curry3":114}],265:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8681,7 +14716,7 @@ module.exports = _curry2(function sort(comparator, list) {
   return Array.prototype.slice.call(list, 0).sort(comparator);
 });
 
-},{"./internal/_curry2":106}],259:[function(require,module,exports){
+},{"./internal/_curry2":113}],266:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8725,7 +14760,7 @@ module.exports = _curry2(function sortBy(fn, list) {
   });
 });
 
-},{"./internal/_curry2":106}],260:[function(require,module,exports){
+},{"./internal/_curry2":113}],267:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8773,7 +14808,7 @@ module.exports = _curry2(function sortWith(fns, list) {
   });
 });
 
-},{"./internal/_curry2":106}],261:[function(require,module,exports){
+},{"./internal/_curry2":113}],268:[function(require,module,exports){
 var invoker = require('./invoker');
 
 
@@ -8799,7 +14834,7 @@ var invoker = require('./invoker');
  */
 module.exports = invoker(1, 'split');
 
-},{"./invoker":168}],262:[function(require,module,exports){
+},{"./invoker":175}],269:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var length = require('./length');
 var slice = require('./slice');
@@ -8827,7 +14862,7 @@ module.exports = _curry2(function splitAt(index, array) {
   return [slice(0, index, array), slice(index, length(array), array)];
 });
 
-},{"./internal/_curry2":106,"./length":179,"./slice":257}],263:[function(require,module,exports){
+},{"./internal/_curry2":113,"./length":186,"./slice":264}],270:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var slice = require('./slice');
 
@@ -8861,7 +14896,7 @@ module.exports = _curry2(function splitEvery(n, list) {
   return result;
 });
 
-},{"./internal/_curry2":106,"./slice":257}],264:[function(require,module,exports){
+},{"./internal/_curry2":113,"./slice":264}],271:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8897,7 +14932,7 @@ module.exports = _curry2(function splitWhen(pred, list) {
   return [prefix, Array.prototype.slice.call(list, idx)];
 });
 
-},{"./internal/_curry2":106}],265:[function(require,module,exports){
+},{"./internal/_curry2":113}],272:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -8928,7 +14963,7 @@ module.exports = _curry2(function subtract(a, b) {
   return Number(a) - Number(b);
 });
 
-},{"./internal/_curry2":106}],266:[function(require,module,exports){
+},{"./internal/_curry2":113}],273:[function(require,module,exports){
 var add = require('./add');
 var reduce = require('./reduce');
 
@@ -8950,7 +14985,7 @@ var reduce = require('./reduce');
  */
 module.exports = reduce(add, 0);
 
-},{"./add":8,"./reduce":244}],267:[function(require,module,exports){
+},{"./add":15,"./reduce":251}],274:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var concat = require('./concat');
 var difference = require('./difference');
@@ -8978,7 +15013,7 @@ module.exports = _curry2(function symmetricDifference(list1, list2) {
   return concat(difference(list1, list2), difference(list2, list1));
 });
 
-},{"./concat":37,"./difference":49,"./internal/_curry2":106}],268:[function(require,module,exports){
+},{"./concat":44,"./difference":56,"./internal/_curry2":113}],275:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var concat = require('./concat');
 var differenceWith = require('./differenceWith');
@@ -9010,7 +15045,7 @@ module.exports = _curry3(function symmetricDifferenceWith(pred, list1, list2) {
   return concat(differenceWith(pred, list1, list2), differenceWith(pred, list2, list1));
 });
 
-},{"./concat":37,"./differenceWith":50,"./internal/_curry3":107}],269:[function(require,module,exports){
+},{"./concat":44,"./differenceWith":57,"./internal/_curry3":114}],276:[function(require,module,exports){
 var _checkForMethod = require('./internal/_checkForMethod');
 var _curry1 = require('./internal/_curry1');
 var slice = require('./slice');
@@ -9045,7 +15080,7 @@ var slice = require('./slice');
  */
 module.exports = _curry1(_checkForMethod('tail', slice(1, Infinity)));
 
-},{"./internal/_checkForMethod":97,"./internal/_curry1":105,"./slice":257}],270:[function(require,module,exports){
+},{"./internal/_checkForMethod":104,"./internal/_curry1":112,"./slice":264}],277:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xtake = require('./internal/_xtake');
@@ -9099,7 +15134,7 @@ module.exports = _curry2(_dispatchable(['take'], _xtake, function take(n, xs) {
   return slice(0, n < 0 ? Infinity : n, xs);
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xtake":159,"./slice":257}],271:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xtake":166,"./slice":264}],278:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var drop = require('./drop');
 
@@ -9130,7 +15165,7 @@ module.exports = _curry2(function takeLast(n, xs) {
   return drop(n >= 0 ? xs.length - n : 0, xs);
 });
 
-},{"./drop":54,"./internal/_curry2":106}],272:[function(require,module,exports){
+},{"./drop":61,"./internal/_curry2":113}],279:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -9164,7 +15199,7 @@ module.exports = _curry2(function takeLastWhile(fn, list) {
   return Array.prototype.slice.call(list, idx + 1);
 });
 
-},{"./internal/_curry2":106}],273:[function(require,module,exports){
+},{"./internal/_curry2":113}],280:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _dispatchable = require('./internal/_dispatchable');
 var _xtakeWhile = require('./internal/_xtakeWhile');
@@ -9205,7 +15240,7 @@ module.exports = _curry2(_dispatchable(['takeWhile'], _xtakeWhile, function take
   return Array.prototype.slice.call(list, 0, idx);
 }));
 
-},{"./internal/_curry2":106,"./internal/_dispatchable":109,"./internal/_xtakeWhile":160}],274:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_dispatchable":116,"./internal/_xtakeWhile":167}],281:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -9232,7 +15267,7 @@ module.exports = _curry2(function tap(fn, x) {
   return x;
 });
 
-},{"./internal/_curry2":106}],275:[function(require,module,exports){
+},{"./internal/_curry2":113}],282:[function(require,module,exports){
 var _cloneRegExp = require('./internal/_cloneRegExp');
 var _curry2 = require('./internal/_curry2');
 var _isRegExp = require('./internal/_isRegExp');
@@ -9263,7 +15298,7 @@ module.exports = _curry2(function test(pattern, str) {
   return _cloneRegExp(pattern).test(str);
 });
 
-},{"./internal/_cloneRegExp":99,"./internal/_curry2":106,"./internal/_isRegExp":127,"./toString":280}],276:[function(require,module,exports){
+},{"./internal/_cloneRegExp":106,"./internal/_curry2":113,"./internal/_isRegExp":134,"./toString":287}],283:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -9305,7 +15340,7 @@ module.exports = _curry2(function times(fn, n) {
   return list;
 });
 
-},{"./internal/_curry2":106}],277:[function(require,module,exports){
+},{"./internal/_curry2":113}],284:[function(require,module,exports){
 var invoker = require('./invoker');
 
 
@@ -9326,7 +15361,7 @@ var invoker = require('./invoker');
  */
 module.exports = invoker(0, 'toLowerCase');
 
-},{"./invoker":168}],278:[function(require,module,exports){
+},{"./invoker":175}],285:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _has = require('./internal/_has');
 
@@ -9359,7 +15394,7 @@ module.exports = _curry1(function toPairs(obj) {
   return pairs;
 });
 
-},{"./internal/_curry1":105,"./internal/_has":117}],279:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_has":124}],286:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -9392,7 +15427,7 @@ module.exports = _curry1(function toPairsIn(obj) {
   return pairs;
 });
 
-},{"./internal/_curry1":105}],280:[function(require,module,exports){
+},{"./internal/_curry1":112}],287:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var _toString = require('./internal/_toString');
 
@@ -9435,7 +15470,7 @@ var _toString = require('./internal/_toString');
  */
 module.exports = _curry1(function toString(val) { return _toString(val, []); });
 
-},{"./internal/_curry1":105,"./internal/_toString":141}],281:[function(require,module,exports){
+},{"./internal/_curry1":112,"./internal/_toString":148}],288:[function(require,module,exports){
 var invoker = require('./invoker');
 
 
@@ -9456,7 +15491,7 @@ var invoker = require('./invoker');
  */
 module.exports = invoker(0, 'toUpperCase');
 
-},{"./invoker":168}],282:[function(require,module,exports){
+},{"./invoker":175}],289:[function(require,module,exports){
 var _reduce = require('./internal/_reduce');
 var _xwrap = require('./internal/_xwrap');
 var curryN = require('./curryN');
@@ -9510,7 +15545,7 @@ module.exports = curryN(4, function transduce(xf, fn, acc, list) {
   return _reduce(xf(typeof fn === 'function' ? _xwrap(fn) : fn), acc, list);
 });
 
-},{"./curryN":45,"./internal/_reduce":137,"./internal/_xwrap":161}],283:[function(require,module,exports){
+},{"./curryN":52,"./internal/_reduce":144,"./internal/_xwrap":168}],290:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -9557,7 +15592,7 @@ module.exports = _curry1(function transpose(outerlist) {
   return result;
 });
 
-},{"./internal/_curry1":105}],284:[function(require,module,exports){
+},{"./internal/_curry1":112}],291:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var map = require('./map');
 var sequence = require('./sequence');
@@ -9593,7 +15628,7 @@ module.exports = _curry3(function traverse(of, f, traversable) {
   return sequence(of, map(f, traversable));
 });
 
-},{"./internal/_curry3":107,"./map":188,"./sequence":255}],285:[function(require,module,exports){
+},{"./internal/_curry3":114,"./map":195,"./sequence":262}],292:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -9631,7 +15666,7 @@ module.exports = (function() {
   }
 }());
 
-},{"./internal/_curry1":105}],286:[function(require,module,exports){
+},{"./internal/_curry1":112}],293:[function(require,module,exports){
 var _arity = require('./internal/_arity');
 var _concat = require('./internal/_concat');
 var _curry2 = require('./internal/_curry2');
@@ -9668,7 +15703,7 @@ module.exports = _curry2(function _tryCatch(tryer, catcher) {
   });
 });
 
-},{"./internal/_arity":94,"./internal/_concat":101,"./internal/_curry2":106}],287:[function(require,module,exports){
+},{"./internal/_arity":101,"./internal/_concat":108,"./internal/_curry2":113}],294:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -9701,7 +15736,7 @@ module.exports = _curry1(function type(val) {
          Object.prototype.toString.call(val).slice(8, -1);
 });
 
-},{"./internal/_curry1":105}],288:[function(require,module,exports){
+},{"./internal/_curry1":112}],295:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -9735,7 +15770,7 @@ module.exports = _curry1(function unapply(fn) {
   };
 });
 
-},{"./internal/_curry1":105}],289:[function(require,module,exports){
+},{"./internal/_curry1":112}],296:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var nAry = require('./nAry');
 
@@ -9771,7 +15806,7 @@ module.exports = _curry1(function unary(fn) {
   return nAry(1, fn);
 });
 
-},{"./internal/_curry1":105,"./nAry":207}],290:[function(require,module,exports){
+},{"./internal/_curry1":112,"./nAry":214}],297:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var curryN = require('./curryN');
 
@@ -9811,7 +15846,7 @@ module.exports = _curry2(function uncurryN(depth, fn) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry2":106}],291:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry2":113}],298:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -9850,7 +15885,7 @@ module.exports = _curry2(function unfold(fn, seed) {
   return result;
 });
 
-},{"./internal/_curry2":106}],292:[function(require,module,exports){
+},{"./internal/_curry2":113}],299:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry2 = require('./internal/_curry2');
 var compose = require('./compose');
@@ -9876,7 +15911,7 @@ var uniq = require('./uniq');
  */
 module.exports = _curry2(compose(uniq, _concat));
 
-},{"./compose":34,"./internal/_concat":101,"./internal/_curry2":106,"./uniq":294}],293:[function(require,module,exports){
+},{"./compose":41,"./internal/_concat":108,"./internal/_curry2":113,"./uniq":301}],300:[function(require,module,exports){
 var _concat = require('./internal/_concat');
 var _curry3 = require('./internal/_curry3');
 var uniqWith = require('./uniqWith');
@@ -9908,7 +15943,7 @@ module.exports = _curry3(function unionWith(pred, list1, list2) {
   return uniqWith(pred, _concat(list1, list2));
 });
 
-},{"./internal/_concat":101,"./internal/_curry3":107,"./uniqWith":296}],294:[function(require,module,exports){
+},{"./internal/_concat":108,"./internal/_curry3":114,"./uniqWith":303}],301:[function(require,module,exports){
 var identity = require('./identity');
 var uniqBy = require('./uniqBy');
 
@@ -9932,7 +15967,7 @@ var uniqBy = require('./uniqBy');
  */
 module.exports = uniqBy(identity);
 
-},{"./identity":84,"./uniqBy":295}],295:[function(require,module,exports){
+},{"./identity":91,"./uniqBy":302}],302:[function(require,module,exports){
 var _Set = require('./internal/_Set');
 var _curry2 = require('./internal/_curry2');
 
@@ -9972,7 +16007,7 @@ module.exports = _curry2(function uniqBy(fn, list) {
   return result;
 });
 
-},{"./internal/_Set":92,"./internal/_curry2":106}],296:[function(require,module,exports){
+},{"./internal/_Set":99,"./internal/_curry2":113}],303:[function(require,module,exports){
 var _containsWith = require('./internal/_containsWith');
 var _curry2 = require('./internal/_curry2');
 
@@ -10014,7 +16049,7 @@ module.exports = _curry2(function uniqWith(pred, list) {
   return result;
 });
 
-},{"./internal/_containsWith":103,"./internal/_curry2":106}],297:[function(require,module,exports){
+},{"./internal/_containsWith":110,"./internal/_curry2":113}],304:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -10047,7 +16082,7 @@ module.exports = _curry3(function unless(pred, whenFalseFn, x) {
   return pred(x) ? x : whenFalseFn(x);
 });
 
-},{"./internal/_curry3":107}],298:[function(require,module,exports){
+},{"./internal/_curry3":114}],305:[function(require,module,exports){
 var _identity = require('./internal/_identity');
 var chain = require('./chain');
 
@@ -10071,7 +16106,7 @@ var chain = require('./chain');
  */
 module.exports = chain(_identity);
 
-},{"./chain":29,"./internal/_identity":118}],299:[function(require,module,exports){
+},{"./chain":36,"./internal/_identity":125}],306:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -10102,7 +16137,7 @@ module.exports = _curry3(function until(pred, fn, init) {
   return val;
 });
 
-},{"./internal/_curry3":107}],300:[function(require,module,exports){
+},{"./internal/_curry3":114}],307:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 var adjust = require('./adjust');
 var always = require('./always');
@@ -10134,7 +16169,7 @@ module.exports = _curry3(function update(idx, x, list) {
   return adjust(always(x), idx, list);
 });
 
-},{"./adjust":10,"./always":13,"./internal/_curry3":107}],301:[function(require,module,exports){
+},{"./adjust":17,"./always":20,"./internal/_curry3":114}],308:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var curryN = require('./curryN');
 
@@ -10180,7 +16215,7 @@ module.exports = _curry2(function useWith(fn, transformers) {
   });
 });
 
-},{"./curryN":45,"./internal/_curry2":106}],302:[function(require,module,exports){
+},{"./curryN":52,"./internal/_curry2":113}],309:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 var keys = require('./keys');
 
@@ -10213,7 +16248,7 @@ module.exports = _curry1(function values(obj) {
   return vals;
 });
 
-},{"./internal/_curry1":105,"./keys":175}],303:[function(require,module,exports){
+},{"./internal/_curry1":112,"./keys":182}],310:[function(require,module,exports){
 var _curry1 = require('./internal/_curry1');
 
 
@@ -10246,7 +16281,7 @@ module.exports = _curry1(function valuesIn(obj) {
   return vs;
 });
 
-},{"./internal/_curry1":105}],304:[function(require,module,exports){
+},{"./internal/_curry1":112}],311:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -10284,7 +16319,7 @@ module.exports = (function() {
   });
 }());
 
-},{"./internal/_curry2":106}],305:[function(require,module,exports){
+},{"./internal/_curry2":113}],312:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -10320,7 +16355,7 @@ module.exports = _curry3(function when(pred, whenTrueFn, x) {
   return pred(x) ? whenTrueFn(x) : x;
 });
 
-},{"./internal/_curry3":107}],306:[function(require,module,exports){
+},{"./internal/_curry3":114}],313:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var _has = require('./internal/_has');
 
@@ -10368,7 +16403,7 @@ module.exports = _curry2(function where(spec, testObj) {
   return true;
 });
 
-},{"./internal/_curry2":106,"./internal/_has":117}],307:[function(require,module,exports){
+},{"./internal/_curry2":113,"./internal/_has":124}],314:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 var equals = require('./equals');
 var map = require('./map');
@@ -10406,7 +16441,7 @@ module.exports = _curry2(function whereEq(spec, testObj) {
   return where(map(equals, spec), testObj);
 });
 
-},{"./equals":64,"./internal/_curry2":106,"./map":188,"./where":306}],308:[function(require,module,exports){
+},{"./equals":71,"./internal/_curry2":113,"./map":195,"./where":313}],315:[function(require,module,exports){
 var _contains = require('./internal/_contains');
 var _curry2 = require('./internal/_curry2');
 var flip = require('./flip');
@@ -10436,7 +16471,7 @@ module.exports = _curry2(function(xs, list) {
   return reject(flip(_contains)(xs), list);
 });
 
-},{"./flip":72,"./internal/_contains":102,"./internal/_curry2":106,"./reject":249}],309:[function(require,module,exports){
+},{"./flip":79,"./internal/_contains":109,"./internal/_curry2":113,"./reject":256}],316:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -10475,7 +16510,7 @@ module.exports = _curry2(function xprod(a, b) { // = xprodWith(prepend); (takes 
   return result;
 });
 
-},{"./internal/_curry2":106}],310:[function(require,module,exports){
+},{"./internal/_curry2":113}],317:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -10509,7 +16544,7 @@ module.exports = _curry2(function zip(a, b) {
   return rv;
 });
 
-},{"./internal/_curry2":106}],311:[function(require,module,exports){
+},{"./internal/_curry2":113}],318:[function(require,module,exports){
 var _curry2 = require('./internal/_curry2');
 
 
@@ -10541,7 +16576,7 @@ module.exports = _curry2(function zipObj(keys, values) {
   return out;
 });
 
-},{"./internal/_curry2":106}],312:[function(require,module,exports){
+},{"./internal/_curry2":113}],319:[function(require,module,exports){
 var _curry3 = require('./internal/_curry3');
 
 
@@ -10580,7 +16615,7 @@ module.exports = _curry3(function zipWith(fn, a, b) {
   return rv;
 });
 
-},{"./internal/_curry3":107}],313:[function(require,module,exports){
+},{"./internal/_curry3":114}],320:[function(require,module,exports){
 (function (process,global){
 // Copyright (c) Microsoft, All rights reserved. See License.txt in the project root for license information.
 
@@ -22972,7 +29007,7 @@ var ReactiveTest = Rx.ReactiveTest = {
 }.call(this));
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":320}],314:[function(require,module,exports){
+},{"_process":327}],321:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -22989,55 +29024,56 @@ module.exports = function (gameState, input) {
     }
 };
 
-},{"./tap.js":319}],315:[function(require,module,exports){
+},{"./tap.js":326}],322:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
-    image = R.memoize(function (url) {
-    var imageObject = new Image();
-    imageObject.src = url;
-    return imageObject;
+    tap = require('./tap'),
+    drawImage = R.curry(function (context, images, imageObj) {
+    return context.drawImage(images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
 }),
-    drawImage = R.curry(function (context, imageObj) {
-    return context.drawImage(image(imageObj.image), imageObj.x, imageObj.y, imageObj.width, imageObj.height);
-}),
-    drawImages = function drawImages(context, imageObjs) {
-    return imageObjs.forEach(drawImage(context));
+    drawImages = function drawImages(context, images, imageObjs) {
+    return imageObjs.forEach(drawImage(context, images));
 };
 
-module.exports = function (context) {
-    return function (gameState) {
-        window.requestAnimationFrame(function () {
-            context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
-            context.drawImage(image(gameState.field.starField.image), gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
+module.exports = function (context, gameState) {
+    window.requestAnimationFrame(function () {
+        if (gameState.mode !== 'loading') {
+            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
+            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
 
-            drawImage(context, gameState.field.rocket.fire);
-            drawImage(context, gameState.field.rocket);
-            drawImages(context, gameState.field.asteroidField.asteroids);
-            drawImages(context, gameState.field.collisions);
+            drawImage(context, gameState.images, gameState.field.rocket.fire);
+            drawImage(context, gameState.images, gameState.field.rocket);
+            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids);
+            drawImages(context, gameState.images, gameState.field.collisions);
+        } else {
+            context.font = gameState.loading.text.font;
+            context.textAlign = 'center';
+            context.fillStyle = gameState.loading.text.color;
+            context.fillText(gameState.loading.text.text, gameState.loading.text.x, gameState.loading.text.y);
+        }
 
-            if (gameState.mode === 'start') {
-                drawImage(context, gameState.start.space_rocket);
-                drawImage(context, gameState.start.esc);
-                drawImage(context, gameState.start.updown);
-                drawImage(context, gameState.start.pressAnyKey);
-            } else if (gameState.mode === 'pause') {
-                drawImage(context, gameState.pause.paused);
-                drawImage(context, gameState.pause.esc);
-                drawImage(context, gameState.pause.updown);
-            } else if (gameState.mode === 'restart') {
-                if (gameState.restart.mode === 'destroyed') {
-                    drawImage(context, gameState.restart.destroyed);
-                } else if (gameState.restart.mode === 'anykey') {
-                    drawImage(context, gameState.restart.destroyed);
-                    drawImage(context, gameState.restart.pressAnyKey);
-                }
+        if (gameState.mode === 'start') {
+            drawImage(context, gameState.images, gameState.start.space_rocket);
+            drawImage(context, gameState.images, gameState.start.esc);
+            drawImage(context, gameState.images, gameState.start.updown);
+            drawImage(context, gameState.images, gameState.start.pressAnyKey);
+        } else if (gameState.mode === 'pause') {
+            drawImage(context, gameState.images, gameState.pause.paused);
+            drawImage(context, gameState.images, gameState.pause.esc);
+            drawImage(context, gameState.images, gameState.pause.updown);
+        } else if (gameState.mode === 'restart') {
+            if (gameState.restart.mode === 'destroyed') {
+                drawImage(context, gameState.images, gameState.restart.destroyed);
+            } else if (gameState.restart.mode === 'anykey') {
+                drawImage(context, gameState.images, gameState.restart.destroyed);
+                drawImage(context, gameState.images, gameState.restart.pressAnyKey);
             }
-        });
-    };
+        }
+    });
 };
 
-},{"ramda":4}],316:[function(require,module,exports){
+},{"./tap":326,"ramda":11}],323:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -23047,7 +29083,8 @@ var tap = require('./tap.js'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = function anyKeyCheck(input, gameState) {
     return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? _extends({}, startingGameState(gameState.screen.width, gameState.screen.height), {
-        mode: 'flying'
+        mode: 'flying',
+        images: _extends({}, gameState.images)
     }) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
@@ -23088,7 +29125,7 @@ module.exports = function (gameState, input) {
     return anyKeyCheck(input, restartLogic(gameState));
 };
 
-},{"./boolMatch":1,"./startingGameState.js":318,"./tap.js":319}],317:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326}],324:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -23105,47 +29142,76 @@ module.exports = function (gameState, input) {
     }
 };
 
-},{"./tap.js":319}],318:[function(require,module,exports){
+},{"./tap.js":326}],325:[function(require,module,exports){
 'use strict';
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
     return {
-        commands: [],
+        images: {},
+        commands: [{
+            type: 'load_images',
+            returnType: 'images_loaded',
+            images: _defineProperty({
+                space_rocket: '/images/space_rocket.png',
+                updown: '/images/updown.png',
+                pressAnyKey: '/images/pressAnyKey.png',
+                destroyed: '/images/destroyed.png',
+                starfield: '/images/starfield.png',
+                rocket: '/images/rocket.png',
+                rocketFire1: '/images/rocketFire1.png',
+                rocketFire2: '/images/rocketFire2.png',
+                paused: '/images/paused.png',
+                asteroid: '/images/asteroid.png',
+                collision: '/images/collision.png',
+                esc: '/images/esc.png'
+            }, 'destroyed', '/images/destroyed.png')
+        }],
         screen: {
             width: width,
             height: height
         },
-        mode: 'start',
+        mode: 'loading',
+        loading: {
+            text: {
+                x: width * 0.5,
+                y: height * 0.7,
+                font: '900 ' + width / 10 + 'px Arial',
+                color: '#f8cc00',
+                text: 'LOADING'
+            }
+        },
         start: {
             space_rocket: {
                 x: width * .2,
                 y: height * .01,
                 width: width * .6,
                 height: width * .6 * (200 / 387),
-                image: '/images/space_rocket.png'
+                image: 'space_rocket'
             },
             updown: {
                 x: width * .20,
                 y: height * .70,
                 width: width * .6,
                 height: width * .6 * (90 / 1324),
-                image: '/images/updown.png'
+                image: 'updown'
             },
             esc: {
                 x: width * .3,
                 y: height * .80,
                 width: width * .4,
                 height: width * .4 * (90 / 930),
-                image: '/images/esc.png'
+                image: 'esc'
             },
             pressAnyKey: {
                 x: width * .35,
                 y: height * .89,
                 width: width * .3,
                 height: width * .3 * (90 / 623),
-                image: '/images/pressAnyKey.png'
+                image: 'pressAnyKey'
             }
         },
         pause: {
@@ -23154,21 +29220,21 @@ module.exports = function (width, height) {
                 y: height * .05,
                 width: width * .6,
                 height: width * .6 * (90 / 290),
-                image: '/images/paused.png'
+                image: 'paused'
             },
             updown: {
                 x: width * .05,
                 y: height * .55,
                 width: width * .9,
                 height: width * .9 * (90 / 1324),
-                image: '/images/updown.png'
+                image: 'updown'
             },
             esc: {
                 x: width * .25,
                 y: height * .8,
                 width: width * .5,
                 height: width * .5 * (90 / 930),
-                image: '/images/esc.png'
+                image: 'esc'
             }
         },
         restart: {
@@ -23181,19 +29247,19 @@ module.exports = function (width, height) {
                 y: height * .5,
                 width: width * .6,
                 height: width * .6 * (90 / 623),
-                image: '/images/pressAnyKey.png'
+                image: 'pressAnyKey'
             },
             destroyed: {
                 x: 0,
                 y: height * .1,
                 width: width,
                 height: width * (160 / 786),
-                image: '/images/destroyed.png'
+                image: 'destroyed'
             }
         },
         field: {
             starField: {
-                image: '/images/starfield.png',
+                image: 'starfield',
                 x1: 0,
                 x2: width,
                 speed: width / 470
@@ -23212,15 +29278,15 @@ module.exports = function (width, height) {
                 direction: 0,
                 keyDownDown: false,
                 speed: height / 90,
-                image: '/images/rocket.png',
+                image: 'rocket',
                 fire: {
                     x: width / 40,
                     y: height / 3,
                     width: rocketWidth * .6,
                     height: rocketWidth * .8,
-                    image: '/images/rocketFire1.png',
+                    image: 'rocketFire1',
                     imageIndex: 0,
-                    images: ['/images/rocketFire1.png', '/images/rocketFire2.png'],
+                    images: ['rocketFire1', 'rocketFire2'],
                     frameHolds: 5,
                     holdCounter: 5
                 }
@@ -23230,14 +29296,28 @@ module.exports = function (width, height) {
     };
 };
 
-},{}],319:[function(require,module,exports){
-"use strict";
+},{}],326:[function(require,module,exports){
+'use strict';
 
-module.exports = function (x) {
-  console.log(x);return x;
+var R = require('ramda');
+
+var tap = function tap(x) {
+    console.log(x);return x;
 };
 
-},{}],320:[function(require,module,exports){
+tap.filter = R.curry(function (f, x) {
+    if (f(x)) console.log(x);return x;
+});
+tap.lens = R.curry(function (l, x) {
+    console.log(l(x));return x;
+});
+tap.lensFilter = R.curry(function (l, f, x) {
+    if (f(x)) console.log(l(x));return x;
+});
+
+module.exports = tap;
+
+},{"ramda":11}],327:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -23330,4 +29410,4 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}]},{},[3]);
+},{}]},{},[6]);

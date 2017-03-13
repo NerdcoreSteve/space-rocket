@@ -6,7 +6,10 @@ const
         boolMatch(/^(.*?keydown|anykey)$/, input.type)
             ? {
                 ...startingGameState(gameState.screen.width, gameState.screen.height),
-                mode: 'flying'
+                mode: 'flying',
+                images: {
+                    ...gameState.images,
+                }
             }
             : gameState,
     restartLogic = (gameState) => {

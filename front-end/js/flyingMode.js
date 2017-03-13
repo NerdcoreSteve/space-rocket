@@ -1,6 +1,6 @@
 const
     R = require('ramda'),
-    tap = require('./tap.js'),
+    tap = require('./tap'),
     flying = (gameState, input) => checkCollisions(flyingLogic(gameState, input)),
     starFieldDy = gameState =>
         (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
@@ -26,7 +26,7 @@ const
             y: y,
             width: width,
             height: width * (136/168),
-            image: '/images/collision.png',
+            image: 'collision',
         }
     },
     rectsMidpoint = (rect1, rect2) => ({
@@ -79,7 +79,7 @@ const
             width: asteroidWidth,
             height: asteroidHeight,
             speed: speed,
-            image: '/images/asteroid.png'
+            image: 'asteroid'
         }
     },
     flyingLogic = (gameState, input) => {
