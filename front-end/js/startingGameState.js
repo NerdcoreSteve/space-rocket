@@ -20,6 +20,8 @@ module.exports = (width, height) => {
                     paused: '/images/paused.png',
                     asteroid: '/images/asteroid.png',
                     collision: '/images/collision.png',
+                    esc: '/images/esc.png',
+                    destroyed: '/images/destroyed.png',
                 }
             }
         ],

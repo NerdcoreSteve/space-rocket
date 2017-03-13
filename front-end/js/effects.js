@@ -1,7 +1,6 @@
 const
     R = require('ramda'),
     Task = require('data.task'),
-    Immutable = require('immutable'),
     {Map} = require('immutable-ext'),
     game = require('./game'),
     random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,

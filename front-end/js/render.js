@@ -1,5 +1,6 @@
 const
     R = require('ramda'),
+    tap = require('./tap'),
     drawImage = R.curry((context, images, imageObj) =>
         context.drawImage(
             images[imageObj.image],

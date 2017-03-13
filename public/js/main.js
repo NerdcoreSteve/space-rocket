@@ -11,7 +11,6 @@ module.exports = R.curry(function (regex, string) {
 
 var R = require('ramda'),
     Task = require('data.task'),
-    Immutable = require('immutable'),
     _require = require('immutable-ext'),
     Map = _require.Map,
     game = require('./game'),
@@ -55,7 +54,7 @@ module.exports = function (gameStore) {
     gameStore.reduce(R.assoc('commands', []));
 };
 
-},{"./game":4,"data.task":7,"immutable":10,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
+},{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -29029,6 +29028,7 @@ module.exports = function (gameState, input) {
 'use strict';
 
 var R = require('ramda'),
+    tap = require('./tap'),
     drawImage = R.curry(function (context, images, imageObj) {
     return context.drawImage(images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
 }),
@@ -29073,7 +29073,7 @@ module.exports = function (context, gameState) {
     });
 };
 
-},{"ramda":11}],323:[function(require,module,exports){
+},{"./tap":326,"ramda":11}],323:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -29083,7 +29083,8 @@ var tap = require('./tap.js'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = function anyKeyCheck(input, gameState) {
     return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? _extends({}, startingGameState(gameState.screen.width, gameState.screen.height), {
-        mode: 'flying'
+        mode: 'flying',
+        images: _extends({}, gameState.images)
     }) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
@@ -29144,6 +29145,8 @@ module.exports = function (gameState, input) {
 },{"./tap.js":326}],325:[function(require,module,exports){
 'use strict';
 
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
 module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
@@ -29152,7 +29155,7 @@ module.exports = function (width, height) {
         commands: [{
             type: 'load_images',
             returnType: 'images_loaded',
-            images: {
+            images: _defineProperty({
                 space_rocket: '/images/space_rocket.png',
                 updown: '/images/updown.png',
                 pressAnyKey: '/images/pressAnyKey.png',
@@ -29163,8 +29166,9 @@ module.exports = function (width, height) {
                 rocketFire2: '/images/rocketFire2.png',
                 paused: '/images/paused.png',
                 asteroid: '/images/asteroid.png',
-                collision: '/images/collision.png'
-            }
+                collision: '/images/collision.png',
+                esc: '/images/esc.png'
+            }, 'destroyed', '/images/destroyed.png')
         }],
         screen: {
             width: width,
