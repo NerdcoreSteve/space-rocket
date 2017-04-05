@@ -3,58 +3,61 @@ const
     tap = require('./tap'),
     drawImage = R.curry((context, images, imageObj) =>
         context.drawImage(
-            images[imageObj.image],
-            imageObj.x,
-            imageObj.y,
-            imageObj.width,
-            imageObj.height)),
+            images.get(tap(imageObj.get('image'))),
+            imageObj.get('x'),
+            imageObj.get('y'),
+            imageObj.get('width'),
+            imageObj.get('height'))),
     drawImages = (context, images, imageObjs) => imageObjs.forEach(drawImage(context, images))
 
 module.exports = (context, gameState) => {
     window.requestAnimationFrame(() => {
-        if(gameState.mode !== 'loading') {
+        if(gameState.get('mode') !== 'loading') {
             context.drawImage(
-                gameState.images[gameState.field.starField.image],
-                gameState.field.starField.x1,
+                gameState.getIn(['images', gameState.getIn(['field', 'starField', 'image'])]),
+                gameState.getIn(['field', 'starField', 'x1']),
                 0,
                 context.canvas.width,
                 context.canvas.height)
             context.drawImage(
-                gameState.images[gameState.field.starField.image],
-                gameState.field.starField.x2,
+                gameState.getIn(['images', gameState.getIn(['field', 'starField', 'image'])]),
+                gameState.getIn(['field', 'starField', 'x2']),
                 0,
                 context.canvas.width,
                 context.canvas.height)
 
-            drawImage(context, gameState.images, gameState.field.rocket.fire)
-            drawImage(context, gameState.images, gameState.field.rocket)
-            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids)
-            drawImages(context, gameState.images, gameState.field.collisions)
+            drawImage(context, gameState.get('images'), gameState.getIn(['field', 'rocket', 'fire']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['field', 'rocket']))
+            drawImages(
+                context,
+                gameState.get('images'),
+                gameState.getIn(['field', 'asteroidField', 'asteroids']))
+            drawImages(context, gameState.get('images'), gameState.getIn(['field', 'collisions']))
         } else {
-            context.font = gameState.loading.text.font
+            context.font = gameState.getIn(['loading', 'text', 'font'])
             context.textAlign = 'center'
-            context.fillStyle = gameState.loading.text.color
+            context.fillStyle = gameState.getIn(['loading', 'text', 'color'])
             context.fillText(
-                gameState.loading.text.text,
-                gameState.loading.text.x,
-                gameState.loading.text.y)
+                gameState.getIn(['loading', 'text', 'text']),
+                gameState.getIn(['loading', 'text', 'x']),
+                gameState.getIn(['loading', 'text', 'y']))
         }
 
         if(gameState.mode === 'start') {
-            drawImage(context, gameState.images, gameState.start.space_rocket)
-            drawImage(context, gameState.images, gameState.start.esc)
-            drawImage(context, gameState.images, gameState.start.updown)
-            drawImage(context, gameState.images, gameState.start.pressAnyKey)
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'space_rocket']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'esc']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'updown']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'pressAnyKey']))
         } else if(gameState.mode === 'pause') {
-            drawImage(context, gameState.images, gameState.pause.paused)
-            drawImage(context, gameState.images, gameState.pause.esc)
-            drawImage(context, gameState.images, gameState.pause.updown)
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'paused']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'esc']))
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'updown']))
         } else if(gameState.mode === 'restart') {
             if(gameState.restart.mode === 'destroyed') {
-                drawImage(context, gameState.images, gameState.restart.destroyed)
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'destroyed']))
             } else if(gameState.restart.mode === 'anykey') {
-                drawImage(context, gameState.images, gameState.restart.destroyed)
-                drawImage(context, gameState.images, gameState.restart.pressAnyKey)
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'destroyed']))
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'pressAnyKey']))
             }
         }
     })

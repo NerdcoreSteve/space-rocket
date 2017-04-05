@@ -14,6 +14,7 @@ var R = require('ramda'),
     _require = require('immutable-ext'),
     Map = _require.Map,
     game = require('./game'),
+    tap = require('./tap'),
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 },
@@ -30,8 +31,8 @@ var R = require('ramda'),
 
 
 module.exports = function (gameStore) {
-    gameStore.state().commands.forEach(function (command) {
-        switch (command.type) {
+    gameStore.state().get('commands').forEach(function (command) {
+        switch (command.get('type')) {
             case 'random_numbers':
                 return gameStore.reduce(game, {
                     type: command.returnType,
@@ -40,12 +41,13 @@ module.exports = function (gameStore) {
                     }), R.fromPairs)(command)
                 });
             case 'load_images':
-                return Map(command.images).traverse(Task.of, image).fork(function (error) {
+                console.log(command);
+                return command.get('images').traverse(Task.of, image).fork(function (error) {
                     return undefined;
                 }, //TODO what should I do with an error?
                 function (images) {
                     return gameStore.reduce(game, {
-                        type: command.returnType,
+                        type: command.get('returnType'),
                         images: images.toJS()
                     });
                 });
@@ -54,7 +56,7 @@ module.exports = function (gameStore) {
     gameStore.reduce(R.assoc('commands', []));
 };
 
-},{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
+},{"./game":4,"./tap":326,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -218,6 +220,7 @@ module.exports = flying;
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
+    tap = require('./tap'),
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -229,7 +232,7 @@ var R = require('ramda'),
     });
 }),
     gameModes = function gameModes(gameState, input) {
-    switch (gameState.mode) {
+    switch (gameState.get('mode')) {
         case 'loading':
             return loadingMode(gameState, input);
         case 'start':
@@ -248,7 +251,7 @@ module.exports = function (gameState, input) {
     return R.pipe(gameModes, includeInput(input))(gameState, input);
 };
 
-},{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"ramda":11}],5:[function(require,module,exports){
+},{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"./tap":326,"ramda":11}],5:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -29030,7 +29033,7 @@ module.exports = function (gameState, input) {
 var R = require('ramda'),
     tap = require('./tap'),
     drawImage = R.curry(function (context, images, imageObj) {
-    return context.drawImage(images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
+    return context.drawImage(images.get(tap.once(imageObj.get('image'))), imageObj.get('x'), imageObj.get('y'), imageObj.get('width'), imageObj.get('height'));
 }),
     drawImages = function drawImages(context, images, imageObjs) {
     return imageObjs.forEach(drawImage(context, images));
@@ -29038,36 +29041,36 @@ var R = require('ramda'),
 
 module.exports = function (context, gameState) {
     window.requestAnimationFrame(function () {
-        if (gameState.mode !== 'loading') {
-            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
-            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
+        if (gameState.get('mode') !== 'loading') {
+            context.drawImage(gameState.getIn(['images', gameState.getIn(['field', 'starField', 'image'])]), gameState.getIn(['field', 'starField', 'x1']), 0, context.canvas.width, context.canvas.height);
+            context.drawImage(gameState.getIn(['images', gameState.getIn(['field', 'starField', 'image'])]), gameState.getIn(['field', 'starField', 'x2']), 0, context.canvas.width, context.canvas.height);
 
-            drawImage(context, gameState.images, gameState.field.rocket.fire);
-            drawImage(context, gameState.images, gameState.field.rocket);
-            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids);
-            drawImages(context, gameState.images, gameState.field.collisions);
+            drawImage(context, gameState.get('images'), gameState.getIn(['field', 'rocket', 'fire']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['field', 'rocket']));
+            drawImages(context, gameState.get('images'), gameState.getIn(['field', 'asteroidField', 'asteroids']));
+            drawImages(context, gameState.get('images'), gameState.getIn(['field', 'collisions']));
         } else {
-            context.font = gameState.loading.text.font;
+            context.font = gameState.getIn(['loading', 'text', 'font']);
             context.textAlign = 'center';
-            context.fillStyle = gameState.loading.text.color;
-            context.fillText(gameState.loading.text.text, gameState.loading.text.x, gameState.loading.text.y);
+            context.fillStyle = gameState.getIn(['loading', 'text', 'color']);
+            context.fillText(gameState.getIn(['loading', 'text', 'text']), gameState.getIn(['loading', 'text', 'x']), gameState.getIn(['loading', 'text', 'y']));
         }
 
         if (gameState.mode === 'start') {
-            drawImage(context, gameState.images, gameState.start.space_rocket);
-            drawImage(context, gameState.images, gameState.start.esc);
-            drawImage(context, gameState.images, gameState.start.updown);
-            drawImage(context, gameState.images, gameState.start.pressAnyKey);
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'space_rocket']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'esc']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'updown']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['start', 'pressAnyKey']));
         } else if (gameState.mode === 'pause') {
-            drawImage(context, gameState.images, gameState.pause.paused);
-            drawImage(context, gameState.images, gameState.pause.esc);
-            drawImage(context, gameState.images, gameState.pause.updown);
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'paused']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'esc']));
+            drawImage(context, gameState.get('images'), gameState.getIn(['pause', 'updown']));
         } else if (gameState.mode === 'restart') {
             if (gameState.restart.mode === 'destroyed') {
-                drawImage(context, gameState.images, gameState.restart.destroyed);
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'destroyed']));
             } else if (gameState.restart.mode === 'anykey') {
-                drawImage(context, gameState.images, gameState.restart.destroyed);
-                drawImage(context, gameState.images, gameState.restart.pressAnyKey);
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'destroyed']));
+                drawImage(context, gameState.get('images'), gameState.getIn(['restart', 'pressAnyKey']));
             }
         }
     });
@@ -29147,10 +29150,13 @@ module.exports = function (gameState, input) {
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
+var _require = require('immutable-ext'),
+    fromJS = _require.fromJS;
+
 module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
-    return {
+    return fromJS({
         images: {},
         commands: [{
             type: 'load_images',
@@ -29293,10 +29299,10 @@ module.exports = function (width, height) {
             },
             collisions: []
         }
-    };
+    });
 };
 
-},{}],326:[function(require,module,exports){
+},{"immutable-ext":9}],326:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda');
@@ -29314,6 +29320,16 @@ tap.lens = R.curry(function (l, x) {
 tap.lensFilter = R.curry(function (l, f, x) {
     if (f(x)) console.log(l(x));return x;
 });
+tap.once = function () {
+    var counter = 0;
+    return function (x) {
+        if (counter === 0) {
+            console.log(x);
+            counter++;
+        }
+        return x;
+    };
+}();
 
 module.exports = tap;
 

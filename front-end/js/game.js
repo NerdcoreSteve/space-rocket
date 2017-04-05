@@ -1,5 +1,6 @@
 const
     R = require('ramda'),
+    tap = require('./tap'),
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -10,7 +11,7 @@ const
         input
     })),
     gameModes = (gameState, input) => {
-        switch(gameState.mode) {
+        switch(gameState.get('mode')) {
             case 'loading':
                 return loadingMode(gameState, input)
             case 'start':
