@@ -12,7 +12,8 @@ module.exports = R.curry(function (regex, string) {
 var R = require('ramda'),
     Task = require('data.task'),
     _require = require('immutable-ext'),
-    Map = _require.Map,
+    List = _require.List,
+    fromJS = _require.fromJS,
     game = require('./game'),
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -30,28 +31,30 @@ var R = require('ramda'),
 
 
 module.exports = function (gameStore) {
-    gameStore.state().commands.forEach(function (command) {
-        switch (command.type) {
+    fromJS(gameStore.state()).get('commands').forEach(function (command) {
+        switch (command.get('type')) {
             case 'random_numbers':
                 return gameStore.reduce(game, {
-                    type: command.returnType,
-                    numbers: R.pipe(R.prop('numbers'), R.toPairs, R.map(function (pair) {
-                        return [pair[0], random(pair[1][0], pair[1][1])];
-                    }), R.fromPairs)(command)
+                    type: command.get('returnType'),
+                    numbers: command.get('numbers').map(function (range) {
+                        return random(range.get(0), range.get(1));
+                    }).toJS()
                 });
             case 'load_images':
-                return Map(command.images).traverse(Task.of, image).fork(function (error) {
+                return command.get('images').traverse(Task.of, image).fork(function (error) {
                     return undefined;
                 }, //TODO what should I do with an error?
                 function (images) {
                     return gameStore.reduce(game, {
-                        type: command.returnType,
+                        type: command.get('returnType'),
                         images: images.toJS()
                     });
                 });
         }
     });
-    gameStore.reduce(R.assoc('commands', []));
+    gameStore.reduce(function (gameState) {
+        return fromJS(gameState).set('commands', List()).toJS();
+    });
 };
 
 },{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
