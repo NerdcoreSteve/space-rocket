@@ -47,7 +47,7 @@ module.exports = function (gameStore) {
                 function (images) {
                     return gameStore.reduce(game, {
                         type: command.get('returnType'),
-                        images: images.toJS()
+                        images: images
                     });
                 });
         }
@@ -221,6 +221,8 @@ module.exports = flying;
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
+    _require = require('immutable-ext'),
+    fromJS = _require.fromJS,
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -234,7 +236,7 @@ var R = require('ramda'),
     gameModes = function gameModes(gameState, input) {
     switch (gameState.mode) {
         case 'loading':
-            return loadingMode(gameState, input);
+            return loadingMode(fromJS(gameState), input).toJS();
         case 'start':
             return startMode(gameState, input);
         case 'pause':
@@ -247,29 +249,29 @@ var R = require('ramda'),
             return gameState;
     }
 };
+
 module.exports = function (gameState, input) {
     return R.pipe(gameModes, includeInput(input))(gameState, input);
 };
 
-},{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"ramda":11}],5:[function(require,module,exports){
+},{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"immutable-ext":9,"ramda":11}],5:[function(require,module,exports){
 'use strict';
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+var tap = require('./tap'),
+    _require = require('immutable-ext'),
+    Map = _require.Map;
 
-var tap = require('./tap');
+
 module.exports = function (gameState, input) {
     switch (input.type) {
         case 'images_loaded':
-            return _extends({}, gameState, {
-                mode: 'start',
-                images: _extends({}, gameState.images, input.images)
-            });
+            return gameState.set('mode', 'start').set('images', gameState.get('images').merge(input.images));
         default:
             return gameState;
     }
 };
 
-},{"./tap":326}],6:[function(require,module,exports){
+},{"./tap":326,"immutable-ext":9}],6:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),

@@ -35,7 +35,7 @@ module.exports =  gameStore => {
                             game,
                             {
                                 type: command.get('returnType'),
-                                images: images.toJS(),
+                                images: images,
                             }))
         }
     })

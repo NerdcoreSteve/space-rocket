@@ -1,5 +1,6 @@
 const
     R = require('ramda'),
+    {fromJS} = require('immutable-ext'),
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -12,7 +13,7 @@ const
     gameModes = (gameState, input) => {
         switch(gameState.mode) {
             case 'loading':
-                return loadingMode(gameState, input)
+                return loadingMode(fromJS(gameState), input).toJS()
             case 'start':
                 return startMode(gameState, input)
             case 'pause':
