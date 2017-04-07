@@ -257,10 +257,7 @@ module.exports = function (gameState, input) {
 },{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"immutable-ext":9,"ramda":11}],5:[function(require,module,exports){
 'use strict';
 
-var tap = require('./tap'),
-    _require = require('immutable-ext'),
-    Map = _require.Map;
-
+var tap = require('./tap');
 
 module.exports = function (gameState, input) {
     switch (input.type) {
@@ -271,7 +268,7 @@ module.exports = function (gameState, input) {
     }
 };
 
-},{"./tap":326,"immutable-ext":9}],6:[function(require,module,exports){
+},{"./tap":326}],6:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
