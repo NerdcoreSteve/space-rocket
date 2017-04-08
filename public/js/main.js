@@ -29073,8 +29073,6 @@ module.exports = function (context, gameState) {
 },{"./tap":326,"ramda":11}],323:[function(require,module,exports){
 'use strict';
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
 var tap = require('./tap.js'),
     _require = require('immutable-ext'),
     fromJS = _require.fromJS,
@@ -29088,28 +29086,13 @@ var tap = require('./tap.js'),
         case 'begin':
             return gameState.setIn(['restart', 'holdCounter'], gameState.getIn(['restart', 'crashedHold'])).setIn(['restart', 'mode'], 'crashed');
         case 'crashed':
-            gameState = gameState.toJS();
-            return gameState.restart.holdCounter !== 0 ? fromJS(_extends({}, gameState, {
-                restart: _extends({}, gameState.restart, {
-                    holdCounter: gameState.restart.holdCounter - 1
-                })
-            })) : fromJS(_extends({}, gameState, {
-                restart: _extends({}, gameState.restart, {
-                    mode: 'destroyed',
-                    holdCounter: gameState.restart.destroyedHold
-                })
-            }));
+            return gameState.getIn(['restart', 'holdCounter']) !== 0 ? gameState.updateIn(['restart', 'holdCounter'], function (x) {
+                return x - 1;
+            }) : gameState.setIn(['restart', 'mode'], 'destroyed').setIn(['restart', 'holdCounter'], gameState.getIn(['restart', 'destroyedHold']));
         case 'destroyed':
-            gameState = gameState.toJS();
-            return gameState.restart.holdCounter !== 0 ? fromJS(_extends({}, gameState, {
-                restart: _extends({}, gameState.restart, {
-                    holdCounter: gameState.restart.holdCounter - 1
-                })
-            })) : fromJS(_extends({}, gameState, {
-                restart: _extends({}, gameState.restart, {
-                    mode: 'anykey'
-                })
-            }));
+            return gameState.getIn(['restart', 'holdCounter']) !== 0 ? gameState.updateIn(['restart', 'holdCounter'], function (x) {
+                return x - 1;
+            }) : gameState.setIn(['restart', 'mode'], 'anykey');
         default:
             return gameState;
     }

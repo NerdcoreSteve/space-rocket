@@ -21,40 +21,17 @@ const
                         gameState.getIn(['restart', 'crashedHold']))
                     .setIn(['restart', 'mode'], 'crashed')
             case 'crashed':
-                gameState = gameState.toJS()
-                return gameState.restart.holdCounter !== 0
-                    ? fromJS({
-                        ...gameState,
-                        restart: {
-                            ...gameState.restart,
-                            holdCounter: gameState.restart.holdCounter - 1
-                        }
-                    })
-                    : fromJS({
-                        ...gameState,
-                        restart: {
-                            ...gameState.restart,
-                            mode: 'destroyed',
-                            holdCounter: gameState.restart.destroyedHold
-                        }
-                    })
+                return gameState.getIn(['restart', 'holdCounter']) !== 0
+                    ? gameState.updateIn(['restart', 'holdCounter'], x => x - 1)
+                    : gameState
+                        .setIn(['restart', 'mode'], 'destroyed')
+                        .setIn(
+                            ['restart', 'holdCounter'],
+                            gameState.getIn(['restart', 'destroyedHold']))
             case 'destroyed':
-                gameState = gameState.toJS()
-                return gameState.restart.holdCounter !== 0
-                    ? fromJS({
-                        ...gameState,
-                        restart: {
-                            ...gameState.restart,
-                            holdCounter: gameState.restart.holdCounter - 1
-                        }
-                    })
-                    : fromJS({
-                        ...gameState,
-                        restart: {
-                            ...gameState.restart,
-                            mode: 'anykey'
-                        }
-                    })
+                return gameState.getIn(['restart', 'holdCounter']) !== 0
+                    ? gameState.updateIn(['restart', 'holdCounter'], x => x - 1)
+                    : gameState.setIn(['restart', 'mode'], 'anykey')
             default:
                 return gameState
         }
