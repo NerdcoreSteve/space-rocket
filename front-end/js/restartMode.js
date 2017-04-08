@@ -13,17 +13,13 @@ const
                         .set('images', gameState.get('images'))
             : gameState,
     restartLogic = (gameState) => {
-        switch(gameState.restart.mode) {
+        switch(gameState.getIn(['restart', 'mode'])) {
             case 'begin':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    restart: {
-                        ...gameState.restart,
-                        holdCounter: gameState.restart.crashedHold,
-                        mode: 'crashed'
-                    }
-                })
+                return gameState
+                    .setIn(
+                        ['restart', 'holdCounter'],
+                        gameState.getIn(['restart', 'crashedHold']))
+                    .setIn(['restart', 'mode'], 'crashed')
             case 'crashed':
                 gameState = gameState.toJS()
                 return gameState.restart.holdCounter !== 0

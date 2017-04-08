@@ -29084,15 +29084,9 @@ var tap = require('./tap.js'),
     return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? fromJS(startingGameState(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']))).set('mode', 'flying').set('images', gameState.get('images')) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
-    switch (gameState.restart.mode) {
+    switch (gameState.getIn(['restart', 'mode'])) {
         case 'begin':
-            gameState = gameState.toJS();
-            return fromJS(_extends({}, gameState, {
-                restart: _extends({}, gameState.restart, {
-                    holdCounter: gameState.restart.crashedHold,
-                    mode: 'crashed'
-                })
-            }));
+            return gameState.setIn(['restart', 'holdCounter'], gameState.getIn(['restart', 'crashedHold'])).setIn(['restart', 'mode'], 'crashed');
         case 'crashed':
             gameState = gameState.toJS();
             return gameState.restart.holdCounter !== 0 ? fromJS(_extends({}, gameState, {
