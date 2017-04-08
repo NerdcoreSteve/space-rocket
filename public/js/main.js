@@ -244,7 +244,7 @@ var R = require('ramda'),
         case 'flying':
             return flyingMode(gameState, input);
         case 'restart':
-            return restartMode(gameState, input);
+            return restartMode(fromJS(gameState), input).toJS();
         default:
             return gameState;
     }
@@ -29076,53 +29076,56 @@ module.exports = function (context, gameState) {
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var tap = require('./tap.js'),
+    _require = require('immutable-ext'),
+    fromJS = _require.fromJS,
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = function anyKeyCheck(input, gameState) {
-    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? _extends({}, startingGameState(gameState.screen.width, gameState.screen.height), {
-        mode: 'flying',
-        images: _extends({}, gameState.images)
-    }) : gameState;
+    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? fromJS(startingGameState(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']))).set('mode', 'flying').set('images', gameState.get('images')) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
     switch (gameState.restart.mode) {
         case 'begin':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
                     holdCounter: gameState.restart.crashedHold,
                     mode: 'crashed'
                 })
-            });
+            }));
         case 'crashed':
-            return gameState.restart.holdCounter !== 0 ? _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return gameState.restart.holdCounter !== 0 ? fromJS(_extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
                     holdCounter: gameState.restart.holdCounter - 1
                 })
-            }) : _extends({}, gameState, {
+            })) : fromJS(_extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
                     mode: 'destroyed',
                     holdCounter: gameState.restart.destroyedHold
                 })
-            });
+            }));
         case 'destroyed':
-            return gameState.restart.holdCounter !== 0 ? _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return gameState.restart.holdCounter !== 0 ? fromJS(_extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
                     holdCounter: gameState.restart.holdCounter - 1
                 })
-            }) : _extends({}, gameState, {
+            })) : fromJS(_extends({}, gameState, {
                 restart: _extends({}, gameState.restart, {
                     mode: 'anykey'
                 })
-            });
+            }));
         default:
             return gameState;
     }
 };
+
 module.exports = function (gameState, input) {
     return anyKeyCheck(input, restartLogic(gameState));
 };
 
-},{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326}],324:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326,"immutable-ext":9}],324:[function(require,module,exports){
 'use strict';
 
 module.exports = function (gameState, input) {

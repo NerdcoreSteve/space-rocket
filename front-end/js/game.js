@@ -21,7 +21,7 @@ const
             case 'flying':
                 return flyingMode(gameState, input)
             case 'restart':
-                return restartMode(gameState, input)
+                return restartMode(fromJS(gameState), input).toJS()
             default:
                 return gameState
         }
