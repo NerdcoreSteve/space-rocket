@@ -15,9 +15,9 @@ const
             case 'loading':
                 return loadingMode(fromJS(gameState), input).toJS()
             case 'start':
-                return startMode(gameState, input)
+                return startMode(fromJS(gameState), input).toJS()
             case 'pause':
-                return pauseMode(gameState, input)
+                return pauseMode(fromJS(gameState), input).toJS()
             case 'flying':
                 return flyingMode(gameState, input)
             case 'restart':

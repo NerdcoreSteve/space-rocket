@@ -238,9 +238,9 @@ var R = require('ramda'),
         case 'loading':
             return loadingMode(fromJS(gameState), input).toJS();
         case 'start':
-            return startMode(gameState, input);
+            return startMode(fromJS(gameState), input).toJS();
         case 'pause':
-            return pauseMode(gameState, input);
+            return pauseMode(fromJS(gameState), input).toJS();
         case 'flying':
             return flyingMode(gameState, input);
         case 'restart':
@@ -29012,21 +29012,16 @@ var ReactiveTest = Rx.ReactiveTest = {
 },{"_process":327}],321:[function(require,module,exports){
 'use strict';
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var tap = require('./tap.js');
 module.exports = function (gameState, input) {
     switch (input.type) {
         case 'Escape':
-            return _extends({}, gameState, {
-                mode: 'flying'
-            });
+            return gameState.set('mode', 'flying');
         default:
             return gameState;
     }
 };
 
-},{"./tap.js":326}],322:[function(require,module,exports){
+},{}],322:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda'),
@@ -29130,21 +29125,16 @@ module.exports = function (gameState, input) {
 },{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326}],324:[function(require,module,exports){
 'use strict';
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var tap = require('./tap.js');
 module.exports = function (gameState, input) {
     switch (input.type) {
         case 'anykey':
-            return _extends({}, gameState, {
-                mode: 'flying'
-            });
+            return gameState.set('mode', 'flying');
         default:
             return gameState;
     }
 };
 
-},{"./tap.js":326}],325:[function(require,module,exports){
+},{}],325:[function(require,module,exports){
 'use strict';
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }

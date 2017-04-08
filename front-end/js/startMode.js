@@ -1,12 +1,7 @@
-const
-    tap = require('./tap.js')
 module.exports = (gameState, input) => {
     switch(input.type) {
         case 'anykey':
-            return {
-                ...gameState,
-                mode: 'flying'
-            }
+            return gameState.set('mode', 'flying')
         default:
             return gameState
     }
