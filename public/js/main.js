@@ -228,40 +228,34 @@ module.exports = flying;
 },{"./tap":326,"immutable-ext":9,"ramda":11}],4:[function(require,module,exports){
 'use strict';
 
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
 var R = require('ramda'),
     _require = require('immutable-ext'),
+    Map = _require.Map,
     fromJS = _require.fromJS,
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
     flyingMode = require('./flyingMode'),
     restartMode = require('./restartMode'),
-    includeInput = R.curry(function (input, gameState) {
-    return _extends({}, gameState, {
-        input: input
-    });
-}),
     gameModes = function gameModes(gameState, input) {
-    switch (gameState.mode) {
+    switch (gameState.get('mode')) {
         case 'loading':
-            return loadingMode(fromJS(gameState), input).toJS();
+            return loadingMode(gameState, input);
         case 'start':
-            return startMode(fromJS(gameState), input).toJS();
+            return startMode(gameState, input);
         case 'pause':
-            return pauseMode(fromJS(gameState), input).toJS();
+            return pauseMode(gameState, input);
         case 'flying':
-            return flyingMode(fromJS(gameState), input).toJS();
+            return flyingMode(gameState, input);
         case 'restart':
-            return restartMode(fromJS(gameState), input).toJS();
+            return restartMode(gameState, input);
         default:
             return gameState;
     }
 };
 
 module.exports = function (gameState, input) {
-    return R.pipe(gameModes, includeInput(input))(gameState, input);
+    return gameModes(fromJS(gameState), input).merge(Map(input)).toJS();
 };
 
 },{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"immutable-ext":9,"ramda":11}],5:[function(require,module,exports){

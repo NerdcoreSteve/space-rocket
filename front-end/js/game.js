@@ -1,30 +1,26 @@
 const
     R = require('ramda'),
-    {fromJS} = require('immutable-ext'),
+    {Map, fromJS} = require('immutable-ext'),
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
     flyingMode = require('./flyingMode'),
     restartMode = require('./restartMode'),
-    includeInput = R.curry((input, gameState) => ({
-        ...gameState,
-        input
-    })),
     gameModes = (gameState, input) => {
-        switch(gameState.mode) {
+        switch(gameState.get('mode')) {
             case 'loading':
-                return loadingMode(fromJS(gameState), input).toJS()
+                return loadingMode(gameState, input)
             case 'start':
-                return startMode(fromJS(gameState), input).toJS()
+                return startMode(gameState, input)
             case 'pause':
-                return pauseMode(fromJS(gameState), input).toJS()
+                return pauseMode(gameState, input)
             case 'flying':
-                return flyingMode(fromJS(gameState), input).toJS()
+                return flyingMode(gameState, input)
             case 'restart':
-                return restartMode(fromJS(gameState), input).toJS()
+                return restartMode(gameState, input)
             default:
                 return gameState
         }
     }
 module.exports = 
-    (gameState, input) => R.pipe(gameModes, includeInput(input))(gameState, input)
+    (gameState, input) => gameModes(fromJS(gameState), input).merge(Map(input)).toJS()
