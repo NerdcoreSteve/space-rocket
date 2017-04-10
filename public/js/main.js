@@ -65,6 +65,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var R = require('ramda'),
     tap = require('./tap'),
     _require = require('immutable-ext'),
+    Map = _require.Map,
     fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
     return fromJS(checkCollisions(flyingLogic(gameState, input).toJS()));
@@ -121,14 +122,14 @@ var R = require('ramda'),
     asteroid = function asteroid(width, height, rand, speed) {
     var asteroidWidth = width / 20,
         asteroidHeight = asteroidWidth * (87 / 95);
-    return {
+    return Map({
         x: width * 1.5,
         y: (height - asteroidHeight / 2) * (rand / 100.0),
         width: asteroidWidth,
         height: asteroidHeight,
         speed: speed,
         image: 'asteroid'
-    };
+    });
 },
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
@@ -186,8 +187,9 @@ var R = require('ramda'),
                 })
             }));
         case 'new_asteroid':
-            gameState = gameState.toJS();
-            return fromJS(R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height, input.numbers.y, gameState.screen.width / (input.numbers.speed * 1.0))), gameState));
+            return gameState.updateIn(['field', 'asteroidField', 'asteroids'], function (asteroids) {
+                return asteroids.push(asteroid(gameState.getIn(['screen', 'width']) * 1.0, gameState.getIn(['screen', 'height']), input.numbers.y, gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0)));
+            });
         case 'Escape':
             return gameState.set('mode', 'pause');
         default:

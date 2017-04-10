@@ -1,7 +1,7 @@
 const
     R = require('ramda'),
     tap = require('./tap'),
-    {fromJS} = require('immutable-ext'),
+    {Map, fromJS} = require('immutable-ext'),
     flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input).toJS())),
     starFieldDy = gameState =>
         (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
@@ -74,14 +74,14 @@ const
         const
             asteroidWidth = width / 20,
             asteroidHeight = asteroidWidth * (87/95)
-        return {
+        return Map({
             x: width * 1.5,
             y: (height - (asteroidHeight / 2)) * (rand / 100.0),
             width: asteroidWidth,
             height: asteroidHeight,
             speed: speed,
             image: 'asteroid'
-        }
+        })
     },
     flyingLogic = (gameState, input) => {
         switch(input.type) {
@@ -165,16 +165,15 @@ const
                     }
                 })
             case 'new_asteroid':
-                gameState = gameState.toJS()
-                return fromJS(R.over(
-                    R.lensPath(['field', 'asteroidField', 'asteroids']),
-                    R.append(
-                        asteroid(
-                            gameState.screen.width * 1.0,
-                            gameState.screen.height,
-                            input.numbers.y,
-                            gameState.screen.width / (input.numbers.speed * 1.0))),
-                    gameState))
+                return gameState.
+                    updateIn(
+                        ['field', 'asteroidField', 'asteroids'],
+                        asteroids => asteroids.push(
+                            asteroid(
+                                gameState.getIn(['screen', 'width']) * 1.0,
+                                gameState.getIn(['screen', 'height']),
+                                input.numbers.y,
+                                gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0))))
             case 'Escape':
                 return gameState.set('mode', 'pause')
             default:
