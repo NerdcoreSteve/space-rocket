@@ -64,8 +64,10 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var R = require('ramda'),
     tap = require('./tap'),
+    _require = require('immutable-ext'),
+    fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
-    return checkCollisions(flyingLogic(gameState, input));
+    return fromJS(checkCollisions(flyingLogic(gameState, input).toJS()));
 },
     starFieldDy = function starFieldDy(gameState) {
     return (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width;
@@ -131,43 +133,48 @@ var R = require('ramda'),
     flyingLogic = function flyingLogic(gameState, input) {
     switch (input.type) {
         case 'ArrowUpkeydown':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 field: _extends({}, gameState.field, {
                     rocket: _extends({}, gameState.field.rocket, {
                         keyUpDown: true,
                         direction: -1
                     })
                 })
-            });
+            }));
         case 'ArrowDownkeydown':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 field: _extends({}, gameState.field, {
                     rocket: _extends({}, gameState.field.rocket, {
                         keyDownDown: true,
                         direction: 1
                     })
                 })
-            });
+            }));
         case 'ArrowUpkeyup':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 field: _extends({}, gameState.field, {
                     rocket: _extends({}, gameState.field.rocket, {
                         keyUpDown: false,
                         direction: gameState.field.rocket.keyDownDown ? 1 : 0
                     })
                 })
-            });
+            }));
         case 'ArrowDownkeyup':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 field: _extends({}, gameState.field, {
                     rocket: _extends({}, gameState.field.rocket, {
                         keyDownDown: false,
                         direction: gameState.field.rocket.keyUpDown ? -1 : 0
                     })
                 })
-            });
+            }));
         case 'tick':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 commands: gameState.field.asteroidField.nextCounter === 0 ? gameState.commands.concat({
                     type: 'random_numbers',
                     returnType: 'new_asteroid',
@@ -201,21 +208,24 @@ var R = require('ramda'),
                         })
                     })
                 })
-            });
+            }));
         case 'new_asteroid':
-            return R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height, input.numbers.y, gameState.screen.width / (input.numbers.speed * 1.0))), gameState);
+            gameState = gameState.toJS();
+            return fromJS(R.over(R.lensPath(['field', 'asteroidField', 'asteroids']), R.append(asteroid(gameState.screen.width * 1.0, gameState.screen.height, input.numbers.y, gameState.screen.width / (input.numbers.speed * 1.0))), gameState));
         case 'Escape':
-            return _extends({}, gameState, {
+            gameState = gameState.toJS();
+            return fromJS(_extends({}, gameState, {
                 mode: 'pause'
-            });
+            }));
         default:
             return gameState;
     }
 };
 
+
 module.exports = flying;
 
-},{"./tap":326,"ramda":11}],4:[function(require,module,exports){
+},{"./tap":326,"immutable-ext":9,"ramda":11}],4:[function(require,module,exports){
 'use strict';
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
@@ -242,7 +252,7 @@ var R = require('ramda'),
         case 'pause':
             return pauseMode(fromJS(gameState), input).toJS();
         case 'flying':
-            return flyingMode(gameState, input);
+            return flyingMode(fromJS(gameState), input).toJS();
         case 'restart':
             return restartMode(fromJS(gameState), input).toJS();
         default:

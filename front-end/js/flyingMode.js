@@ -1,7 +1,8 @@
 const
     R = require('ramda'),
     tap = require('./tap'),
-    flying = (gameState, input) => checkCollisions(flyingLogic(gameState, input)),
+    {fromJS} = require('immutable-ext'),
+    flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input).toJS())),
     starFieldDy = gameState =>
         (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
     nextImageIndex = animateable =>
@@ -85,7 +86,8 @@ const
     flyingLogic = (gameState, input) => {
         switch(input.type) {
             case 'ArrowUpkeydown':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     field: {
                         ...gameState.field,
@@ -95,9 +97,10 @@ const
                             direction: -1
                         }
                     }
-                }
+                })
             case 'ArrowDownkeydown':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     field: {
                         ...gameState.field,
@@ -107,9 +110,10 @@ const
                             direction: 1
                         }
                     }
-                }
+                })
             case 'ArrowUpkeyup':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     field: {
                         ...gameState.field,
@@ -119,9 +123,10 @@ const
                             direction: gameState.field.rocket.keyDownDown ? 1 : 0
                         }
                     }
-                }
+                })
             case 'ArrowDownkeyup':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     field: {
                         ...gameState.field,
@@ -131,9 +136,10 @@ const
                             direction: gameState.field.rocket.keyUpDown ? -1 : 0
                         }
                     }
-                }
+                })
             case 'tick':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     commands: gameState.field.asteroidField.nextCounter === 0
                         ? gameState.commands.concat({
@@ -185,9 +191,10 @@ const
                             }
                         }
                     }
-                }
+                })
             case 'new_asteroid':
-                return R.over(
+                gameState = gameState.toJS()
+                return fromJS(R.over(
                     R.lensPath(['field', 'asteroidField', 'asteroids']),
                     R.append(
                         asteroid(
@@ -195,12 +202,13 @@ const
                             gameState.screen.height,
                             input.numbers.y,
                             gameState.screen.width / (input.numbers.speed * 1.0))),
-                    gameState)
+                    gameState))
             case 'Escape':
-                return {
+                gameState = gameState.toJS()
+                return fromJS({
                     ...gameState,
                     mode: 'pause'
-                }
+                })
             default:
                 return gameState
         }

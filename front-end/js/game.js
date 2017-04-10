@@ -19,7 +19,7 @@ const
             case 'pause':
                 return pauseMode(fromJS(gameState), input).toJS()
             case 'flying':
-                return flyingMode(gameState, input)
+                return flyingMode(fromJS(gameState), input).toJS()
             case 'restart':
                 return restartMode(fromJS(gameState), input).toJS()
             default:
