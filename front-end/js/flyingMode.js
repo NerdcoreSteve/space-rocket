@@ -86,57 +86,29 @@ const
     flyingLogic = (gameState, input) => {
         switch(input.type) {
             case 'ArrowUpkeydown':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    field: {
-                        ...gameState.field,
-                        rocket: {
-                            ...gameState.field.rocket,
-                            keyUpDown: true,
-                            direction: -1
-                        }
-                    }
-                })
+                return gameState.updateIn(
+                    ['field', 'rocket'],
+                    rocket => rocket.set('keyUpDown', true).set('direction', -1))
             case 'ArrowDownkeydown':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    field: {
-                        ...gameState.field,
-                        rocket: {
-                            ...gameState.field.rocket,
-                            keyDownDown: true,
-                            direction: 1
-                        }
-                    }
-                })
+                return gameState.updateIn(
+                    ['field', 'rocket'],
+                    rocket => rocket.set('keyDownDown', true).set('direction', 1))
             case 'ArrowUpkeyup':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    field: {
-                        ...gameState.field,
-                        rocket: {
-                            ...gameState.field.rocket,
-                            keyUpDown: false,
-                            direction: gameState.field.rocket.keyDownDown ? 1 : 0
-                        }
-                    }
-                })
+                return gameState.updateIn(
+                    ['field', 'rocket'],
+                    rocket => rocket
+                        .set('keyUpDown', false)
+                        .set(
+                            'direction',
+                            gameState.getIn(['field', 'rocket', 'keyDownDown']) ? 1 : 0))
             case 'ArrowDownkeyup':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    field: {
-                        ...gameState.field,
-                        rocket: {
-                            ...gameState.field.rocket,
-                            keyDownDown: false,
-                            direction: gameState.field.rocket.keyUpDown ? -1 : 0
-                        }
-                    }
-                })
+                return gameState.updateIn(
+                    ['field', 'rocket'],
+                    rocket => rocket
+                        .set('keyDownDown', false)
+                        .set(
+                            'direction',
+                            gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0))
             case 'tick':
                 gameState = gameState.toJS()
                 return fromJS({
@@ -204,11 +176,7 @@ const
                             gameState.screen.width / (input.numbers.speed * 1.0))),
                     gameState))
             case 'Escape':
-                gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    mode: 'pause'
-                })
+                return gameState.set('mode', 'pause')
             default:
                 return gameState
         }
