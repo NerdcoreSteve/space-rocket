@@ -3,8 +3,6 @@ const
     tap = require('./tap'),
     {Map, fromJS} = require('immutable-ext'),
     flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input).toJS())),
-    starFieldDy = gameState =>
-        (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width,
     nextImageIndex = animateable =>
         (animateable.imageIndex + 1) % animateable.images.length,
     rocketDy = gameState => {
@@ -110,26 +108,22 @@ const
                             'direction',
                             gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0))
             case 'tick':
+                const pameState = gameState
                 gameState = gameState.toJS()
-                return fromJS({
-                    ...gameState,
-                    commands: gameState.field.asteroidField.nextCounter === 0
-                        ? gameState.commands.concat({
-                                type: 'random_numbers',
-                                returnType: 'new_asteroid',
-                                numbers: {
-                                    speed: [130, 260],
-                                    y: [1, 100]
-                                }
-                            })
-                        : gameState.commands,
-                    field: {
-                        ...gameState.field,
-                        starField: {
-                            ...gameState.field.starField,
-                            x1: starFieldDy(gameState),
-                            x2: starFieldDy(gameState) + gameState.screen.width,
-                        },
+                return pameState
+                    .update('commands', commands =>
+                        pameState.getIn(['field', 'asteroidField', 'nextCounter']) === 0
+                            ? commands.push(
+                                fromJS({
+                                    type: 'random_numbers',
+                                    returnType: 'new_asteroid',
+                                    numbers: {
+                                        speed: [130, 260],
+                                        y: [1, 100]
+                                    }
+                                }))
+                            : commands)
+                    .update('field', field => field.merge(fromJS({
                         asteroidField: {
                             ...gameState.field.asteroidField,
                             nextCounter: gameState.field.asteroidField.nextCounter
@@ -162,8 +156,16 @@ const
                                     : gameState.field.rocket.fire.imageIndex
                             }
                         }
-                    }
-                })
+                    }))
+                        .update('starField', starField => {
+                            const dy = 
+                                (pameState.getIn(['field', 'starField', 'x1'])
+                                    - pameState.getIn(['field', 'starField', 'speed']))
+                                        % pameState.getIn(['screen', 'width'])
+                            return starField
+                                .set('x1', dy)
+                                .set('x2', dy + pameState.getIn(['screen', 'width']))
+                        }))
             case 'new_asteroid':
                 return gameState.
                     updateIn(

@@ -60,6 +60,8 @@ module.exports = function (gameStore) {
 },{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
 'use strict';
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
@@ -69,9 +71,6 @@ var R = require('ramda'),
     fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
     return fromJS(checkCollisions(flyingLogic(gameState, input).toJS()));
-},
-    starFieldDy = function starFieldDy(gameState) {
-    return (gameState.field.starField.x1 - gameState.field.starField.speed) % gameState.screen.width;
 },
     nextImageIndex = function nextImageIndex(animateable) {
     return (animateable.imageIndex + 1) % animateable.images.length;
@@ -132,69 +131,90 @@ var R = require('ramda'),
     });
 },
     flyingLogic = function flyingLogic(gameState, input) {
-    switch (input.type) {
-        case 'ArrowUpkeydown':
-            return gameState.updateIn(['field', 'rocket'], function (rocket) {
-                return rocket.set('keyUpDown', true).set('direction', -1);
-            });
-        case 'ArrowDownkeydown':
-            return gameState.updateIn(['field', 'rocket'], function (rocket) {
-                return rocket.set('keyDownDown', true).set('direction', 1);
-            });
-        case 'ArrowUpkeyup':
-            return gameState.updateIn(['field', 'rocket'], function (rocket) {
-                return rocket.set('keyUpDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyDownDown']) ? 1 : 0);
-            });
-        case 'ArrowDownkeyup':
-            return gameState.updateIn(['field', 'rocket'], function (rocket) {
-                return rocket.set('keyDownDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0);
-            });
-        case 'tick':
-            gameState = gameState.toJS();
-            return fromJS(_extends({}, gameState, {
-                commands: gameState.field.asteroidField.nextCounter === 0 ? gameState.commands.concat({
-                    type: 'random_numbers',
-                    returnType: 'new_asteroid',
-                    numbers: {
-                        speed: [130, 260],
-                        y: [1, 100]
-                    }
-                }) : gameState.commands,
-                field: _extends({}, gameState.field, {
-                    starField: _extends({}, gameState.field.starField, {
-                        x1: starFieldDy(gameState),
-                        x2: starFieldDy(gameState) + gameState.screen.width
-                    }),
-                    asteroidField: _extends({}, gameState.field.asteroidField, {
-                        nextCounter: gameState.field.asteroidField.nextCounter ? gameState.field.asteroidField.nextCounter - 1 : gameState.field.asteroidField.nextDuration,
-                        asteroids: R.pipe(R.map(function (asteroid) {
-                            return _extends({}, asteroid, {
-                                x: asteroid.x - asteroid.speed
-                            });
-                        }), R.reject(function (asteroid) {
-                            return asteroid.x + asteroid.width < 0;
-                        }))(gameState.field.asteroidField.asteroids)
-                    }),
-                    rocket: _extends({}, gameState.field.rocket, {
-                        y: gameState.field.rocket.y + rocketDy(gameState),
-                        fire: _extends({}, gameState.field.rocket.fire, {
-                            y: gameState.field.rocket.fire.y + rocketDy(gameState),
-                            holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
-                            image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
-                            imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
-                        })
+    var _ret = function () {
+        switch (input.type) {
+            case 'ArrowUpkeydown':
+                return {
+                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
+                        return rocket.set('keyUpDown', true).set('direction', -1);
                     })
-                })
-            }));
-        case 'new_asteroid':
-            return gameState.updateIn(['field', 'asteroidField', 'asteroids'], function (asteroids) {
-                return asteroids.push(asteroid(gameState.getIn(['screen', 'width']) * 1.0, gameState.getIn(['screen', 'height']), input.numbers.y, gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0)));
-            });
-        case 'Escape':
-            return gameState.set('mode', 'pause');
-        default:
-            return gameState;
-    }
+                };
+            case 'ArrowDownkeydown':
+                return {
+                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
+                        return rocket.set('keyDownDown', true).set('direction', 1);
+                    })
+                };
+            case 'ArrowUpkeyup':
+                return {
+                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
+                        return rocket.set('keyUpDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyDownDown']) ? 1 : 0);
+                    })
+                };
+            case 'ArrowDownkeyup':
+                return {
+                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
+                        return rocket.set('keyDownDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0);
+                    })
+                };
+            case 'tick':
+                var pameState = gameState;
+                gameState = gameState.toJS();
+                return {
+                    v: pameState.update('commands', function (commands) {
+                        return pameState.getIn(['field', 'asteroidField', 'nextCounter']) === 0 ? commands.push(fromJS({
+                            type: 'random_numbers',
+                            returnType: 'new_asteroid',
+                            numbers: {
+                                speed: [130, 260],
+                                y: [1, 100]
+                            }
+                        })) : commands;
+                    }).update('field', function (field) {
+                        return field.merge(fromJS({
+                            asteroidField: _extends({}, gameState.field.asteroidField, {
+                                nextCounter: gameState.field.asteroidField.nextCounter ? gameState.field.asteroidField.nextCounter - 1 : gameState.field.asteroidField.nextDuration,
+                                asteroids: R.pipe(R.map(function (asteroid) {
+                                    return _extends({}, asteroid, {
+                                        x: asteroid.x - asteroid.speed
+                                    });
+                                }), R.reject(function (asteroid) {
+                                    return asteroid.x + asteroid.width < 0;
+                                }))(gameState.field.asteroidField.asteroids)
+                            }),
+                            rocket: _extends({}, gameState.field.rocket, {
+                                y: gameState.field.rocket.y + rocketDy(gameState),
+                                fire: _extends({}, gameState.field.rocket.fire, {
+                                    y: gameState.field.rocket.fire.y + rocketDy(gameState),
+                                    holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
+                                    image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
+                                    imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
+                                })
+                            })
+                        })).update('starField', function (starField) {
+                            var dy = (pameState.getIn(['field', 'starField', 'x1']) - pameState.getIn(['field', 'starField', 'speed'])) % pameState.getIn(['screen', 'width']);
+                            return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));
+                        });
+                    })
+                };
+            case 'new_asteroid':
+                return {
+                    v: gameState.updateIn(['field', 'asteroidField', 'asteroids'], function (asteroids) {
+                        return asteroids.push(asteroid(gameState.getIn(['screen', 'width']) * 1.0, gameState.getIn(['screen', 'height']), input.numbers.y, gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0)));
+                    })
+                };
+            case 'Escape':
+                return {
+                    v: gameState.set('mode', 'pause')
+                };
+            default:
+                return {
+                    v: gameState
+                };
+        }
+    }();
+
+    if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
 };
 
 
