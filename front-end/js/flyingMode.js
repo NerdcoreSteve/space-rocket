@@ -124,20 +124,6 @@ const
                                 }))
                             : commands)
                     .update('field', field => field.merge(fromJS({
-                        asteroidField: {
-                            ...gameState.field.asteroidField,
-                            nextCounter: gameState.field.asteroidField.nextCounter
-                                ? gameState.field.asteroidField.nextCounter - 1
-                                : gameState.field.asteroidField.nextDuration,
-                            asteroids: R.pipe(
-                                R.map(asteroid =>
-                                    ({
-                                        ...asteroid,
-                                        x: asteroid.x - asteroid.speed
-                                    })),
-                                R.reject(asteroid => asteroid.x + asteroid.width < 0))
-                                    (gameState.field.asteroidField.asteroids)
-                        },
                         rocket: {
                             ...gameState.field.rocket,
                             y: gameState.field.rocket.y + rocketDy(gameState),
@@ -165,7 +151,22 @@ const
                             return starField
                                 .set('x1', dy)
                                 .set('x2', dy + pameState.getIn(['screen', 'width']))
+                        })
+                        .update('asteroidField', asteroidField => asteroidField.merge(fromJS({
+                            asteroids: R.pipe(
+                                R.map(asteroid =>
+                                    ({
+                                        ...asteroid,
+                                        x: asteroid.x - asteroid.speed
+                                    })),
+                                R.reject(asteroid => asteroid.x + asteroid.width < 0))
+                                    (gameState.field.asteroidField.asteroids)
                         }))
+                            .set(
+                                'nextCounter',
+                                gameState.field.asteroidField.nextCounter
+                                    ? asteroidField.get('nextCounter') - 1
+                                    : gameState.field.asteroidField.nextDuration)))
             case 'new_asteroid':
                 return gameState.
                     updateIn(

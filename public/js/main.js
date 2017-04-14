@@ -172,16 +172,6 @@ var R = require('ramda'),
                         })) : commands;
                     }).update('field', function (field) {
                         return field.merge(fromJS({
-                            asteroidField: _extends({}, gameState.field.asteroidField, {
-                                nextCounter: gameState.field.asteroidField.nextCounter ? gameState.field.asteroidField.nextCounter - 1 : gameState.field.asteroidField.nextDuration,
-                                asteroids: R.pipe(R.map(function (asteroid) {
-                                    return _extends({}, asteroid, {
-                                        x: asteroid.x - asteroid.speed
-                                    });
-                                }), R.reject(function (asteroid) {
-                                    return asteroid.x + asteroid.width < 0;
-                                }))(gameState.field.asteroidField.asteroids)
-                            }),
                             rocket: _extends({}, gameState.field.rocket, {
                                 y: gameState.field.rocket.y + rocketDy(gameState),
                                 fire: _extends({}, gameState.field.rocket.fire, {
@@ -194,6 +184,16 @@ var R = require('ramda'),
                         })).update('starField', function (starField) {
                             var dy = (pameState.getIn(['field', 'starField', 'x1']) - pameState.getIn(['field', 'starField', 'speed'])) % pameState.getIn(['screen', 'width']);
                             return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));
+                        }).update('asteroidField', function (asteroidField) {
+                            return asteroidField.merge(fromJS({
+                                asteroids: R.pipe(R.map(function (asteroid) {
+                                    return _extends({}, asteroid, {
+                                        x: asteroid.x - asteroid.speed
+                                    });
+                                }), R.reject(function (asteroid) {
+                                    return asteroid.x + asteroid.width < 0;
+                                }))(gameState.field.asteroidField.asteroids)
+                            })).set('nextCounter', gameState.field.asteroidField.nextCounter ? asteroidField.get('nextCounter') - 1 : gameState.field.asteroidField.nextDuration);
                         });
                     })
                 };
