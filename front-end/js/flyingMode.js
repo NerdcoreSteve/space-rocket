@@ -162,11 +162,12 @@ const
                                 R.reject(asteroid => asteroid.x + asteroid.width < 0))
                                     (gameState.field.asteroidField.asteroids)
                         }))
-                            .set(
+                            .update(
                                 'nextCounter',
-                                gameState.field.asteroidField.nextCounter
-                                    ? asteroidField.get('nextCounter') - 1
-                                    : gameState.field.asteroidField.nextDuration)))
+                                nextCounter =>
+                                    nextCounter
+                                        ? nextCounter - 1
+                                        : asteroidField.get('nextDuration'))))
             case 'new_asteroid':
                 return gameState.
                     updateIn(

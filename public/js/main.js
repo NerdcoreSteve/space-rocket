@@ -193,7 +193,9 @@ var R = require('ramda'),
                                 }), R.reject(function (asteroid) {
                                     return asteroid.x + asteroid.width < 0;
                                 }))(gameState.field.asteroidField.asteroids)
-                            })).set('nextCounter', gameState.field.asteroidField.nextCounter ? asteroidField.get('nextCounter') - 1 : gameState.field.asteroidField.nextDuration);
+                            })).update('nextCounter', function (nextCounter) {
+                                return nextCounter ? nextCounter - 1 : asteroidField.get('nextDuration');
+                            });
                         });
                     })
                 };
