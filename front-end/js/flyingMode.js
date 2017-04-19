@@ -111,18 +111,20 @@ const
                 const pameState = gameState
                 gameState = gameState.toJS()
                 return pameState
-                    .update('commands', commands =>
-                        pameState.getIn(['field', 'asteroidField', 'nextCounter']) === 0
+                    .update('commands', commands => {
+                        const asteroidField = pameState.getIn(['field', 'asteroidField'])
+                        return asteroidField.get('nextCounter') === 0
                             ? commands.push(
                                 fromJS({
                                     type: 'random_numbers',
                                     returnType: 'new_asteroid',
                                     numbers: {
-                                        speed: [130, 260],
-                                        y: [1, 100]
+                                        speed: asteroidField.get('speedRange').toJS(),
+                                        y: asteroidField.get('positionRange').toJS()
                                     }
                                 }))
-                            : commands)
+                            : commands
+                     })
                     .update('field', field => field.merge(fromJS({
                         rocket: {
                             ...gameState.field.rocket,
@@ -162,6 +164,20 @@ const
                                 R.reject(asteroid => asteroid.x + asteroid.width < 0))
                                     (gameState.field.asteroidField.asteroids)
                         }))
+                            .update(
+                                'asteroids',
+                                asteroids => 
+                                R.pipe(
+                                    x => x.toJS(),
+                                    R.map(asteroid =>
+                                        ({
+                                            ...asteroid,
+                                            x: asteroid.x - asteroid.speed
+                                        })),
+                                    fromJS)
+                                        (asteroids)
+                                            .filter(asteroid =>
+                                                asteroid.get('x') + asteroid.get('width') >= 0))
                             .update(
                                 'nextCounter',
                                 nextCounter =>

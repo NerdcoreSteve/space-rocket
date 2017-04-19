@@ -162,12 +162,13 @@ var R = require('ramda'),
                 gameState = gameState.toJS();
                 return {
                     v: pameState.update('commands', function (commands) {
-                        return pameState.getIn(['field', 'asteroidField', 'nextCounter']) === 0 ? commands.push(fromJS({
+                        var asteroidField = pameState.getIn(['field', 'asteroidField']);
+                        return asteroidField.get('nextCounter') === 0 ? commands.push(fromJS({
                             type: 'random_numbers',
                             returnType: 'new_asteroid',
                             numbers: {
-                                speed: [130, 260],
-                                y: [1, 100]
+                                speed: asteroidField.get('speedRange').toJS(),
+                                y: asteroidField.get('positionRange').toJS()
                             }
                         })) : commands;
                     }).update('field', function (field) {
@@ -193,7 +194,17 @@ var R = require('ramda'),
                                 }), R.reject(function (asteroid) {
                                     return asteroid.x + asteroid.width < 0;
                                 }))(gameState.field.asteroidField.asteroids)
-                            })).update('nextCounter', function (nextCounter) {
+                            })).update('asteroids', function (asteroids) {
+                                return R.pipe(function (x) {
+                                    return x.toJS();
+                                }, R.map(function (asteroid) {
+                                    return _extends({}, asteroid, {
+                                        x: asteroid.x - asteroid.speed
+                                    });
+                                }), fromJS)(asteroids).filter(function (asteroid) {
+                                    return asteroid.get('x') + asteroid.get('width') >= 0;
+                                });
+                            }).update('nextCounter', function (nextCounter) {
                                 return nextCounter ? nextCounter - 1 : asteroidField.get('nextDuration');
                             });
                         });
@@ -29238,6 +29249,8 @@ module.exports = function (width, height) {
                 speed: width / 470
             },
             asteroidField: {
+                speedRange: [260, 520],
+                positionRange: [1, 100],
                 nextCounter: 0,
                 nextDuration: 30,
                 asteroids: []
