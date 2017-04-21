@@ -79,6 +79,9 @@ var R = require('ramda'),
     var rocketVector = gameState.field.rocket.speed * gameState.field.rocket.direction;
     return gameState.field.rocket.y >= 0 ? gameState.field.rocket.y + gameState.field.rocket.height <= gameState.screen.height ? rocketVector : gameState.field.rocket.direction === 1 ? 0 : gameState.field.rocket.direction : gameState.field.rocket.direction === -1 ? 0 : gameState.field.rocket.direction;
 },
+    rocketY = R.curry(function (gameState, y) {
+    return y + rocketDy(gameState);
+}),
     collided = function collided(rect1, rect2) {
     return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
 },
@@ -175,14 +178,11 @@ var R = require('ramda'),
                         return field.update('rocket', function (rocket) {
                             return rocket.update('fire', function (fire) {
                                 return fire.merge(fromJS({
-                                    y: gameState.field.rocket.fire.y + rocketDy(gameState),
                                     holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
                                     image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
                                     imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
-                                }));
-                            }).update('y', function (y) {
-                                return y + rocketDy(gameState);
-                            });
+                                })).update('y', rocketY(gameState));
+                            }).update('y', rocketY(gameState));
                         }).update('starField', function (starField) {
                             var dy = (starField.get('x1') - starField.get('speed')) % pameState.getIn(['screen', 'width']);
                             return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));

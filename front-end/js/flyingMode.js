@@ -13,6 +13,7 @@ const
                 : gameState.field.rocket.direction === 1 ? 0 : gameState.field.rocket.direction
             : gameState.field.rocket.direction === -1 ? 0 : gameState.field.rocket.direction
     },
+    rocketY = R.curry((gameState, y) => y + rocketDy(gameState)),
     collided = (rect1, rect2) =>
         rect1.x < rect2.x + rect2.width
             && rect1.x + rect1.width > rect2.x
@@ -128,7 +129,6 @@ const
                     .update('field', field => field
                         .update('rocket', rocket => rocket
                             .update('fire', fire => fire.merge(fromJS({
-                                y: gameState.field.rocket.fire.y + rocketDy(gameState),
                                 holdCounter: (gameState.field.rocket.fire.holdCounter + 1)
                                     % gameState.field.rocket.fire.frameHolds,
                                 image: gameState.field.rocket.fire.holdCounter === 0
@@ -139,8 +139,9 @@ const
                                 imageIndex: gameState.field.rocket.fire.holdCounter === 0
                                     ? nextImageIndex(gameState.field.rocket.fire)
                                     : gameState.field.rocket.fire.imageIndex
-                            })))
-                            .update('y', y => y + rocketDy(gameState)))
+                            }))
+                                .update('y', rocketY(gameState)))
+                            .update('y', rocketY(gameState)))
                         .update('starField', starField => {
                             const dy = 
                                 (starField.get('x1') - starField.get('speed'))
