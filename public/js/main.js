@@ -60,8 +60,6 @@ module.exports = function (gameStore) {
 },{"./game":4,"data.task":7,"immutable-ext":9,"ramda":11}],3:[function(require,module,exports){
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var R = require('ramda'),
@@ -134,92 +132,69 @@ var R = require('ramda'),
     });
 },
     flyingLogic = function flyingLogic(gameState, input) {
-    var _ret = function () {
-        switch (input.type) {
-            case 'ArrowUpkeydown':
-                return {
-                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
-                        return rocket.set('keyUpDown', true).set('direction', -1);
-                    })
-                };
-            case 'ArrowDownkeydown':
-                return {
-                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
-                        return rocket.set('keyDownDown', true).set('direction', 1);
-                    })
-                };
-            case 'ArrowUpkeyup':
-                return {
-                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
-                        return rocket.set('keyUpDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyDownDown']) ? 1 : 0);
-                    })
-                };
-            case 'ArrowDownkeyup':
-                return {
-                    v: gameState.updateIn(['field', 'rocket'], function (rocket) {
-                        return rocket.set('keyDownDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0);
-                    })
-                };
-            case 'tick':
-                var pameState = gameState;
-                gameState = gameState.toJS();
-                return {
-                    v: pameState.update('commands', function (commands) {
-                        var asteroidField = pameState.getIn(['field', 'asteroidField']);
-                        return asteroidField.get('nextCounter') === 0 ? commands.push(fromJS({
-                            type: 'random_numbers',
-                            returnType: 'new_asteroid',
-                            numbers: {
-                                speed: asteroidField.get('speedRange').toJS(),
-                                y: asteroidField.get('positionRange').toJS()
-                            }
-                        })) : commands;
-                    }).update('field', function (field) {
-                        return field.update('rocket', function (rocket) {
-                            return rocket.update('fire', function (fire) {
-                                return fire.merge(fromJS({
-                                    holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
-                                    image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex]
-                                })).update('y', rocketY(gameState)).update('imageIndex', function (imageIndex) {
-                                    return fire.get('holdCounter') ? nextImageIndex(fire.toJS()) : imageIndex;
-                                });
-                            }).update('y', rocketY(gameState));
-                        }).update('starField', function (starField) {
-                            var dy = (starField.get('x1') - starField.get('speed')) % pameState.getIn(['screen', 'width']);
-                            return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));
-                        }).update('asteroidField', function (asteroidField) {
-                            return asteroidField.update('asteroids', function (asteroids) {
-                                return asteroids.map(function (asteroid) {
-                                    return asteroid.update('x', function (x) {
-                                        return x - asteroid.get('speed');
-                                    });
-                                }).filter(function (asteroid) {
-                                    return asteroid.get('x') + asteroid.get('width') >= 0;
-                                });
-                            }).update('nextCounter', function (nextCounter) {
-                                return nextCounter ? nextCounter - 1 : asteroidField.get('nextDuration');
-                            });
+    switch (input.type) {
+        case 'ArrowUpkeydown':
+            return gameState.updateIn(['field', 'rocket'], function (rocket) {
+                return rocket.set('keyUpDown', true).set('direction', -1);
+            });
+        case 'ArrowDownkeydown':
+            return gameState.updateIn(['field', 'rocket'], function (rocket) {
+                return rocket.set('keyDownDown', true).set('direction', 1);
+            });
+        case 'ArrowUpkeyup':
+            return gameState.updateIn(['field', 'rocket'], function (rocket) {
+                return rocket.set('keyUpDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyDownDown']) ? 1 : 0);
+            });
+        case 'ArrowDownkeyup':
+            return gameState.updateIn(['field', 'rocket'], function (rocket) {
+                return rocket.set('keyDownDown', false).set('direction', gameState.getIn(['field', 'rocket', 'keyUpDown']) ? -1 : 0);
+            });
+        case 'tick':
+            return gameState.update('commands', function (commands) {
+                var asteroidField = gameState.getIn(['field', 'asteroidField']);
+                return asteroidField.get('nextCounter') === 0 ? commands.push(fromJS({
+                    type: 'random_numbers',
+                    returnType: 'new_asteroid',
+                    numbers: {
+                        speed: asteroidField.get('speedRange').toJS(),
+                        y: asteroidField.get('positionRange').toJS()
+                    }
+                })) : commands;
+            }).update('field', function (field) {
+                return field.update('rocket', function (rocket) {
+                    return rocket.update('fire', function (fire) {
+                        return fire.update('y', rocketY(gameState.toJS())).set('image', fire.get('images').get(fire.get('imageIndex'))).update('holdCounter', function (holdCounter) {
+                            return (holdCounter + 1) % fire.get('frameHolds');
+                        }).update('imageIndex', function (imageIndex) {
+                            return fire.get('holdCounter') === 0 ? nextImageIndex(fire.toJS()) : imageIndex;
                         });
-                    })
-                };
-            case 'new_asteroid':
-                return {
-                    v: gameState.updateIn(['field', 'asteroidField', 'asteroids'], function (asteroids) {
-                        return asteroids.push(asteroid(gameState.getIn(['screen', 'width']) * 1.0, gameState.getIn(['screen', 'height']), input.numbers.y, gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0)));
-                    })
-                };
-            case 'Escape':
-                return {
-                    v: gameState.set('mode', 'pause')
-                };
-            default:
-                return {
-                    v: gameState
-                };
-        }
-    }();
-
-    if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+                    }).update('y', rocketY(gameState.toJS()));
+                }).update('starField', function (starField) {
+                    var dy = (starField.get('x1') - starField.get('speed')) % gameState.getIn(['screen', 'width']);
+                    return starField.set('x1', dy).set('x2', dy + gameState.getIn(['screen', 'width']));
+                }).update('asteroidField', function (asteroidField) {
+                    return asteroidField.update('asteroids', function (asteroids) {
+                        return asteroids.map(function (asteroid) {
+                            return asteroid.update('x', function (x) {
+                                return x - asteroid.get('speed');
+                            });
+                        }).filter(function (asteroid) {
+                            return asteroid.get('x') + asteroid.get('width') >= 0;
+                        });
+                    }).update('nextCounter', function (nextCounter) {
+                        return nextCounter ? nextCounter - 1 : asteroidField.get('nextDuration');
+                    });
+                });
+            });
+        case 'new_asteroid':
+            return gameState.updateIn(['field', 'asteroidField', 'asteroids'], function (asteroids) {
+                return asteroids.push(asteroid(gameState.getIn(['screen', 'width']) * 1.0, gameState.getIn(['screen', 'height']), input.numbers.y, gameState.getIn(['screen', 'width']) / (input.numbers.speed * 1.0)));
+            });
+        case 'Escape':
+            return gameState.set('mode', 'pause');
+        default:
+            return gameState;
+    }
 };
 
 
