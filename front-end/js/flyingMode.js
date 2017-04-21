@@ -136,11 +136,12 @@ const
                                         nextImageIndex(gameState.field.rocket.fire)]
                                     : gameState.field.rocket.fire.images[
                                         gameState.field.rocket.fire.imageIndex],
-                                imageIndex: gameState.field.rocket.fire.holdCounter === 0
-                                    ? nextImageIndex(gameState.field.rocket.fire)
-                                    : gameState.field.rocket.fire.imageIndex
                             }))
-                                .update('y', rocketY(gameState)))
+                                .update('y', rocketY(gameState))
+                                .update('imageIndex', imageIndex =>
+                                    fire.get('holdCounter')
+                                        ? nextImageIndex(fire.toJS())
+                                        : imageIndex))
                             .update('y', rocketY(gameState)))
                         .update('starField', starField => {
                             const dy = 

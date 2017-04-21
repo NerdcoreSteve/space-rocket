@@ -179,9 +179,10 @@ var R = require('ramda'),
                             return rocket.update('fire', function (fire) {
                                 return fire.merge(fromJS({
                                     holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
-                                    image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
-                                    imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
-                                })).update('y', rocketY(gameState));
+                                    image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex]
+                                })).update('y', rocketY(gameState)).update('imageIndex', function (imageIndex) {
+                                    return fire.get('holdCounter') ? nextImageIndex(fire.toJS()) : imageIndex;
+                                });
                             }).update('y', rocketY(gameState));
                         }).update('starField', function (starField) {
                             var dy = (starField.get('x1') - starField.get('speed')) % pameState.getIn(['screen', 'width']);
