@@ -120,7 +120,7 @@ module.exports = (width, height) => {
                 speed: width / 470
             },
             asteroidField: {
-                speedRange: [260, 520],
+                speedRange: [130, 260],
                 positionRange: [1, 100],
                 nextCounter: 0,
                 nextDuration: 30,

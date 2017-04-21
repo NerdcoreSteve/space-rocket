@@ -147,43 +147,25 @@ const
                     }))
                         .update('starField', starField => {
                             const dy = 
-                                (pameState.getIn(['field', 'starField', 'x1'])
-                                    - pameState.getIn(['field', 'starField', 'speed']))
-                                        % pameState.getIn(['screen', 'width'])
+                                (starField.get('x1') - starField.get('speed'))
+                                    % pameState.getIn(['screen', 'width'])
                             return starField
                                 .set('x1', dy)
                                 .set('x2', dy + pameState.getIn(['screen', 'width']))
                         })
-                        .update('asteroidField', asteroidField => asteroidField.merge(fromJS({
-                            asteroids: R.pipe(
-                                R.map(asteroid =>
-                                    ({
-                                        ...asteroid,
-                                        x: asteroid.x - asteroid.speed
-                                    })),
-                                R.reject(asteroid => asteroid.x + asteroid.width < 0))
-                                    (gameState.field.asteroidField.asteroids)
-                        }))
+                        .update('asteroidField', asteroidField => asteroidField
                             .update(
                                 'asteroids',
-                                asteroids => 
-                                R.pipe(
-                                    x => x.toJS(),
-                                    R.map(asteroid =>
-                                        ({
-                                            ...asteroid,
-                                            x: asteroid.x - asteroid.speed
-                                        })),
-                                    fromJS)
-                                        (asteroids)
-                                            .filter(asteroid =>
-                                                asteroid.get('x') + asteroid.get('width') >= 0))
+                                asteroids => asteroids
+                                    .map(asteroid =>
+                                        asteroid.update('x', x => x - asteroid.get('speed')))
+                                    .filter(asteroid =>
+                                        asteroid.get('x') + asteroid.get('width') >= 0))
                             .update(
                                 'nextCounter',
-                                nextCounter =>
-                                    nextCounter
-                                        ? nextCounter - 1
-                                        : asteroidField.get('nextDuration'))))
+                                nextCounter => nextCounter
+                                    ? nextCounter - 1
+                                    : asteroidField.get('nextDuration'))))
             case 'new_asteroid':
                 return gameState.
                     updateIn(

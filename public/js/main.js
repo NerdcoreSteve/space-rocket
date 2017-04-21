@@ -183,25 +183,15 @@ var R = require('ramda'),
                                 })
                             })
                         })).update('starField', function (starField) {
-                            var dy = (pameState.getIn(['field', 'starField', 'x1']) - pameState.getIn(['field', 'starField', 'speed'])) % pameState.getIn(['screen', 'width']);
+                            var dy = (starField.get('x1') - starField.get('speed')) % pameState.getIn(['screen', 'width']);
                             return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));
                         }).update('asteroidField', function (asteroidField) {
-                            return asteroidField.merge(fromJS({
-                                asteroids: R.pipe(R.map(function (asteroid) {
-                                    return _extends({}, asteroid, {
-                                        x: asteroid.x - asteroid.speed
+                            return asteroidField.update('asteroids', function (asteroids) {
+                                return asteroids.map(function (asteroid) {
+                                    return asteroid.update('x', function (x) {
+                                        return x - asteroid.get('speed');
                                     });
-                                }), R.reject(function (asteroid) {
-                                    return asteroid.x + asteroid.width < 0;
-                                }))(gameState.field.asteroidField.asteroids)
-                            })).update('asteroids', function (asteroids) {
-                                return R.pipe(function (x) {
-                                    return x.toJS();
-                                }, R.map(function (asteroid) {
-                                    return _extends({}, asteroid, {
-                                        x: asteroid.x - asteroid.speed
-                                    });
-                                }), fromJS)(asteroids).filter(function (asteroid) {
+                                }).filter(function (asteroid) {
                                     return asteroid.get('x') + asteroid.get('width') >= 0;
                                 });
                             }).update('nextCounter', function (nextCounter) {
@@ -29249,7 +29239,7 @@ module.exports = function (width, height) {
                 speed: width / 470
             },
             asteroidField: {
-                speedRange: [260, 520],
+                speedRange: [130, 260],
                 positionRange: [1, 100],
                 nextCounter: 0,
                 nextDuration: 30,
