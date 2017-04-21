@@ -172,17 +172,18 @@ var R = require('ramda'),
                             }
                         })) : commands;
                     }).update('field', function (field) {
-                        return field.merge(fromJS({
-                            rocket: _extends({}, gameState.field.rocket, {
-                                y: gameState.field.rocket.y + rocketDy(gameState),
-                                fire: _extends({}, gameState.field.rocket.fire, {
+                        return field.update('rocket', function (rocket) {
+                            return rocket.update('fire', function (fire) {
+                                return fire.merge(fromJS({
                                     y: gameState.field.rocket.fire.y + rocketDy(gameState),
                                     holdCounter: (gameState.field.rocket.fire.holdCounter + 1) % gameState.field.rocket.fire.frameHolds,
                                     image: gameState.field.rocket.fire.holdCounter === 0 ? gameState.field.rocket.fire.images[nextImageIndex(gameState.field.rocket.fire)] : gameState.field.rocket.fire.images[gameState.field.rocket.fire.imageIndex],
                                     imageIndex: gameState.field.rocket.fire.holdCounter === 0 ? nextImageIndex(gameState.field.rocket.fire) : gameState.field.rocket.fire.imageIndex
-                                })
-                            })
-                        })).update('starField', function (starField) {
+                                }));
+                            }).update('y', function (y) {
+                                return y + rocketDy(gameState);
+                            });
+                        }).update('starField', function (starField) {
                             var dy = (starField.get('x1') - starField.get('speed')) % pameState.getIn(['screen', 'width']);
                             return starField.set('x1', dy).set('x2', dy + pameState.getIn(['screen', 'width']));
                         }).update('asteroidField', function (asteroidField) {

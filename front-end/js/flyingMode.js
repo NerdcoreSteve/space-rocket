@@ -125,12 +125,9 @@ const
                                 }))
                             : commands
                      })
-                    .update('field', field => field.merge(fromJS({
-                        rocket: {
-                            ...gameState.field.rocket,
-                            y: gameState.field.rocket.y + rocketDy(gameState),
-                            fire: {
-                                ...gameState.field.rocket.fire,
+                    .update('field', field => field
+                        .update('rocket', rocket => rocket
+                            .update('fire', fire => fire.merge(fromJS({
                                 y: gameState.field.rocket.fire.y + rocketDy(gameState),
                                 holdCounter: (gameState.field.rocket.fire.holdCounter + 1)
                                     % gameState.field.rocket.fire.frameHolds,
@@ -142,9 +139,8 @@ const
                                 imageIndex: gameState.field.rocket.fire.holdCounter === 0
                                     ? nextImageIndex(gameState.field.rocket.fire)
                                     : gameState.field.rocket.fire.imageIndex
-                            }
-                        }
-                    }))
+                            })))
+                            .update('y', y => y + rocketDy(gameState)))
                         .update('starField', starField => {
                             const dy = 
                                 (starField.get('x1') - starField.get('speed'))
