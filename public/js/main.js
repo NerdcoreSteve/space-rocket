@@ -111,16 +111,16 @@ var R = require('ramda'),
         return x.toJS();
     }, R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['field', 'collisions'])), R.reduce(function (collisions, asteroid) {
         return collided(gameState.toJS().field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
-            return collision(gameState.toJS().screen.width, gameState.toJS().screen.height, collisionMidpoint.x, collisionMidpoint.y);
+            return collision(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']), collisionMidpoint.x, collisionMidpoint.y);
         }, function (collision) {
             return _extends({}, collision, {
                 x: collision.x - collision.width / 2,
                 y: collision.y - collision.height / 2
             });
-        }, R.append(R.__, collisions))(rectMidpoint(gameState.toJS().field.rocket), rectMidpoint(asteroid)) : collisions;
-    }, [])), function (gameState) {
-        return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
-    }, fromJS)(gameState);
+        }, R.append(R.__, collisions))(rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()), rectMidpoint(asteroid)) : collisions;
+    }, [])), fromJS, function (gameState) {
+        return gameState.getIn(['field', 'collisions']).size ? gameState.set('mode', 'restart') : gameState;
+    })(gameState);
 },
     asteroid = function asteroid(width, height, rand, speed) {
     var asteroidWidth = width / 20,

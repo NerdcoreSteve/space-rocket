@@ -53,8 +53,8 @@ const
                                 rectsMidpoint,
                                 collisionMidpoint =>
                                     collision(
-                                        gameState.toJS().screen.width,
-                                        gameState.toJS().screen.height,
+                                        gameState.getIn(['screen', 'width']),
+                                        gameState.getIn(['screen', 'height']),
                                         collisionMidpoint.x,
                                         collisionMidpoint.y),
                                 collision => ({
@@ -63,15 +63,15 @@ const
                                     y: collision.y - collision.height / 2
                                 }),
                                 R.append(R.__, collisions))(
-                                    rectMidpoint(gameState.toJS().field.rocket),
+                                    rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()),
                                     rectMidpoint(asteroid))
                             : collisions,
                     [])),
+                fromJS,
                 gameState =>
-                    gameState.field.collisions.length
-                        ? {...gameState, mode: 'restart'}
-                        : gameState,
-                fromJS)
+                    gameState.getIn(['field', 'collisions']).size
+                        ? gameState.set('mode', 'restart')
+                        : gameState)
                     (gameState),
     asteroid = (width, height, rand, speed) => {
         const
