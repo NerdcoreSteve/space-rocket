@@ -2,16 +2,18 @@ const
     R = require('ramda'),
     tap = require('./tap'),
     {Map, fromJS} = require('immutable-ext'),
-    flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input).toJS())),
+    flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input))),
     nextImageIndex = animateable =>
         (animateable.imageIndex + 1) % animateable.images.length,
     rocketDy = gameState => {
-        const rocketVector = gameState.field.rocket.speed * gameState.field.rocket.direction
-        return gameState.field.rocket.y >=0
-            ? gameState.field.rocket.y + gameState.field.rocket.height <= gameState.screen.height
-                ? rocketVector
-                : gameState.field.rocket.direction === 1 ? 0 : gameState.field.rocket.direction
-            : gameState.field.rocket.direction === -1 ? 0 : gameState.field.rocket.direction
+        const
+            rocket = gameState.getIn(['field', 'rocket']),
+            direction = rocket.get('direction')
+        return rocket.get('y') >= 0
+            ? rocket.get('y') + rocket.get('height') <= gameState.getIn(['screen', 'height'])
+                ? rocket.get('speed') * direction
+                : direction === 1 ? 0 : direction
+            : direction === -1 ? 0 : direction
     },
     rocketY = R.curry((gameState, y) => y + rocketDy(gameState)),
     collided = (rect1, rect2) =>
@@ -39,19 +41,20 @@ const
     }),
     checkCollisions = gameState =>
         R.pipe(
+            x => x.toJS(),
             R.over(
                 R.lens(
                     R.path(['field', 'asteroidField', 'asteroids']),
                     R.assocPath(['field', 'collisions'])),
                 R.reduce(
                     (collisions, asteroid) =>
-                        (collided(gameState.field.rocket, asteroid))
+                        (collided(gameState.toJS().field.rocket, asteroid))
                             ? R.pipe(
                                 rectsMidpoint,
                                 collisionMidpoint =>
                                     collision(
-                                        gameState.screen.width,
-                                        gameState.screen.height,
+                                        gameState.toJS().screen.width,
+                                        gameState.toJS().screen.height,
                                         collisionMidpoint.x,
                                         collisionMidpoint.y),
                                 collision => ({
@@ -60,14 +63,15 @@ const
                                     y: collision.y - collision.height / 2
                                 }),
                                 R.append(R.__, collisions))(
-                                    rectMidpoint(gameState.field.rocket),
+                                    rectMidpoint(gameState.toJS().field.rocket),
                                     rectMidpoint(asteroid))
                             : collisions,
                     [])),
                 gameState =>
                     gameState.field.collisions.length
                         ? {...gameState, mode: 'restart'}
-                        : gameState)
+                        : gameState,
+                fromJS)
                     (gameState),
     asteroid = (width, height, rand, speed) => {
         const
@@ -127,7 +131,7 @@ const
                     .update('field', field => field
                         .update('rocket', rocket => rocket
                             .update('fire', fire => fire
-                                .update('y', rocketY(gameState.toJS()))
+                                .update('y', rocketY(gameState))
                                 .set('image', fire.get('images').get(fire.get('imageIndex')))
                                 .update('holdCounter', holdCounter =>
                                     (holdCounter + 1) % fire.get('frameHolds'))
@@ -135,7 +139,7 @@ const
                                     fire.get('holdCounter') === 0
                                         ? nextImageIndex(fire.toJS())
                                         : imageIndex))
-                            .update('y', rocketY(gameState.toJS())))
+                            .update('y', rocketY(gameState)))
                         .update('starField', starField => {
                             const dy = 
                                 (starField.get('x1') - starField.get('speed'))

@@ -68,14 +68,15 @@ var R = require('ramda'),
     Map = _require.Map,
     fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
-    return fromJS(checkCollisions(flyingLogic(gameState, input).toJS()));
+    return fromJS(checkCollisions(flyingLogic(gameState, input)));
 },
     nextImageIndex = function nextImageIndex(animateable) {
     return (animateable.imageIndex + 1) % animateable.images.length;
 },
     rocketDy = function rocketDy(gameState) {
-    var rocketVector = gameState.field.rocket.speed * gameState.field.rocket.direction;
-    return gameState.field.rocket.y >= 0 ? gameState.field.rocket.y + gameState.field.rocket.height <= gameState.screen.height ? rocketVector : gameState.field.rocket.direction === 1 ? 0 : gameState.field.rocket.direction : gameState.field.rocket.direction === -1 ? 0 : gameState.field.rocket.direction;
+    var rocket = gameState.getIn(['field', 'rocket']),
+        direction = rocket.get('direction');
+    return rocket.get('y') >= 0 ? rocket.get('y') + rocket.get('height') <= gameState.getIn(['screen', 'height']) ? rocket.get('speed') * direction : direction === 1 ? 0 : direction : direction === -1 ? 0 : direction;
 },
     rocketY = R.curry(function (gameState, y) {
     return y + rocketDy(gameState);
@@ -106,18 +107,20 @@ var R = require('ramda'),
     };
 },
     checkCollisions = function checkCollisions(gameState) {
-    return R.pipe(R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['field', 'collisions'])), R.reduce(function (collisions, asteroid) {
-        return collided(gameState.field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
-            return collision(gameState.screen.width, gameState.screen.height, collisionMidpoint.x, collisionMidpoint.y);
+    return R.pipe(function (x) {
+        return x.toJS();
+    }, R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['field', 'collisions'])), R.reduce(function (collisions, asteroid) {
+        return collided(gameState.toJS().field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
+            return collision(gameState.toJS().screen.width, gameState.toJS().screen.height, collisionMidpoint.x, collisionMidpoint.y);
         }, function (collision) {
             return _extends({}, collision, {
                 x: collision.x - collision.width / 2,
                 y: collision.y - collision.height / 2
             });
-        }, R.append(R.__, collisions))(rectMidpoint(gameState.field.rocket), rectMidpoint(asteroid)) : collisions;
+        }, R.append(R.__, collisions))(rectMidpoint(gameState.toJS().field.rocket), rectMidpoint(asteroid)) : collisions;
     }, [])), function (gameState) {
         return gameState.field.collisions.length ? _extends({}, gameState, { mode: 'restart' }) : gameState;
-    })(gameState);
+    }, fromJS)(gameState);
 },
     asteroid = function asteroid(width, height, rand, speed) {
     var asteroidWidth = width / 20,
@@ -163,12 +166,12 @@ var R = require('ramda'),
             }).update('field', function (field) {
                 return field.update('rocket', function (rocket) {
                     return rocket.update('fire', function (fire) {
-                        return fire.update('y', rocketY(gameState.toJS())).set('image', fire.get('images').get(fire.get('imageIndex'))).update('holdCounter', function (holdCounter) {
+                        return fire.update('y', rocketY(gameState)).set('image', fire.get('images').get(fire.get('imageIndex'))).update('holdCounter', function (holdCounter) {
                             return (holdCounter + 1) % fire.get('frameHolds');
                         }).update('imageIndex', function (imageIndex) {
                             return fire.get('holdCounter') === 0 ? nextImageIndex(fire.toJS()) : imageIndex;
                         });
-                    }).update('y', rocketY(gameState.toJS()));
+                    }).update('y', rocketY(gameState));
                 }).update('starField', function (starField) {
                     var dy = (starField.get('x1') - starField.get('speed')) % gameState.getIn(['screen', 'width']);
                     return starField.set('x1', dy).set('x2', dy + gameState.getIn(['screen', 'width']));
