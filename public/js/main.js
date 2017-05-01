@@ -83,7 +83,7 @@ var R = require('ramda'),
     return y + rocketDy(gameState);
 }),
     collided = function collided(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.height + rect1.y > rect2.y;
+    return rect1.get('x') < rect2.get('x') + rect2.get('width') && rect1.get('x') + rect1.get('width') > rect2.get('x') && rect1.get('y') < rect2.get('y') + rect2.get('height') && rect1.get('height') + rect1.get('y') > rect2.get('y');
 },
     collision = function collision(screenWidth, screenHeight, x, y) {
     var width = screenWidth / 15;
@@ -109,7 +109,7 @@ var R = require('ramda'),
 },
     checkCollisions = function checkCollisions(gameState) {
     return gameState.setIn(['field', 'collisions'], gameState.getIn(['field', 'asteroidField', 'asteroids']).reduce(function (collisions, asteroid) {
-        return collided(gameState.getIn(['field', 'rocket']).toJS(), asteroid.toJS()) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
+        return collided(gameState.getIn(['field', 'rocket']), asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
             return collision(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']), collisionMidpoint.x, collisionMidpoint.y);
         }, function (collision) {
             return _extends({}, collision, {
