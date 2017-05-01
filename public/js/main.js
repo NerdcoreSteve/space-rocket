@@ -66,6 +66,7 @@ var R = require('ramda'),
     tap = require('./tap'),
     _require = require('immutable-ext'),
     Map = _require.Map,
+    List = _require.List,
     fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
     return fromJS(checkCollisions(flyingLogic(gameState, input)));
@@ -107,20 +108,20 @@ var R = require('ramda'),
     };
 },
     checkCollisions = function checkCollisions(gameState) {
-    return R.pipe(function (x) {
-        return x.toJS();
-    }, R.over(R.lens(R.path(['field', 'asteroidField', 'asteroids']), R.assocPath(['field', 'collisions'])), R.reduce(function (collisions, asteroid) {
-        return collided(gameState.toJS().field.rocket, asteroid) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
+    return gameState.setIn(['field', 'collisions'], gameState.getIn(['field', 'asteroidField', 'asteroids']).reduce(function (collisions, asteroid) {
+        return collided(gameState.getIn(['field', 'rocket']).toJS(), asteroid.toJS()) ? R.pipe(rectsMidpoint, function (collisionMidpoint) {
             return collision(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']), collisionMidpoint.x, collisionMidpoint.y);
         }, function (collision) {
             return _extends({}, collision, {
                 x: collision.x - collision.width / 2,
                 y: collision.y - collision.height / 2
             });
-        }, R.append(R.__, collisions))(rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()), rectMidpoint(asteroid)) : collisions;
-    }, [])), fromJS, function (gameState) {
-        return gameState.getIn(['field', 'collisions']).size ? gameState.set('mode', 'restart') : gameState;
-    })(gameState);
+        }, function (collision) {
+            return collisions.push(fromJS(collision));
+        })(rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()), rectMidpoint(asteroid.toJS())) : collisions;
+    }, List())).update('mode', function (mode) {
+        return gameState.getIn(['field', 'collisions']).size ? 'restart' : mode;
+    });
 },
     asteroid = function asteroid(width, height, rand, speed) {
     var asteroidWidth = width / 20,

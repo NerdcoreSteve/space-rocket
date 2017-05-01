@@ -1,7 +1,7 @@
 const
     R = require('ramda'),
     tap = require('./tap'),
-    {Map, fromJS} = require('immutable-ext'),
+    {Map, List, fromJS} = require('immutable-ext'),
     flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input))),
     nextImageIndex = animateable =>
         (animateable.imageIndex + 1) % animateable.images.length,
@@ -40,39 +40,33 @@ const
         y: rect.y + (rect.height / 2),
     }),
     checkCollisions = gameState =>
-        R.pipe(
-            x => x.toJS(),
-            R.over(
-                R.lens(
-                    R.path(['field', 'asteroidField', 'asteroids']),
-                    R.assocPath(['field', 'collisions'])),
-                R.reduce(
-                    (collisions, asteroid) =>
-                        (collided(gameState.toJS().field.rocket, asteroid))
-                            ? R.pipe(
-                                rectsMidpoint,
-                                collisionMidpoint =>
-                                    collision(
-                                        gameState.getIn(['screen', 'width']),
-                                        gameState.getIn(['screen', 'height']),
-                                        collisionMidpoint.x,
-                                        collisionMidpoint.y),
-                                collision => ({
-                                    ...collision,
-                                    x: collision.x - collision.width / 2,
-                                    y: collision.y - collision.height / 2
-                                }),
-                                R.append(R.__, collisions))(
-                                    rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()),
-                                    rectMidpoint(asteroid))
-                            : collisions,
-                    [])),
-                fromJS,
-                gameState =>
+        gameState.setIn(
+            ['field', 'collisions'],
+            gameState.getIn(['field', 'asteroidField', 'asteroids'])
+                .reduce((collisions, asteroid) =>
+                    collided(gameState.getIn(['field', 'rocket']).toJS(), asteroid.toJS())
+                        ? R.pipe(
+                            rectsMidpoint,
+                            collisionMidpoint =>
+                                collision(
+                                    gameState.getIn(['screen', 'width']),
+                                    gameState.getIn(['screen', 'height']),
+                                    collisionMidpoint.x,
+                                    collisionMidpoint.y),
+                            collision => ({
+                                ...collision,
+                                x: collision.x - collision.width / 2,
+                                y: collision.y - collision.height / 2
+                            }),
+                            collision => collisions.push(fromJS(collision)))(
+                                rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()),
+                                rectMidpoint(asteroid.toJS()))
+                        : collisions,
+                    List()))
+                .update('mode', mode =>
                     gameState.getIn(['field', 'collisions']).size
-                        ? gameState.set('mode', 'restart')
-                        : gameState)
-                    (gameState),
+                        ? 'restart'
+                        : mode),
     asteroid = (width, height, rand, speed) => {
         const
             asteroidWidth = width / 20,
