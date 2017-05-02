@@ -31,6 +31,12 @@ const
             image: 'collision',
         }
     },
+    toJSRect = rect => ({
+        x: rect.get('x'),
+        y: rect.get('y'),
+        width: rect.get('width'),
+        height: rect.get('height'),
+    }),
     rectsMidpoint = (rect1, rect2) => ({
         x: (rect1.x + rect2.x)/2,
         y: (rect1.y + rect2.y)/2
@@ -43,8 +49,13 @@ const
         gameState.setIn(
             ['field', 'collisions'],
             gameState.getIn(['field', 'asteroidField', 'asteroids'])
-                .reduce((collisions, asteroid) =>
-                    collided(gameState.getIn(['field', 'rocket']), asteroid)
+                .reduce((collisions, asteroid) => {
+                    const
+                        rocket = gameState.getIn(['field', 'rocket']),
+                        rocketRect = toJSRect(rocket),
+                        asteroidRect = toJSRect(asteroid)
+                        
+                    return collided(rocket, asteroid)
                         ? R.pipe(
                             rectsMidpoint,
                             collisionMidpoint =>
@@ -53,15 +64,16 @@ const
                                     gameState.getIn(['screen', 'height']),
                                     collisionMidpoint.x,
                                     collisionMidpoint.y),
-                            collision => ({
+                            collision => Map({
                                 ...collision,
                                 x: collision.x - collision.width / 2,
                                 y: collision.y - collision.height / 2
                             }),
-                            collision => collisions.push(fromJS(collision)))(
-                                rectMidpoint(gameState.getIn(['field', 'rocket']).toJS()),
-                                rectMidpoint(asteroid.toJS()))
-                        : collisions,
+                            collision => collisions.push(collision))(
+                                rectMidpoint(rocketRect),
+                                rectMidpoint(asteroidRect))
+                        : collisions
+                    },
                     List()))
                 .update('mode', mode =>
                     gameState.getIn(['field', 'collisions']).size
