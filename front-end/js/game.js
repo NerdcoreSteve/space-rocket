@@ -1,6 +1,6 @@
 const
     R = require('ramda'),
-    {Map, fromJS} = require('immutable-ext'),
+    {Map} = require('immutable-ext'),
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -23,4 +23,4 @@ const
         }
     }
 module.exports = 
-    (gameState, input) => gameModes(fromJS(gameState), input).merge(Map(input)).toJS()
+    (gameState, input) => gameModes(gameState, input).merge(Map(input))

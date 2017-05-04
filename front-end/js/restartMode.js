@@ -1,16 +1,14 @@
 const
     tap = require('./tap.js'),
-    {fromJS} = require('immutable-ext'),
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = (input, gameState) =>
         boolMatch(/^(.*?keydown|anykey)$/, input.type)
-            ? fromJS(
-                startingGameState(
-                    gameState.getIn(['screen', 'width']),
-                    gameState.getIn(['screen', 'height'])))
-                        .set('mode', 'flying')
-                        .set('images', gameState.get('images'))
+            ? startingGameState(
+                gameState.getIn(['screen', 'width']),
+                gameState.getIn(['screen', 'height']))
+                    .set('mode', 'flying')
+                    .set('images', gameState.get('images'))
             : gameState,
     restartLogic = (gameState) => {
         switch(gameState.getIn(['restart', 'mode'])) {

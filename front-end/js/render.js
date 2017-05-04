@@ -11,6 +11,7 @@ const
     drawImages = (context, images, imageObjs) => imageObjs.forEach(drawImage(context, images))
 
 module.exports = (context, gameState) => {
+    gameState = gameState.toJS()
     window.requestAnimationFrame(() => {
         if(gameState.mode !== 'loading') {
             context.drawImage(

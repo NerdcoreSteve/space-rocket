@@ -1,7 +1,7 @@
 const
     R = require('ramda'),
     Task = require('data.task'),
-    {List, fromJS} = require('immutable-ext'),
+    {List} = require('immutable-ext'),
     game = require('./game'),
     random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     image = url =>
@@ -13,7 +13,7 @@ const
             })
 
 module.exports =  gameStore => {
-    fromJS(gameStore.state()).get('commands').forEach(command => {
+    gameStore.state().get('commands').forEach(command => {
         switch(command.get('type')) {
             case 'random_numbers':
                 return gameStore.reduce(
@@ -39,5 +39,5 @@ module.exports =  gameStore => {
                             }))
         }
     })
-    gameStore.reduce(gameState => fromJS(gameState).set('commands', List()).toJS())
+    gameStore.reduce(gameState => gameState.set('commands', List()))
 }

@@ -1,8 +1,12 @@
+const
+    {fromJS} = require('immutable-ext')
+
 module.exports = (width, height) => {
     const
         rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122)
-    return {
+
+    return fromJS({
         images: {},
         commands: [
             {
@@ -150,5 +154,5 @@ module.exports = (width, height) => {
             },
             collisions: []
         }
-    }
+    })
 }

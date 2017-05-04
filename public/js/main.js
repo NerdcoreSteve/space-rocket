@@ -13,7 +13,6 @@ var R = require('ramda'),
     Task = require('data.task'),
     _require = require('immutable-ext'),
     List = _require.List,
-    fromJS = _require.fromJS,
     game = require('./game'),
     random = function random(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -31,7 +30,7 @@ var R = require('ramda'),
 
 
 module.exports = function (gameStore) {
-    fromJS(gameStore.state()).get('commands').forEach(function (command) {
+    gameStore.state().get('commands').forEach(function (command) {
         switch (command.get('type')) {
             case 'random_numbers':
                 return gameStore.reduce(game, {
@@ -53,7 +52,7 @@ module.exports = function (gameStore) {
         }
     });
     gameStore.reduce(function (gameState) {
-        return fromJS(gameState).set('commands', List()).toJS();
+        return gameState.set('commands', List());
     });
 };
 
@@ -222,7 +221,6 @@ module.exports = flying;
 var R = require('ramda'),
     _require = require('immutable-ext'),
     Map = _require.Map,
-    fromJS = _require.fromJS,
     loadingMode = require('./loadingMode'),
     pauseMode = require('./pauseMode'),
     startMode = require('./startMode'),
@@ -246,7 +244,7 @@ var R = require('ramda'),
 };
 
 module.exports = function (gameState, input) {
-    return gameModes(fromJS(gameState), input).merge(Map(input)).toJS();
+    return gameModes(gameState, input).merge(Map(input));
 };
 
 },{"./flyingMode":3,"./loadingMode":5,"./pauseMode":321,"./restartMode":323,"./startMode":324,"immutable-ext":9,"ramda":11}],5:[function(require,module,exports){
@@ -29029,6 +29027,7 @@ var R = require('ramda'),
 };
 
 module.exports = function (context, gameState) {
+    gameState = gameState.toJS();
     window.requestAnimationFrame(function () {
         if (gameState.mode !== 'loading') {
             context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
@@ -29069,12 +29068,10 @@ module.exports = function (context, gameState) {
 'use strict';
 
 var tap = require('./tap.js'),
-    _require = require('immutable-ext'),
-    fromJS = _require.fromJS,
     boolMatch = require('./boolMatch'),
     startingGameState = require('./startingGameState.js'),
     anyKeyCheck = function anyKeyCheck(input, gameState) {
-    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? fromJS(startingGameState(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height']))).set('mode', 'flying').set('images', gameState.get('images')) : gameState;
+    return boolMatch(/^(.*?keydown|anykey)$/, input.type) ? startingGameState(gameState.getIn(['screen', 'width']), gameState.getIn(['screen', 'height'])).set('mode', 'flying').set('images', gameState.get('images')) : gameState;
 },
     restartLogic = function restartLogic(gameState) {
     switch (gameState.getIn(['restart', 'mode'])) {
@@ -29092,12 +29089,11 @@ var tap = require('./tap.js'),
             return gameState;
     }
 };
-
 module.exports = function (gameState, input) {
     return anyKeyCheck(input, restartLogic(gameState));
 };
 
-},{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326,"immutable-ext":9}],324:[function(require,module,exports){
+},{"./boolMatch":1,"./startingGameState.js":325,"./tap.js":326}],324:[function(require,module,exports){
 'use strict';
 
 module.exports = function (gameState, input) {
@@ -29114,10 +29110,14 @@ module.exports = function (gameState, input) {
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
+var _require = require('immutable-ext'),
+    fromJS = _require.fromJS;
+
 module.exports = function (width, height) {
     var rocketLength = width / 10,
         rocketWidth = rocketLength * (48 / 122);
-    return {
+
+    return fromJS({
         images: {},
         commands: [{
             type: 'load_images',
@@ -29262,10 +29262,10 @@ module.exports = function (width, height) {
             },
             collisions: []
         }
-    };
+    });
 };
 
-},{}],326:[function(require,module,exports){
+},{"immutable-ext":9}],326:[function(require,module,exports){
 'use strict';
 
 var R = require('ramda');
