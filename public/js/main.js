@@ -69,10 +69,10 @@ var R = require('ramda'),
     List = _require.List,
     fromJS = _require.fromJS,
     flying = function flying(gameState, input) {
-    return fromJS(checkCollisions(flyingLogic(gameState, input)));
+    return checkCollisions(flyingLogic(gameState, input));
 },
     nextImageIndex = function nextImageIndex(animateable) {
-    return (animateable.imageIndex + 1) % animateable.images.length;
+    return (animateable.get('imageIndex') + 1) % animateable.get('images').size;
 },
     rocketDy = function rocketDy(gameState) {
     var rocket = gameState.getIn(['field', 'rocket']),
@@ -182,7 +182,7 @@ var R = require('ramda'),
                         return fire.update('y', rocketY(gameState)).set('image', fire.get('images').get(fire.get('imageIndex'))).update('holdCounter', function (holdCounter) {
                             return (holdCounter + 1) % fire.get('frameHolds');
                         }).update('imageIndex', function (imageIndex) {
-                            return fire.get('holdCounter') === 0 ? nextImageIndex(fire.toJS()) : imageIndex;
+                            return fire.get('holdCounter') === 0 ? nextImageIndex(fire) : imageIndex;
                         });
                     }).update('y', rocketY(gameState));
                 }).update('starField', function (starField) {

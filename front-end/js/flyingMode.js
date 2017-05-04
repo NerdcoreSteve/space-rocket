@@ -2,9 +2,9 @@ const
     R = require('ramda'),
     tap = require('./tap'),
     {Map, List, fromJS} = require('immutable-ext'),
-    flying = (gameState, input) => fromJS(checkCollisions(flyingLogic(gameState, input))),
+    flying = (gameState, input) => checkCollisions(flyingLogic(gameState, input)),
     nextImageIndex = animateable =>
-        (animateable.imageIndex + 1) % animateable.images.length,
+        (animateable.get('imageIndex') + 1) % animateable.get('images').size,
     rocketDy = gameState => {
         const
             rocket = gameState.getIn(['field', 'rocket']),
@@ -143,7 +143,7 @@ const
                                     (holdCounter + 1) % fire.get('frameHolds'))
                                 .update('imageIndex', imageIndex =>
                                     fire.get('holdCounter') === 0
-                                        ? nextImageIndex(fire.toJS())
+                                        ? nextImageIndex(fire)
                                         : imageIndex))
                             .update('y', rocketY(gameState)))
                         .update('starField', starField => {
