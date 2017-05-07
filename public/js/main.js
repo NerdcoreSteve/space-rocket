@@ -29020,45 +29020,55 @@ module.exports = function (gameState, input) {
 var R = require('ramda'),
     tap = require('./tap'),
     drawImage = R.curry(function (context, images, imageObj) {
-    return context.drawImage(images[imageObj.image], imageObj.x, imageObj.y, imageObj.width, imageObj.height);
+    return context.drawImage(images.get(imageObj.get('image')), imageObj.get('x'), imageObj.get('y'), imageObj.get('width'), imageObj.get('height'));
 }),
-    drawImages = function drawImages(context, images, imageObjs) {
+    drawImages = R.curry(function (context, images, imageObjs) {
     return imageObjs.forEach(drawImage(context, images));
-};
+});
 
 module.exports = function (context, gameState) {
-    gameState = gameState.toJS();
-    window.requestAnimationFrame(function () {
-        if (gameState.mode !== 'loading') {
-            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x1, 0, context.canvas.width, context.canvas.height);
-            context.drawImage(gameState.images[gameState.field.starField.image], gameState.field.starField.x2, 0, context.canvas.width, context.canvas.height);
+    var starFieldImage = gameState.getIn(['field', 'starField', 'image']),
+        draw = drawImage(context, gameState.get('images')),
+        drawList = drawImages(context, gameState.get('images'));
 
-            drawImage(context, gameState.images, gameState.field.rocket.fire);
-            drawImage(context, gameState.images, gameState.field.rocket);
-            drawImages(context, gameState.images, gameState.field.asteroidField.asteroids);
-            drawImages(context, gameState.images, gameState.field.collisions);
+    window.requestAnimationFrame(function () {
+        if (gameState.get('mode') !== 'loading') {
+            var field = gameState.get('field');
+
+            context.drawImage(gameState.getIn(['images', starFieldImage]), field.getIn(['starField', 'x1']), 0, context.canvas.width, context.canvas.height);
+            context.drawImage(gameState.getIn(['images', starFieldImage]), field.getIn(['starField', 'x2']), 0, context.canvas.width, context.canvas.height);
+
+            draw(field.getIn(['rocket', 'fire']));
+            draw(field.get('rocket'));
+            drawList(field.getIn(['asteroidField', 'asteroids']));
+            drawList(field.get('collisions'));
         } else {
-            context.font = gameState.loading.text.font;
+            var text = gameState.getIn(['loading', 'text']);
+            context.font = text.get('font');
             context.textAlign = 'center';
-            context.fillStyle = gameState.loading.text.color;
-            context.fillText(gameState.loading.text.text, gameState.loading.text.x, gameState.loading.text.y);
+            context.fillStyle = text.get('color');
+            context.fillText(text.get('text'), text.get('x'), text.get('y'));
         }
 
-        if (gameState.mode === 'start') {
-            drawImage(context, gameState.images, gameState.start.space_rocket);
-            drawImage(context, gameState.images, gameState.start.esc);
-            drawImage(context, gameState.images, gameState.start.updown);
-            drawImage(context, gameState.images, gameState.start.pressAnyKey);
-        } else if (gameState.mode === 'pause') {
-            drawImage(context, gameState.images, gameState.pause.paused);
-            drawImage(context, gameState.images, gameState.pause.esc);
-            drawImage(context, gameState.images, gameState.pause.updown);
-        } else if (gameState.mode === 'restart') {
-            if (gameState.restart.mode === 'destroyed') {
-                drawImage(context, gameState.images, gameState.restart.destroyed);
-            } else if (gameState.restart.mode === 'anykey') {
-                drawImage(context, gameState.images, gameState.restart.destroyed);
-                drawImage(context, gameState.images, gameState.restart.pressAnyKey);
+        if (gameState.get('mode') === 'start') {
+            var start = gameState.get('start');
+            draw(start.get('space_rocket'));
+            draw(start.get('esc'));
+            draw(start.get('updown'));
+            draw(start.get('pressAnyKey'));
+        } else if (gameState.get('mode') === 'pause') {
+            var pause = gameState.get('pause');
+            draw(pause.get('paused'));
+            draw(pause.get('esc'));
+            draw(pause.get('updown'));
+        } else if (gameState.get('mode') === 'restart') {
+            var restart = gameState.get('restart');
+
+            if (restart.get('mode') === 'destroyed') {
+                draw(restart.get('destroyed'));
+            } else if (restart.get('mode') === 'anykey') {
+                draw(restart.get('destroyed'));
+                draw(restart.get('pressAnyKey'));
             }
         }
     });
